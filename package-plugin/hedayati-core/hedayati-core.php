@@ -94,14 +94,6 @@ function hedayati_core_admin_assets( string $hook ): void {
 			[],
 			HEDAYATI_CORE_VERSION
 		);
-
-		wp_enqueue_script(
-			'hedayati-core-admin',
-			HEDAYATI_CORE_URL . 'assets/js/admin.js',
-			[],
-			HEDAYATI_CORE_VERSION,
-			true
-		);
 	}
 }
 

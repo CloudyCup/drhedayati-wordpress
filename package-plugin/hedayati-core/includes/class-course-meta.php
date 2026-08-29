@@ -134,66 +134,9 @@ class Hedayati_Course_Meta {
 			'auth_callback'     => $auth_callback,
 			'show_in_rest'      => false,
 		] );
-
-		// ── Structured Repeatable Content ─────────────────────────────────────
-
-		// Course syllabus — repeatable array of short module/topic strings
-		register_post_meta( $post_type, '_course_syllabus', [
-			'type'              => 'array',
-			'single'            => true,
-			'default'           => [],
-			'sanitize_callback' => [ self::class, 'sanitize_string_array' ],
-			'auth_callback'     => $auth_callback,
-			'show_in_rest'      => false,
-		] );
-
-		// Target audience — repeatable array of audience descriptions
-		register_post_meta( $post_type, '_course_target_audience', [
-			'type'              => 'array',
-			'single'            => true,
-			'default'           => [],
-			'sanitize_callback' => [ self::class, 'sanitize_string_array' ],
-			'auth_callback'     => $auth_callback,
-			'show_in_rest'      => false,
-		] );
-
-		// Learning outcomes — repeatable array of student achievement items
-		register_post_meta( $post_type, '_course_learning_outcomes', [
-			'type'              => 'array',
-			'single'            => true,
-			'default'           => [],
-			'sanitize_callback' => [ self::class, 'sanitize_string_array' ],
-			'auth_callback'     => $auth_callback,
-			'show_in_rest'      => false,
-		] );
 	}
 
 	// ── Sanitizers ────────────────────────────────────────────────────────────
-
-	/**
-	 * Sanitize an array of strings (for syllabus, audience, outcomes).
-	 * Rejects non-arrays, strips HTML tags, and removes empty entries.
-	 *
-	 * @param mixed $value
-	 * @return string[]
-	 */
-	public static function sanitize_string_array( mixed $value ): array {
-		if ( ! is_array( $value ) ) {
-			return [];
-		}
-
-		$clean = [];
-		foreach ( $value as $item ) {
-			if ( is_string( $item ) ) {
-				$text = sanitize_text_field( wp_unslash( $item ) );
-				if ( '' !== $text ) {
-					$clean[] = $text;
-				}
-			}
-		}
-
-		return array_values( $clean );
-	}
 
 	/**
 	 * Sanitize a date value to ISO 8601 (YYYY-MM-DD) and verify Gregorian validity.

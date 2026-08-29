@@ -3,18 +3,37 @@
 
 		<!-- Brand column -->
 		<div class="footer-brand">
-			<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="brand-logo" aria-label="<?php bloginfo( 'name' ); ?>">
-				<div class="brand-mark-wrapper" aria-hidden="true">
-					<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-						<circle cx="20" cy="20" r="20" fill="#c52232"/>
-						<text x="20" y="26" text-anchor="middle" fill="#fff" font-size="16" font-weight="900" font-family="Tahoma, Arial, sans-serif">H</text>
-					</svg>
+			<?php if ( has_custom_logo() ) : ?>
+				<div class="footer-custom-logo-wrapper">
+					<?php
+					$custom_logo_id = get_theme_mod( 'custom_logo' );
+					$logo = wp_get_attachment_image_src( $custom_logo_id, 'full' );
+					if ( $logo ) : ?>
+						<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="footer-custom-logo-link" rel="home" aria-label="<?php bloginfo( 'name' ); ?>">
+							<img src="<?php echo esc_url( $logo[0] ); ?>"
+							     alt="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?>"
+							     class="footer-custom-logo"
+							     width="<?php echo esc_attr( (string) $logo[1] ); ?>"
+							     height="<?php echo esc_attr( (string) $logo[2] ); ?>">
+						</a>
+					<?php else :
+						the_custom_logo();
+					endif; ?>
 				</div>
-				<div class="brand-copy">
-					<b><?php bloginfo( 'name' ); ?></b>
-					<small><?php bloginfo( 'description' ); ?></small>
-				</div>
-			</a>
+			<?php else : ?>
+				<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="brand-logo footer-fallback-logo" aria-label="<?php bloginfo( 'name' ); ?>">
+					<div class="brand-mark-wrapper" aria-hidden="true">
+						<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<circle cx="20" cy="20" r="20" fill="#c52232"/>
+							<text x="20" y="26" text-anchor="middle" fill="#fff" font-size="16" font-weight="900" font-family="Tahoma, Arial, sans-serif">H</text>
+						</svg>
+					</div>
+					<div class="brand-copy">
+						<b><?php bloginfo( 'name' ); ?></b>
+						<small><?php bloginfo( 'description' ); ?></small>
+					</div>
+				</a>
+			<?php endif; ?>
 			<p class="footer-tagline">
 				<?php esc_html_e( 'مرکز آموزش تخصصی فناوری اطلاعات، شبکه، برنامه‌نویسی و مهارت‌های کاربردی بازار کار.', 'hedayati' ); ?>
 			</p>
