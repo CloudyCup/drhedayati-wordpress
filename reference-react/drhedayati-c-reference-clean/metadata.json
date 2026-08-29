@@ -1,0 +1,6 @@
+{
+  "name": "دکتر هدایتی — کانسپت‌های بازطراحی",
+  "description": "طرح‌های بازطراحی مجتمع آموزشی دکتر هدایتی",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
