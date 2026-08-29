@@ -1,0 +1,62 @@
+/*
+ * Hedayati Theme — RTL Supplementary Stylesheet
+ *
+ * This theme is RTL-first. The main.css uses logical properties
+ * (margin-inline-start/end, border-inline-start/end, padding-inline)
+ * throughout, which are RTL-aware by default.
+ *
+ * This file contains overrides for specific cases where a component
+ * or third-party element reverses direction, and corrections for
+ * WordPress core generated markup that may assume LTR.
+ */
+
+/* Ensure WordPress admin bar doesn't break RTL layout */
+#wpadminbar {
+  direction: ltr;
+}
+
+/* WordPress generated pagination links */
+.page-numbers {
+  direction: ltr;
+}
+
+/* Ensure embeds / iframes don't flip */
+.wp-block-embed,
+iframe {
+  direction: ltr;
+}
+
+/* WordPress menu accessibility: sub-menu positioning for RTL */
+.primary-menu .sub-menu {
+  right: 0;
+  left: auto;
+}
+
+/* Breadcrumb separator direction */
+.breadcrumb > span[aria-hidden="true"] {
+  direction: ltr;
+  display: inline-block;
+}
+
+/* English technical content embedded in cards */
+.course-monogram,
+.course-english-tag,
+.course-english-badge,
+.nav-brandline {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+/* Date/time elements */
+time[datetime],
+.enroll-date time {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+/* Phone numbers in footer */
+.footer-contact li [dir="ltr"],
+.cta-phone a {
+  direction: ltr;
+  unicode-bidi: embed;
+}
