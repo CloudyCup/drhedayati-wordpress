@@ -28,7 +28,7 @@ $reg_display   = hedayati_registration_state_display( $reg_state_raw );
 $monogram      = hedayati_course_monogram( $post_id );
 ?>
 
-<main id="site-main" class="single-course-main" role="main">
+<main id="site-main" class="single-course-main" role="main" tabindex="-1">
 
 	<!-- Course hero -->
 	<section class="course-detail-hero" aria-labelledby="course-title">
@@ -60,7 +60,7 @@ $monogram      = hedayati_course_monogram( $post_id );
 					<h1 id="course-title" class="course-detail-title"><?php the_title(); ?></h1>
 
 					<?php if ( has_excerpt() ) : ?>
-						<p class="course-detail-excerpt"><?php the_excerpt(); ?></p>
+						<div class="course-detail-excerpt"><?php the_excerpt(); ?></div>
 					<?php endif; ?>
 
 					<!-- Course meta pills -->

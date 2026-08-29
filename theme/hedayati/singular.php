@@ -11,7 +11,7 @@ get_header();
 if ( have_posts() ) :
 	the_post();
 	?>
-	<main id="site-main" class="singular-main section" role="main">
+	<main id="site-main" class="singular-main section" role="main" tabindex="-1">
 		<div class="container singular-container">
 			<article <?php post_class( 'entry' ); ?> id="post-<?php the_ID(); ?>">
 				<header class="entry-header">

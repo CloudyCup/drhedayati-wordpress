@@ -159,6 +159,19 @@ class Hedayati_Meta_Box {
 					<p class="hd-hint">ذخیره به فرمت میلادی (YYYY-MM-DD). نمایش شمسی در مرحله بعد.</p>
 				</div>
 
+				<div class="hd-meta-field">
+					<label for="hm_menu_order">ترتیب نمایش (اولویت)</label>
+					<input
+						type="number"
+						id="hm_menu_order"
+						name="hm_menu_order"
+						value="<?php echo esc_attr( (string) $post->menu_order ); ?>"
+						min="0"
+						step="1"
+					>
+					<p class="hd-hint">عدد کمتر = اولویت بالاتر در لیست دوره‌ها و دوره‌های ویژه (پیش‌فرض: ۰).</p>
+				</div>
+
 				<div class="hd-meta-field hd-full-width">
 					<label for="hm_prerequisites">پیش‌نیازها</label>
 					<textarea
@@ -250,5 +263,18 @@ class Hedayati_Meta_Box {
 
 		$is_featured = isset( $_POST['hm_is_featured'] ) && '1' === $_POST['hm_is_featured'];
 		update_post_meta( $post_id, '_course_is_featured', $is_featured );
+
+		// ── Numeric menu_order (display priority) ─────────────────────────────
+		if ( isset( $_POST['hm_menu_order'] ) ) {
+			$menu_order = absint( wp_unslash( $_POST['hm_menu_order'] ) );
+			if ( $post->menu_order !== $menu_order ) {
+				remove_action( 'save_post_course', [ self::class, 'save' ], 10 );
+				wp_update_post( [
+					'ID'         => $post_id,
+					'menu_order' => $menu_order,
+				] );
+				add_action( 'save_post_course', [ self::class, 'save' ], 10, 2 );
+			}
+		}
 	}
 }

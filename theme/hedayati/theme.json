@@ -157,24 +157,5 @@
 				}
 			}
 		}
-	},
-	"customTemplates": [
-		{
-			"name": "full-width",
-			"title": "تمام‌عرض",
-			"postTypes": [ "page", "course" ]
-		}
-	],
-	"templateParts": [
-		{
-			"name": "header",
-			"title": "هدر سایت",
-			"area": "header"
-		},
-		{
-			"name": "footer",
-			"title": "فوتر سایت",
-			"area": "footer"
-		}
-	]
+	}
 }

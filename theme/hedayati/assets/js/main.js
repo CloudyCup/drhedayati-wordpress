@@ -25,25 +25,54 @@
   const html = document.documentElement;
 
   /**
-   * Return the active theme ('light' | 'dark').
-   * Reads localStorage first, falls back to OS preference.
-   * @returns {'light'|'dark'}
+   * Safely read stored theme from localStorage.
+   * Returns 'light', 'dark', or null if not set or storage is unavailable.
+   * @returns {'light'|'dark'|null}
    */
-  function getActiveTheme() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark') return stored;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  function getStoredTheme() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return (stored === 'light' || stored === 'dark') ? stored : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   /**
-   * Apply a theme to the document and persist it.
+   * Safely persist theme preference to localStorage.
    * @param {'light'|'dark'} theme
    */
-  function applyTheme(theme) {
-    html.setAttribute('data-theme', theme);
-    localStorage.setItem(STORAGE_KEY, theme);
+  function setStoredTheme(theme) {
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch (e) {
+      // Storage unavailable (e.g. private browsing restriction)
+    }
+  }
 
-    // Update toggle button accessible state
+  /**
+   * Determine resolved theme based on explicit preference or OS scheme.
+   * @returns {'light'|'dark'}
+   */
+  function getResolvedTheme() {
+    const stored = getStoredTheme();
+    if (stored) return stored;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  /**
+   * Apply theme to <html> and sync toggle button accessibility attributes.
+   * Only persists to localStorage when isUserAction is true.
+   * @param {'light'|'dark'} theme
+   * @param {boolean} isUserAction
+   */
+  function applyTheme(theme, isUserAction = false) {
+    html.setAttribute('data-theme', theme);
+
+    if (isUserAction) {
+      setStoredTheme(theme);
+    }
+
     const btn = document.getElementById('theme-toggle');
     if (btn) {
       const isDark = theme === 'dark';
@@ -58,28 +87,31 @@
   }
 
   /**
-   * Toggle between light and dark.
+   * Toggle between light and dark on button click.
+   * Creates an explicit user preference.
    */
   function toggleTheme() {
-    const current = getActiveTheme();
-    applyTheme(current === 'dark' ? 'light' : 'dark');
+    const current = getResolvedTheme();
+    const next = current === 'dark' ? 'light' : 'dark';
+    applyTheme(next, true);
   }
 
   // Wire up the toggle button
   const themeToggleBtn = document.getElementById('theme-toggle');
   if (themeToggleBtn) {
-    // Sync initial button state with current theme
-    applyTheme(getActiveTheme());
-
+    // Sync button state on load without writing to localStorage
+    applyTheme(getResolvedTheme(), false);
     themeToggleBtn.addEventListener('click', toggleTheme);
   }
 
-  // React to OS-level changes (only when no explicit preference stored)
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      applyTheme(e.matches ? 'dark' : 'light');
-    }
-  });
+  // React to OS-level changes only when NO explicit user preference is stored
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+      if (!getStoredTheme()) {
+        applyTheme(e.matches ? 'dark' : 'light', false);
+      }
+    });
+  }
 
   /* ────────────────────────────────────────────────────────────
    * 2. MOBILE NAVIGATION

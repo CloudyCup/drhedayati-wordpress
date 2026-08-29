@@ -9,7 +9,7 @@
 get_header();
 ?>
 
-<main id="site-main" class="site-main section" role="main">
+<main id="site-main" class="site-main section" role="main" tabindex="-1">
 	<div class="container">
 		<?php if ( have_posts() ) : ?>
 			<div class="posts-grid">

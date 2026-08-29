@@ -123,14 +123,6 @@ function hedayati_enqueue_assets(): void {
 		HEDAYATI_VERSION,
 		[ 'strategy' => 'defer', 'in_footer' => true ]
 	);
-
-	// Pass PHP data to JS
-	wp_localize_script( 'hedayati-main', 'hedayatiData', [
-		'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-		'homeUrl'   => home_url( '/' ),
-		'isRTL'     => true,
-		'nonce'     => wp_create_nonce( 'hedayati_frontend' ),
-	] );
 }
 
 // ── Body Classes ──────────────────────────────────────────────────────────────
@@ -152,9 +144,8 @@ function hedayati_body_classes( array $classes ): array {
 }
 
 // ── Head: Dark-mode no-flash inline script ────────────────────────────────────
-// This script must run as early as possible — before the browser paints.
-// It reads localStorage and sets data-theme on <html> synchronously,
-// preventing a flash of the wrong colour scheme.
+// This script runs synchronously in head before first paint.
+// Wrapped in try/catch to safely handle environments where localStorage is blocked.
 
 add_action( 'wp_head', 'hedayati_dark_mode_noflash', 1 );
 
@@ -162,9 +153,13 @@ function hedayati_dark_mode_noflash(): void {
 	?>
 	<script>
 	(function(){
-		var stored = localStorage.getItem('hedayati-theme');
-		var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-		document.documentElement.setAttribute('data-theme', theme);
+		try {
+			var stored = localStorage.getItem('hedayati-theme');
+			var theme = (stored === 'light' || stored === 'dark') ? stored : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+			document.documentElement.setAttribute('data-theme', theme);
+		} catch (e) {
+			document.documentElement.setAttribute('data-theme', 'light');
+		}
 	}());
 	</script>
 	<?php

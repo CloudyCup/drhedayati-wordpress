@@ -8,7 +8,7 @@
 get_header();
 ?>
 
-<main id="site-main" class="error-404 section" role="main">
+<main id="site-main" class="error-404 section" role="main" tabindex="-1">
 	<div class="container">
 		<div class="error-404-inner">
 			<span class="error-404-code" aria-hidden="true">404</span>

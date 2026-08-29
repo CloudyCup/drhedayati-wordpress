@@ -2,13 +2,14 @@
 /**
  * CTA Band — full-width consultation call-to-action.
  *
- * Phone number is read from theme customizer (hedayati_phone_consult).
+ * Phone number is read from Hedayati Core settings.
  * No phone number is shown if not configured.
  *
  * @package Hedayati
  */
 
-$cta_phone = get_theme_mod( 'hedayati_phone_consult', '' );
+$cta_phone = class_exists( 'Hedayati_Settings' ) ? Hedayati_Settings::get( 'phone_consult' ) : '';
+$cta_tel   = class_exists( 'Hedayati_Settings' ) ? Hedayati_Settings::tel_uri( 'phone_consult' ) : '';
 ?>
 
 <section class="cta-band" aria-labelledby="cta-heading">
@@ -16,11 +17,11 @@ $cta_phone = get_theme_mod( 'hedayati_phone_consult', '' );
 		<div class="cta-band-text">
 			<span><?php esc_html_e( 'نیاز به راهنمایی دارید؟', 'hedayati' ); ?></span>
 			<h2 id="cta-heading">
-				<?php esc_html_e( 'مشاوره رایگان برای انتخاب دوره و شروع مسیر یادگیری', 'hedayati' ); ?>
+				<?php esc_html_e( 'مشاوره تخصصی برای انتخاب دوره و شروع مسیر یادگیری', 'hedayati' ); ?>
 			</h2>
-			<?php if ( $cta_phone ) : ?>
+			<?php if ( '' !== $cta_phone && '' !== $cta_tel ) : ?>
 				<p class="cta-phone">
-					<a href="tel:<?php echo esc_attr( preg_replace( '/\D/', '', $cta_phone ) ); ?>" dir="ltr">
+					<a href="tel:<?php echo esc_attr( $cta_tel ); ?>" dir="ltr">
 						<?php echo esc_html( $cta_phone ); ?>
 					</a>
 				</p>

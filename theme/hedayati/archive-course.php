@@ -18,7 +18,7 @@ $archive_desc  = $current_term && $current_term->description
 	: '';
 ?>
 
-<main id="site-main" class="course-archive-main" role="main">
+<main id="site-main" class="course-archive-main" role="main" tabindex="-1">
 
 	<!-- Archive page hero -->
 	<section class="page-hero" aria-labelledby="archive-title">

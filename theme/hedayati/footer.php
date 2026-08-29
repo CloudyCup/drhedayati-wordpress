@@ -16,7 +16,7 @@
 				</div>
 			</a>
 			<p class="footer-tagline">
-				<?php esc_html_e( 'بیش از دو دهه تجربه در آموزش تخصصی فناوری اطلاعات، شبکه، برنامه‌نویسی و مهارت‌های کاربردی بازار کار.', 'hedayati' ); ?>
+				<?php esc_html_e( 'مرکز آموزش تخصصی فناوری اطلاعات، شبکه، برنامه‌نویسی و مهارت‌های کاربردی بازار کار.', 'hedayati' ); ?>
 			</p>
 		</div>
 
@@ -59,50 +59,59 @@
 			<h3 class="footer-col-title"><?php esc_html_e( 'تماس با ما', 'hedayati' ); ?></h3>
 			<ul class="footer-contact">
 				<?php
-				// Contact information should be managed via Appearance > Customize
-				// or a future options page. Hard-coded values are intentionally
-				// avoided here to prevent stale production data.
-				$tabriz_phone  = get_theme_mod( 'hedayati_phone_tabriz', '' );
-				$tehran_phone  = get_theme_mod( 'hedayati_phone_tehran', '' );
-				$consult_phone = get_theme_mod( 'hedayati_phone_consult', '' );
-				$address       = get_theme_mod( 'hedayati_address_tabriz', '' );
+				$has_contact = false;
+				if ( class_exists( 'Hedayati_Settings' ) ) :
+					$consult_phone = Hedayati_Settings::get( 'phone_consult' );
+					$consult_tel   = Hedayati_Settings::tel_uri( 'phone_consult' );
+					$tabriz_phone  = Hedayati_Settings::get( 'phone_tabriz' );
+					$tabriz_tel    = Hedayati_Settings::tel_uri( 'phone_tabriz' );
+					$tehran_phone  = Hedayati_Settings::get( 'phone_tehran' );
+					$tehran_tel    = Hedayati_Settings::tel_uri( 'phone_tehran' );
+					$address       = Hedayati_Settings::get( 'address_tabriz' );
 
-				if ( $consult_phone ) : ?>
-					<li>
-						<a href="tel:<?php echo esc_attr( preg_replace( '/\D/', '', $consult_phone ) ); ?>">
-							<?php esc_html_e( 'مشاوره و ثبت‌نام: ', 'hedayati' ); ?>
-							<span dir="ltr"><?php echo esc_html( $consult_phone ); ?></span>
-						</a>
-					</li>
-				<?php endif;
+					if ( '' !== $consult_phone && '' !== $consult_tel ) :
+						$has_contact = true; ?>
+						<li>
+							<a href="tel:<?php echo esc_attr( $consult_tel ); ?>">
+								<?php esc_html_e( 'مشاوره و ثبت‌نام: ', 'hedayati' ); ?>
+								<span dir="ltr"><?php echo esc_html( $consult_phone ); ?></span>
+							</a>
+						</li>
+					<?php endif;
 
-				if ( $tabriz_phone ) : ?>
-					<li>
-						<a href="tel:<?php echo esc_attr( preg_replace( '/\D/', '', $tabriz_phone ) ); ?>">
-							<?php esc_html_e( 'تبریز: ', 'hedayati' ); ?>
-							<span dir="ltr"><?php echo esc_html( $tabriz_phone ); ?></span>
-						</a>
-					</li>
-				<?php endif;
+					if ( '' !== $tabriz_phone && '' !== $tabriz_tel ) :
+						$has_contact = true; ?>
+						<li>
+							<a href="tel:<?php echo esc_attr( $tabriz_tel ); ?>">
+								<?php esc_html_e( 'تبریز: ', 'hedayati' ); ?>
+								<span dir="ltr"><?php echo esc_html( $tabriz_phone ); ?></span>
+							</a>
+						</li>
+					<?php endif;
 
-				if ( $tehran_phone ) : ?>
-					<li>
-						<a href="tel:<?php echo esc_attr( preg_replace( '/\D/', '', $tehran_phone ) ); ?>">
-							<?php esc_html_e( 'تهران: ', 'hedayati' ); ?>
-							<span dir="ltr"><?php echo esc_html( $tehran_phone ); ?></span>
-						</a>
-					</li>
-				<?php endif;
+					if ( '' !== $tehran_phone && '' !== $tehran_tel ) :
+						$has_contact = true; ?>
+						<li>
+							<a href="tel:<?php echo esc_attr( $tehran_tel ); ?>">
+								<?php esc_html_e( 'تهران: ', 'hedayati' ); ?>
+								<span dir="ltr"><?php echo esc_html( $tehran_phone ); ?></span>
+							</a>
+						</li>
+					<?php endif;
 
-				if ( $address ) : ?>
-					<li class="footer-address">
-						<address><?php echo esc_html( $address ); ?></address>
-					</li>
-				<?php endif;
+					if ( '' !== $address ) :
+						$has_contact = true; ?>
+						<li class="footer-address">
+							<address><?php echo nl2br( esc_html( $address ) ); ?></address>
+						</li>
+					<?php endif;
+				endif;
 
-				if ( ! $tabriz_phone && ! $tehran_phone && ! $consult_phone ) : ?>
+				if ( ! $has_contact && current_user_can( 'manage_options' ) ) : ?>
 					<li class="footer-contact-placeholder">
-						<em><?php esc_html_e( 'اطلاعات تماس از Appearance → Customize تنظیم می‌شود.', 'hedayati' ); ?></em>
+						<em>
+							<?php esc_html_e( 'اطلاعات تماس از منوی تنظیمات ← هدایتی در پنل مدیریت تنظیم می‌شود.', 'hedayati' ); ?>
+						</em>
 					</li>
 				<?php endif; ?>
 			</ul>

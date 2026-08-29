@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html <?php language_attributes(); ?> dir="rtl" data-theme="light">
+<html <?php language_attributes(); ?> data-theme="light">
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,7 @@
 <body <?php body_class(); ?>>
 <?php wp_body_open(); ?>
 
-<a class="skip-link screen-reader-text" href="#main-content">
+<a class="skip-link screen-reader-text" href="#site-main">
 	<?php esc_html_e( 'رفتن به محتوای اصلی', 'hedayati' ); ?>
 </a>
 
@@ -49,7 +49,7 @@
 				'menu_class'      => 'primary-menu',
 				'container'       => false,
 				'fallback_cb'     => 'hedayati_primary_menu_fallback',
-				'items_wrap'      => '<ul id="%1$s" class="%2$s" role="menubar">%3$s</ul>',
+				'items_wrap'      => '<ul id="%1$s" class="%2$s">%3$s</ul>',
 				'walker'          => null,
 			] );
 			?>
@@ -108,5 +108,3 @@
 
 	</div><!-- .header-inner -->
 </header><!-- .site-header -->
-
-<div id="main-content" tabindex="-1"></div>

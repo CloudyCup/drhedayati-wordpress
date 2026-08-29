@@ -139,8 +139,10 @@ class Hedayati_Course_Meta {
 	// ── Sanitizers ────────────────────────────────────────────────────────────
 
 	/**
-	 * Sanitize a date value to ISO 8601 (YYYY-MM-DD).
-	 * Returns an empty string if the input does not match the expected format.
+	 * Sanitize a date value to ISO 8601 (YYYY-MM-DD) and verify Gregorian validity.
+	 *
+	 * Rejects invalid dates like 2026-02-31 via checkdate().
+	 * Returns an empty string if the input is not a valid calendar date.
 	 */
 	public static function sanitize_iso_date( string $value ): string {
 		$value = sanitize_text_field( $value );
@@ -150,8 +152,14 @@ class Hedayati_Course_Meta {
 		}
 
 		// Strict pattern: YYYY-MM-DD
-		if ( preg_match( '/^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/', $value ) ) {
-			return $value;
+		if ( preg_match( '/^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/', $value, $matches ) ) {
+			$year  = (int) $matches[1];
+			$month = (int) $matches[2];
+			$day   = (int) $matches[3];
+
+			if ( checkdate( $month, $day, $year ) ) {
+				return $value;
+			}
 		}
 
 		return '';

@@ -8,7 +8,7 @@
 
 get_header();
 ?>
-<main id="site-main" class="archive-main section" role="main">
+<main id="site-main" class="archive-main section" role="main" tabindex="-1">
 	<div class="container">
 		<header class="page-hero">
 			<?php the_archive_title( '<h1 class="archive-title">', '</h1>' ); ?>

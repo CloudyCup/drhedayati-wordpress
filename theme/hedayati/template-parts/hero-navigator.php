@@ -113,7 +113,7 @@ if ( class_exists( 'Hedayati_Query' ) ) {
 			<div class="console-meta">
 				<span>
 					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-					<?php esc_html_e( 'گواهینامه‌های رسمی و قابل استعلام', 'hedayati' ); ?>
+					<?php esc_html_e( 'سرفصل‌های کاربردی و منطبق بر بازار کار', 'hedayati' ); ?>
 				</span>
 				<span>
 					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>

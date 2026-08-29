@@ -12,7 +12,7 @@
 get_header();
 ?>
 
-<main id="site-main" role="main">
+<main id="site-main" role="main" tabindex="-1">
 
 	<?php get_template_part( 'template-parts/hero-navigator' ); ?>
 

@@ -56,11 +56,6 @@ $has_thumbnail = has_post_thumbnail( $post_id );
 			<div class="course-art-bg" aria-hidden="true"></div>
 			<span class="course-monogram" aria-hidden="true"><?php echo $monogram; /* already escaped in helper */ ?></span>
 		<?php endif; ?>
-
-		<div class="course-cert-chip" aria-hidden="true">
-			<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-			<span><?php esc_html_e( 'مدرک معتبر', 'hedayati' ); ?></span>
-		</div>
 	</div>
 
 	<!-- Card body -->
