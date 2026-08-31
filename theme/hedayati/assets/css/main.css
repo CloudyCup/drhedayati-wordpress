@@ -66,6 +66,12 @@
   /* Transitions */
   --hd-transition: 0.2s ease;
 
+  /* Scrollbar */
+  --hd-scrollbar-width:       8px;
+  --hd-scrollbar-track:       transparent;
+  --hd-scrollbar-thumb:       rgba(26, 27, 31, 0.22);
+  --hd-scrollbar-thumb-hover: var(--hd-red);
+
   color-scheme: light;
 }
 
@@ -84,6 +90,12 @@
   --hd-line:     #2d2f34;
   --hd-shadow:    0 14px 36px rgba(0,0,0,.28);
   --hd-shadow-lg: 0 28px 68px rgba(0,0,0,.42);
+
+  /* Scrollbar */
+  --hd-scrollbar-track:       transparent;
+  --hd-scrollbar-thumb:       rgba(244, 241, 236, 0.25);
+  --hd-scrollbar-thumb-hover: var(--hd-red);
+
   color-scheme: dark;
 }
 
@@ -97,9 +109,34 @@
   box-sizing: border-box;
 }
 
+/* Custom Scrollbar — standard Firefox and webkit */
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hd-scrollbar-thumb) var(--hd-scrollbar-track);
+}
+
+::-webkit-scrollbar {
+  width: var(--hd-scrollbar-width, 8px);
+  height: var(--hd-scrollbar-width, 8px);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--hd-scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--hd-scrollbar-thumb);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--hd-scrollbar-thumb-hover);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 body {
@@ -186,12 +223,13 @@ p {
   line-height: 1.75;
 }
 
-/* RTL-aware English text embedded in Persian */
+/* RTL-aware English text embedded in Persian.
+   Use isolate for clean bidi boundaries without forcing
+   text-align on inline LTR fragments inside RTL sentences. */
 [dir="ltr"],
 .ltr-text {
   direction: ltr;
-  text-align: left;
-  unicode-bidi: embed;
+  unicode-bidi: isolate;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -511,7 +549,22 @@ p {
   margin-bottom: 36px;
 }
 
-.section-heading > span,
+/* Restrained rounded-rectangle for normal section labels */
+.section-heading > span {
+  display: inline-flex;
+  align-items: center;
+  color: var(--hd-red);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: var(--hd-red-light);
+  border: 1px solid var(--hd-red-border);
+  padding: 3px 10px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+/* Pill-shaped eyebrow — used on dark backgrounds (impact section) */
 .eyebrow {
   display: inline-flex;
   align-items: center;
@@ -524,7 +577,6 @@ p {
   padding: 4px 11px;
   border-radius: 20px;
   margin-bottom: 8px;
-  text-transform: uppercase;
 }
 
 .eyebrow.light {
@@ -752,7 +804,8 @@ p {
 
 .category-strip {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 300px));
+  justify-content: center;
   border: 1px solid var(--hd-line);
   border-radius: var(--hd-radius);
   background: var(--hd-surface);
@@ -856,7 +909,6 @@ p {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  cursor: pointer;
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
@@ -881,8 +933,7 @@ p {
 
 .course-index-tag {
   color: var(--hd-red);
-  font-family: var(--hd-font-mono);
-  letter-spacing: 0.06em;
+  font-weight: 800;
 }
 
 .course-english-tag {
@@ -894,7 +945,7 @@ p {
 
 /* Art panel — dark gradient with dot grid */
 .course-art {
-  height: 118px;
+  height: 130px;
   background: linear-gradient(145deg, #1a1b1f, #24262b);
   position: relative;
   display: flex;
@@ -952,7 +1003,7 @@ p {
 
 /* Card body */
 .course-body {
-  padding: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -978,7 +1029,7 @@ p {
 }
 
 .course-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   margin: 0 0 8px;
   line-height: 1.35;
@@ -1091,8 +1142,17 @@ p {
 
 .featured-course-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 300px));
+  justify-content: center;
   gap: 18px;
+}
+
+.featured-course-grid .course-art {
+  height: 118px;
+}
+
+.featured-course-grid .course-body {
+  padding: 16px;
 }
 
 /* Admin hint (editors only) */
@@ -1152,8 +1212,11 @@ p {
   z-index: 2;
 }
 
+/* Centered editorial block while stats are unavailable */
 .impact-copy {
-  max-width: 720px;
+  max-width: 740px;
+  margin-inline: auto;
+  text-align: center;
 }
 
 .impact-grid h2 {
@@ -1172,6 +1235,7 @@ p {
 .impact-points {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 10px;
   margin: 20px 0 28px;
   padding: 0;
@@ -1378,7 +1442,7 @@ p {
 }
 
 .footer-bottom {
-  border-top: 1px solid rgba(255,255,255,.08);
+  border-top: 1px solid rgba(255,255,255,.12);
   padding: 20px 0;
   display: flex;
   justify-content: space-between;
@@ -1393,6 +1457,35 @@ p {
 
 .single-course-main {
   background: var(--hd-bg);
+}
+
+/* Page-specific wider container for single-course desktop layouts */
+.single-course-main .container {
+  width: min(1300px, calc(100% - 44px));
+}
+
+/* Breadcrumb navigation */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--hd-muted);
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.breadcrumb a {
+  transition: color var(--hd-transition);
+}
+
+.breadcrumb a:hover {
+  color: var(--hd-red);
+}
+
+.breadcrumb [aria-current="page"] {
+  color: var(--hd-ink);
+  font-weight: 600;
 }
 
 /* 16.1 Course Page Hero */
@@ -1606,8 +1699,8 @@ p {
 
 .course-layout-grid {
   display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 40px;
+  grid-template-columns: 1fr 320px;
+  gap: 48px;
   align-items: start;
 }
 
@@ -1773,6 +1866,11 @@ p {
   box-shadow: var(--hd-shadow);
 }
 
+/* Offset for WordPress admin bar when logged in */
+body.admin-bar .course-sticky-card {
+  top: 126px; /* 94 + 32px admin bar */
+}
+
 .sticky-card-header {
   display: flex;
   align-items: center;
@@ -1878,6 +1976,10 @@ p {
   border-bottom: 1px solid var(--hd-line);
 }
 
+.page-hero h1 {
+  margin: 12px 0;
+}
+
 .archive-description {
   color: var(--hd-muted);
   font-size: 15px;
@@ -1958,6 +2060,7 @@ p {
   width: 40px;
   height: 40px;
   border: 1px solid var(--hd-line);
+  background: var(--hd-surface);
   border-radius: var(--hd-radius-sm);
   font-size: 14px;
   font-weight: 600;
@@ -2027,7 +2130,8 @@ p {
   }
 
   .featured-course-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(260px, 340px));
+    justify-content: center;
   }
 
   .related-courses-grid {
@@ -2053,7 +2157,8 @@ p {
   }
 
   .category-strip {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(240px, 320px));
+    justify-content: center;
   }
 
   .category-strip-item:nth-child(4n+1) {
@@ -2211,7 +2316,8 @@ p {
 
   /* Grids */
   .featured-course-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 420px);
+    justify-content: center;
   }
 
   .courses-grid {

@@ -24,9 +24,6 @@ $terms         = get_the_terms( $post_id, 'course-category' );
 $category_name = ( ! is_wp_error( $terms ) && ! empty( $terms ) )
 	? $terms[0]->name
 	: '';
-$category_slug = ( ! is_wp_error( $terms ) && ! empty( $terms ) )
-	? $terms[0]->slug
-	: '';
 
 // Thumbnail
 $has_thumbnail = has_post_thumbnail( $post_id );
@@ -39,7 +36,7 @@ $has_thumbnail = has_post_thumbnail( $post_id );
 	<!-- Topline: category and English name -->
 	<div class="course-topline">
 		<?php if ( $category_name ) : ?>
-			<span class="course-index-tag"><?php echo esc_html( strtoupper( $category_slug ) ); ?></span>
+			<span class="course-index-tag"><?php echo esc_html( $category_name ); ?></span>
 		<?php endif; ?>
 		<?php if ( $english_name ) : ?>
 			<span class="course-english-tag" dir="ltr"><?php echo esc_html( strtoupper( $english_name ) ); ?></span>
