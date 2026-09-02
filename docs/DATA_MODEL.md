@@ -1,7 +1,7 @@
 # DATA_MODEL.md
 
-All entities live in a standard WordPress database. **Never hardcode the `wp_` prefix** — staging
-uses `vShPz25x_`. Code always uses `$wpdb->prefix`.
+All entities live in a standard WordPress database. **Never hardcode the `wp_` prefix** — the
+staging install uses a non-`wp_` randomized prefix. Code always uses `$wpdb->prefix`.
 
 **Legend:** ✅ implemented · ⬜ planned (no code yet).
 

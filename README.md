@@ -15,12 +15,15 @@ This repository contains **two deliverables** — not a full WordPress install:
 
 ## Status at a glance
 
-- **Live public site:** Course catalog (custom post type + hierarchical categories), staff
-  course-authoring UI, homepage, course archive/category/detail pages, 404 — implemented and
-  deployed to staging (`mystik.ir`).
+- **Public site:** Course catalog (custom post type + hierarchical categories), staff
+  course-authoring UI, homepage, course archive/category/detail pages, 404 — **implemented in this
+  repository**. The project handoff reports this deployed to staging (`mystik.ir`); that deployment
+  is **not verifiable from the repository**.
 - **Identity foundation (Phase 2A):** phone normalization, dual username-or-phone login, a unique
   phone-identity table, versioned migrations, roles/capabilities, rate limiting — implemented in
-  code, static tests passing, **staging integration acceptance still pending**.
+  code. The Node static/structural suite was re-run here (**74/74**); the PHP logic suite
+  (**78/78**) is **handoff-reported and not verified in this environment**. **Staging integration
+  acceptance is still pending** and cannot be performed from the repository.
 - **Not built yet:** login/account UI, student profiles, verification, private documents, course
   runs / sessions / enrollments, staff panels, About/Contact/consultation pages, self-hosted
   Vazirmatn font, Shamsi date layer.
@@ -45,8 +48,10 @@ php plugin/hedayati-core/tests/test-phase2a.php
 php -l plugin/hedayati-core/includes/<file>.php
 ```
 
-Baseline: Node **74/74**, PHP **78/78** (per project handoff). These are isolated checks and do not
-prove behavior on a real WordPress runtime.
+Baseline: Node **74/74** (re-run and confirmed during documentation work). PHP **78/78** is
+**reported by the project handoff and not verified in this environment** (no PHP toolchain
+available here). Both suites are isolated static/logic checks and do not prove behavior on a real
+WordPress runtime.
 
 ## Documentation
 

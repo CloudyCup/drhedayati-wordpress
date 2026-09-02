@@ -179,7 +179,7 @@ against `docs/HANDOFF_LEGACY.md`.
 
 - **Phase 2A deployment & migration on staging.** The handoff states the plugin is deployed to
   `mystik.ir`, that the migration ran from an admin request, that
-  `{prefix}hedayati_user_phones` exists (observed prefix `vShPz25x_`), and that
+  `{prefix}hedayati_user_phones` exists (staging uses a non-`wp_` randomized prefix), and that
   `hedayati_core_db_version` / `hedayati_core_roles_version` / `hedayati_core_managed_capabilities`
   options were written. **None of this is verifiable from the repository.**
 - **The CCNA example course** and any other content — database content, not in the repo.

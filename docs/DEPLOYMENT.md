@@ -14,7 +14,7 @@ database names, or WordPress salts. Those live only in the hosting control panel
 | Stack | Fresh WordPress on **ParsPack** shared hosting (cPanel) | Legacy custom **ASP.NET / ASP.NET MVC + MSSQL** app on Plesk |
 | PHP | 8.3 (raised from 8.1) | n/a |
 | Cache | LiteSpeed (may be active) | n/a |
-| DB table prefix | `vShPz25x_` (example — **always use `$wpdb->prefix`**) | n/a |
+| DB table prefix | non-`wp_` randomized prefix — **always use `$wpdb->prefix`**, never a literal | n/a |
 | Role | Active staging / QA target for the rebuild | Live business — **untouched until an approved cutover** |
 
 There is **no** local WordPress in this repository and no CI. Deployment today is manual upload of
