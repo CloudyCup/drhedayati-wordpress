@@ -4,7 +4,9 @@
 **Scope:** the `hedayati-core` plugin identity foundation + `hedayati` theme, as deployed to staging.
 **Constraints:** no Phase 2B, no automatic deploy, no destructive DB change, no production
 (`drhedayati.com`) contact.
-**Repo reference point:** `main` @ `37afe2b` — plugin `1.1.0`, theme `1.0.0`, DB & roles schema `2.0.0`.
+**Repo reference point:** `main` @ `6436446` — plugin `1.1.0`, theme `1.0.0`, DB & roles schema
+`2.0.0`. (Plugin/theme application source is unchanged since `37afe2b`; commits after it are
+docs-only.)
 **Note on execution:** Claude cannot log into wp-admin or the hosting panel (entering a password is
 a prohibited action). For every authenticated step the **operator drives**; Claude supplies exact
 clicks / SQL / snippets and interprets the output pasted back. "Browser" below means *the
@@ -18,7 +20,7 @@ operator's authenticated browser*.
 |---|---|---|---|---|---|
 | T1.1 | Active plugin version | 1 read-only | ✅ PASS | 2026-09-02 | Hedayati Core **1.1.0**, active — matches repo `HEDAYATI_CORE_VERSION` |
 | T1.2 | Active theme version | 1 read-only | ✅ PASS | 2026-09-02 | Hedayati theme **1.0.0**, active — matches repo `style.css` / `HEDAYATI_VERSION` |
-| T1.3 | Staging code vs repository | 1 read-only | ⏳ PENDING | — | awaiting deployed-file download |
+| T1.3 | Staging code vs repository | 1 read-only | ✅ PASS | 2026-09-02 | deployed plugin (18 files) + theme (23 files) byte-identical to `main` @ `6436446` after CRLF/LF normalization; 0 different, 0 staging-only, 0 repo-only, 0 junk |
 | T1.4 | Custom roles visible in UI | 1 read-only | ⬜ not started | — | |
 | T1.5 | Existing admin can still log in / keeps `manage_options` | 1 read-only | ⬜ not started | — | |
 | T1.6 | Verification-flag implementation (doc) | 1 read-only | ⬜ not started | — | conclusion recorded below; confirm vs T1.3 files |
@@ -26,8 +28,8 @@ operator's authenticated browser*.
 | T3.1–T3.16 | Database / phone provisioning | 3 | ⬜ blocked | — | needs DB access (N4) + WP-CLI or harness (N5) |
 | T4.1–T4.8 | Potentially destructive | 4 | ⛔ hold | — | explicit per-test approval required |
 
-**Baseline status: NOT YET ESTABLISHED.** Code/version identity is confirmed (T1.1–T1.2); the
-code-match check (T1.3) and all runtime verification remain outstanding.
+**Baseline status: NOT YET ESTABLISHED.** Code/version identity and the code-match check are
+confirmed (T1.1–T1.3); all runtime verification (Categories 2–4) remains outstanding.
 
 ---
 
@@ -78,7 +80,7 @@ code-match check (T1.3) and all runtime verification remain outstanding.
 | # | Item | Needed for | Status |
 |---|---|---|---|
 | N1 | Staging `wp-admin` URL + an operator who can log in as administrator | almost everything | ✅ have operator |
-| N2 | Read access to the deployed theme + plugin files (cPanel File Manager / SFTP / a zip), **or** ability to run a checksum command on the server | T1.3 | ⏳ requested |
+| N2 | Read access to the deployed theme + plugin files (cPanel File Manager / SFTP / a zip), **or** ability to run a checksum command on the server | T1.3 | ✅ received (2 ZIPs, 2026-09-02) |
 | N3 | Go-ahead to create **one** disposable `student` user (Claude supplies username/email) | Category 2 | ⬜ pending |
 | N4 | Staging **database** read access (phpMyAdmin / Adminer / `wp db query`), or willingness to run ~10 `SELECT` / `SHOW` statements Claude provides and paste results | Category 3 | ⬜ pending |
 | N5 | **One** of: (a) WP-CLI access (`wp shell` / `wp eval`), or (b) approval to install a temporary, admin-only, nonce-protected **must-use plugin harness** (Claude writes it; it only calls the existing `Hedayati_User_Phone_Service` methods; deleted afterward) | Category 3 phone tests | ⬜ pending |
@@ -122,21 +124,44 @@ Risk levels: **None / Very low / Low / Medium / High.**
 - **Browser:** yes. **DB:** no. **Risk:** None. **Cleanup:** none.
 - **Result:** PASS — Hedayati theme 1.0.0, active. Matches repo.
 
-### T1.3 — Staging code vs repository  ⏳ PENDING
-- **Purpose:** verify the deployed theme + plugin are byte-identical to `main` @ `37afe2b`
+### T1.3 — Staging code vs repository  ✅ PASS (2026-09-02)
+- **Purpose:** verify the deployed theme + plugin match the authoritative repository source
   (no server-only hotfixes — the handoff flags this risk).
-- **Steps:**
-  1. Download the two directories from staging (see the download instructions at the end of this
-     file).
-  2. Locally: on a clean checkout of `main`, run
-     `diff -ru <repo>/plugin/hedayati-core <download>/hedayati-core` and
-     `diff -ru <repo>/theme/hedayati <download>/hedayati`.
-  3. Alternative if no file access: run on the server, from `wp-content/`,
-     `find plugins/hedayati-core themes/hedayati -type f \( -name '*.php' -o -name '*.css' -o -name '*.js' -o -name '*.json' \) | sort | xargs sha256sum`
-     and compare to locally computed sums.
-- **Expected:** no differences. Any diff is a finding to reconcile before baseline sign-off.
-- **Browser:** partial (download only). **DB:** no. **Risk:** None (read-only).
-- **Cleanup:** delete the local download copy.
+- **Baseline used:** repository `main` @ `6436446aca63c2a537a076d04c632111a25afcbd`
+  (working tree clean for `plugin/` and `theme/`).
+- **Staging inputs:** two ZIPs the operator downloaded from `mystik.ir` on 2026-09-02, holding
+  `wp-content/plugins/hedayati-core/` and `wp-content/themes/hedayati/`.
+- **How the comparison was performed:**
+  1. Archives identified by **content, not filename**: the plugin ZIP contains
+     `hedayati-core/hedayati-core.php` + the `includes/class-*.php` set (incl. `class-auth`,
+     `class-phone`, `class-roles`, `class-db-schema`, `class-user-phone-service`,
+     `class-rate-limiter`); the theme ZIP contains `hedayati/style.css` (theme header) +
+     `theme.json` + templates.
+  2. Both ZIPs extracted to a **temporary scratch directory** — never over the repository; the
+     downloaded archives were not modified.
+  3. Pristine repository copies obtained with `git archive HEAD plugin/hedayati-core` /
+     `git archive HEAD theme/hedayati`.
+  4. Compared with `diff -ru --strip-trailing-cr` (line-ending normalized) and, independently,
+     by per-file SHA-256 after stripping `\r`.
+  5. File inventories compared with `comm` to find staging-only / repo-only entries; a junk scan
+     (`.DS_Store`, `Thumbs.db`, `*~`, `*.bak`, `*.swp`, `*.log`, `debug*`, `*.zip`, `__MACOSX`)
+     was run over the extracted staging trees.
+- **Result:**
+  - **Plugin:** 18 files each side. 18 identical, 0 different, 0 staging-only, 0 repo-only.
+  - **Theme:** 23 files each side. 23 identical, 0 different, 0 staging-only, 0 repo-only.
+  - **Junk / non-source:** none inside either deployed directory.
+  - Deployed plugin header = `Version: 1.1.0` / `HEDAYATI_CORE_VERSION 1.1.0` /
+    `CURRENT_DB_VERSION 2.0.0` / `ROLES_VERSION 2.0.0`; deployed theme = `Version: 1.0.0` /
+    `HEDAYATI_VERSION 1.0.0` — matching T1.1 / T1.2.
+  - Only raw-byte difference: line endings — staging files are **LF**, the repo working copy /
+    `git archive` output on the Windows test machine is **CRLF** (`core.autocrlf`); committed
+    blobs are LF. Cosmetic, normalized away as instructed.
+- **Verdict: PASS** — the application source deployed on `mystik.ir` matches the authoritative
+  repository at `6436446`, aside from line-ending representation.
+- **Browser:** n/a (operator downloaded; comparison done locally). **DB:** no. **Risk:** None
+  (read-only; archives left untouched).
+- **Cleanup:** temporary extraction directory removed after comparison. The operator's
+  `staging-export/` copies were left as-is (git-ignored via `*.zip`).
 
 ### T1.4 — Custom roles appear in the UI  ⬜
 - **Purpose:** first-pass confirmation that role registration ran.
@@ -471,7 +496,7 @@ per-test approval (N10).
 
 | Request area | Tests |
 |---|---|
-| A. Code / version | T1.1 ✅, T1.2 ✅, T1.3, T3.4 |
+| A. Code / version | T1.1 ✅, T1.2 ✅, T1.3 ✅, T3.4 |
 | B. Database | T3.1, T3.2, T3.3, T3.4 |
 | C. Authentication | T1.5, T2.2, T2.3, T2.4, T3.11, T3.12 |
 | D. Phone uniqueness | T3.13, T3.14 |
