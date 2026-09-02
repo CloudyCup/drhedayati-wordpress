@@ -126,7 +126,7 @@ acceptance on staging (`docs/PHASE_2B_ACCEPTANCE.md`) is a **pre-merge gate** an
 | 9.2 | Nullable capacity and tuition (unknown ≠ 20, unknown ≠ free); tuition stored as integer **rial**, displayed as toman where appropriate | ✅ repo (NULL columns; `parse_optional_nonneg_int`) — toman display is a Phase 2D UI concern |
 | 9.3 | Separate `run_status` (draft/scheduled/in_progress/completed/cancelled) from `registration_status` (closed/open/soon); stored as validated strings, not MySQL ENUMs | ✅ repo (`Hedayati_Academic_Validation`) |
 | 9.4 | Sessions with canonical `starts_at`/`ends_at` datetimes and `UNIQUE(run_id, session_number)` | ✅ repo (`hedayati_sessions`, `uq_run_session`) |
-| 9.5 | Teacher CPT for public instructor identity, optionally linked to a WP user | ✅ repo (`teacher` CPT + `_hedayati_teacher_user_id` 1:1) — not publicly routed yet (D30) |
+| 9.5 | Teacher CPT for public instructor identity, optionally linked to a WP user | ✅ repo (`teacher` CPT + `_hedayati_teacher_user_id` 1:1) — not publicly routed and `show_in_rest => false` until the Phase 2D directory (D30/D34) |
 | 9.6 | Run staff assignment: primary instructor, additional instructor, TA; instructors need a teacher profile, TAs need a WP staff user but not a public Teacher CPT | ✅ repo (`Hedayati_Run_Staff_Service` enforces the asymmetry) |
 | 9.7 | Existing `_course_teacher` / `_course_next_start_date` / `_course_price` / `_course_registration_state` become backward-compatible fallbacks; no permanent dual source of truth | ✅ repo (run layer never writes the meta; theme fallback wiring is Phase 2D) |
 | 9.8 | Enrollments per Course Run; attendance per session | ✅ repo (`hedayati_enrollments` `uq_run_user`; `hedayati_attendance` `uq_session_enrollment` + same-run guard) |
@@ -139,7 +139,7 @@ acceptance on staging (`docs/PHASE_2B_ACCEPTANCE.md`) is a **pre-merge gate** an
 | 10.2 | Teacher: assigned runs, rosters, sessions, attendance | ⬜ |
 | 10.3 | TA: assigned runs and rosters only; no attendance by default | ⬜ |
 | 10.4 | Manager: courses, runs, assignments, enrollments, verification, private documents, settings, audit logs | 🟡 (courses/settings + Phase 2B: teachers, runs, staff, sessions, enrollments via «عملیات آموزشی»; verification/documents/audit still Phase 2C) |
-| 10.5 | Audit-log viewer | ⬜ |
+| 10.5 | Audit-log viewer | 🟡 (minimal read-only viewer under «عملیات آموزشی → گزارش رویدادها», `hedayati_view_audit_logs`, filter + paginate; richer UX — export, date range, actor search — is Phase 2D) |
 
 ## 11. Data, localization, dates
 
@@ -164,7 +164,7 @@ acceptance on staging (`docs/PHASE_2B_ACCEPTANCE.md`) is a **pre-merge gate** an
 | 12.7 | Privacy-safe auth errors + rate limiting | ✅ |
 | 12.8 | Private documents stored outside public access, served only after authorization | ⬜ |
 | 12.9 | Dedicated `HEDAYATI_DATA_ENCRYPTION_KEY` (not a rotatable WP salt), key versioning, separate HMAC for duplicate detection | ⬜ |
-| 12.10 | Application-level append-only audit logs; retention/privacy policy for IP/UA data | ⬜ / ❓ |
+| 12.10 | Application-level append-only audit logs; retention/privacy policy for IP/UA data | 🟡 (metadata-only append-only log built — `hedayati_audit_log`, migration 2.2.0, wired into every Phase 2B mutation, read-only viewer; **IP/UA fields intentionally omitted** pending the retention policy — Q13) |
 | 12.11 | Secrets never in Git; no personal student data in Git | ✅ |
 
 ## 13. SEO, accessibility, performance

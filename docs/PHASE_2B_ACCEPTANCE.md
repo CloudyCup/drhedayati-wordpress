@@ -3,9 +3,10 @@
 **Status: NOT STARTED — repository implementation only.**
 
 Phase 2B (Teacher CPT, Course Runs, staff assignment, sessions, enrollments,
-attendance) was implemented on branch `feature/phase-2b-academic-operations`. As
-with Phase 2A, **runtime/behavioural acceptance runs on staging (`mystik.ir`)** and
-is a **pre-merge / pre-deployment gate**. Nothing in this file has been executed —
+attendance, **metadata-only audit log**) plus the Phase 2C address-profile slice
+were implemented on branch `feature/phase-2b-academic-operations`. As with Phase
+2A, **runtime/behavioural acceptance runs on staging (`mystik.ir`)** and is a
+**pre-merge / pre-deployment gate**. Nothing in this file has been executed —
 every row below is **NOT RUN**.
 
 Constraints (unchanged from `docs/PHASE_2A_ACCEPTANCE.md`): operator drives every
@@ -18,10 +19,11 @@ production contact; take a fresh full backup before any state-changing test.
 
 | Check | Tool | Result |
 |---|---|---|
-| Node static + pure-logic suite | `node plugin/hedayati-core/tests/verify-phase2b.js` | **170 passed, 0 failed** (2026-09-02, this environment) |
-| Node Phase 2A regression suite | `node plugin/hedayati-core/tests/verify-phase2a.js` | **74 passed, 0 failed** — no regression |
-| PHP unit + contract suite | `php plugin/hedayati-core/tests/test-phase2b.php` | **NOT RUN** — PHP unavailable in the dev environment |
-| PHP Phase 2A suite | `php plugin/hedayati-core/tests/test-phase2a.php` | **NOT RUN** — PHP unavailable (count assertion updated 21 → 22) |
+| Node — Phase 2B static + logic + behavioural port | `node …/verify-phase2b.js` | **171 passed, 0 failed** (2026-09-03) |
+| Node — audit log | `node …/verify-audit-log.js` | **98 passed, 0 failed** (2026-09-03) |
+| Node — Phase 2C address slice | `node …/verify-phase2c.js` | **25 passed, 0 failed** |
+| Node — Phase 2A regression | `node …/verify-phase2a.js` | **74 passed, 0 failed** — no regression |
+| PHP — `test-phase2b.php` / `test-audit-log.php` / `test-phase2a.php` | `php …` | **NOT RUN** — PHP unavailable in the dev environment (2A count assertion updated 21 → 22) |
 | `php -l` on changed files | — | **NOT RUN** — PHP unavailable |
 
 The Node suite covers: business-state allowlists, date/datetime/integer parsing,
@@ -42,11 +44,11 @@ against a live user, or the deletion-cleanup hooks.
 
 | # | Test | Expected |
 |---|---|---|
-| B1 | After deploy + `admin_init`, `hedayati_core_db_version` = `2.1.0` | option advanced only on success |
-| B2 | 5 new tables exist under the real prefix: `…hedayati_course_runs`, `…hedayati_run_staff`, `…hedayati_sessions`, `…hedayati_enrollments`, `…hedayati_attendance` | InnoDB, utf8mb4 |
-| B3 | Column / index audit matches `migrate_2_1_0()` | incl. `uq_run_session`, `uq_run_user`, `uq_session_enrollment` |
+| B1 | After deploy + `admin_init`, `hedayati_core_db_version` = `2.2.0` | migrations 2.1.0 then 2.2.0 ran in order; option advanced only on success |
+| B2 | 6 new tables exist under the real prefix: `…hedayati_course_runs`, `…hedayati_run_staff`, `…hedayati_sessions`, `…hedayati_enrollments`, `…hedayati_attendance`, `…hedayati_audit_log` | InnoDB, utf8mb4 |
+| B3 | Column / index audit matches `migrate_2_1_0()` + `migrate_2_2_0()` | incl. `uq_run_session`, `uq_run_user`, `uq_session_enrollment`; audit_log has **no** ip/user_agent/updated_at column, indexes `idx_object`/`idx_actor`/`idx_action`/`idx_created_at` |
 | B4 | `hedayati_user_phones` unchanged (schema + row count) | Phase 2A data preserved |
-| B5 | Re-run migration (reset version marker on a backup) → idempotent, no dupe tables/keys | `dbDelta` no-op |
+| B5 | Re-run migrations (reset version marker on a backup) → idempotent, no dupe tables/keys | `dbDelta` no-op |
 | B6 | Migration lock absent after run | no crashed/mid-migration state |
 
 ### B. Roles schema 2.1.0
@@ -67,6 +69,7 @@ against a live user, or the deletion-cleanup hooks.
 | T2 | Linking a WP user to a Teacher profile; linking the same user to a 2nd profile is refused | 1:1 enforced in save |
 | T3 | Deleting the linked WP user unlinks (does not delete) the Teacher profile | `on_user_deleted` |
 | T4 | Teacher CPT not reachable on the front end (`publicly_queryable => false`) | public directory is Phase 2D |
+| T5 | `GET /wp-json/wp/v2/hedayati_teacher` returns 404 / no teacher data (unauth **and** low-priv) | `show_in_rest => false` (D34) — regression check for the leak fixed on this branch |
 
 ### D. Course Runs
 
@@ -129,6 +132,20 @@ against a live user, or the deletion-cleanup hooks.
 | A3 | Direct POST with a valid nonce but insufficient capability → 403 | server-side cap check |
 | A4 | A non-manager staffed on run X cannot act on run Y (scope) | `require_run_scope()` |
 | A5 | `hedayati_manager` (no `hedayati_record_attendance`) sees attendance read-only, cannot POST it | matrix respected |
+
+### J. Audit log (metadata-only, append-only)
+
+| # | Test | Expected |
+|---|---|---|
+| J1 | Each successful mutation (run/session/staff/enrollment/attendance create·update·delete) writes exactly one `hedayati_audit_log` row with the expected `action` | wired in the service success path |
+| J2 | A **failed** mutation (bad input, duplicate, capacity full, wrong nonce/cap) writes **no** audit row | audit call is after the error returns |
+| J3 | Deleting a course / run / user cascades the domain rows but leaves every prior audit row intact (incl. `enrollment.created` / `attendance.recorded` for the deleted objects) | table excluded from cascades |
+| J4 | `actor_id` = the acting wp-admin user; a WP-CLI mutation records `actor_id = 0` | `get_current_user_id()` |
+| J5 | No row ever contains an IP, user-agent, name, phone, national ID or document reference in any column, `note` included | schema + `note` discipline |
+| J6 | «گزارش رویدادها» is visible to `hedayati_manager` / `administrator` only; direct URL as `reception` / `teacher` → 403 | `hedayati_view_audit_logs` |
+| J7 | The viewer is read-only — no way to edit/delete an entry from the UI or via `admin-post.php` | append-only at the API |
+| J8 | Filters (`object_type`, `action`, `object_id`) + pagination behave; an out-of-vocabulary `flt_action` is ignored, not passed to SQL | validated against the vocabularies |
+| J9 | Re-running migration 2.2.0 (reset marker on a backup) is idempotent | `dbDelta` no-op |
 
 ---
 

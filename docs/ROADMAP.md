@@ -56,12 +56,13 @@ several items still need institute decisions (marked ❓, see the bottom of this
 2. **Phase 2C — student identity & security.** 🟡 **Foundation slice done** on
    `feature/phase-2b-academic-operations`: address/city/postal-code profile fields in usermeta
    with an extensible registry + server-side normalization (`Hedayati_Student_Profile`).
+   The **metadata-only append-only audit log** is now **built** (`hedayati_audit_log`, migration
+   `2.2.0`, `Hedayati_Audit_Log`, wired into every Phase 2B mutation + a read-only viewer — D33).
    **Still blocked on institute policy** (`docs/OPEN_QUESTIONS.md` Q10–Q13): verification workflow
    and states (reset rules + benefit linkage); `HEDAYATI_DATA_ENCRYPTION_KEY` + key versioning +
    separate HMAC provisioned outside Git **before** any national ID; private document
-   upload/storage-outside-webroot/authorized streaming/lifecycle; the append-only audit log's
-   IP/UA fields + retention. A metadata-only audit log (no IP/UA) is unblocked and is the
-   recommended next step.
+   upload/storage-outside-webroot/authorized streaming/lifecycle; the audit log's **IP/UA fields**
+   + a retention/rotation policy.
 3. **Phase 2D — interfaces** (built on proven backend services, not mock data): branded
    login/registration/password-reset; student portal (profile, verification status, documents,
    enrollments/sessions); teacher & TA portal (assigned runs/rosters/sessions/attendance);

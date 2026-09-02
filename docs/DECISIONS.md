@@ -306,3 +306,34 @@ audit log's IP/UA fields (retention policy undecided).
 **Why:** the address is the one part of the profile with no policy landmine; building it now
 establishes the usermeta pattern and consumes two previously-unused capabilities without guessing
 at any of the unresolved sensitive-data questions.
+
+## D33 — Audit log: metadata-only, append-only, NO ip/user-agent
+
+**Decided:** implement `Hedayati_Audit_Log` + migration `2.2.0` (`{prefix}hedayati_audit_log`).
+Columns: `id`, `actor_id`, `action`, `object_type`, `object_id`, `note`, `created_at` — and
+**nothing else**. No `ip`, no `user_agent`, no request body, no serialized `context`/`meta` column,
+no `updated_at`. `actor_id` / `object_id` are `NOT NULL DEFAULT 0` (0 = system / not-applicable
+sentinel). `note` is a bounded `varchar(255)`, PII-free (safe enums like status/role names and
+internal record IDs only — never a name, phone, national ID or document reference).
+"Append-only" is enforced at the **API** level: `Hedayati_Audit_Log` exposes `record()` (INSERT)
+plus read helpers, and **no** update/delete/purge method. The MySQL table is not claimed to be
+immutable (per D16's terminology rule). The table is **excluded from every domain deletion
+cascade** (D31): audit history outlives the run / enrollment / user it references.
+`record()` is called only on the **success** path of each Phase 2B mutation, has a re-entrancy
+guard, and fires no WordPress hooks (raw `$wpdb->insert`), so it cannot recurse.
+Read access is gated on `hedayati_view_audit_logs`; a minimal read-only viewer ships under
+«عملیات آموزشی → گزارش رویدادها». A richer viewer (export, date range, actor search) is Phase 2D
+and was **not** invented.
+**Why:** D16 approved this subsystem's shape. The *only* unresolved part is the retention/privacy
+policy for IP/user-agent data (`docs/OPEN_QUESTIONS.md` Q13) — so those fields simply do not exist
+yet. Everything else is safe, and it makes Phase 2B operations auditable now.
+
+## D34 — Teacher CPT is not `show_in_rest` (reinforces D30)
+
+**Decided:** `show_in_rest => false` on the `teacher` CPT (uses the classic editor).
+**Why:** a `show_in_rest` CPT serves its **published** posts to anyone via
+`/wp-json/wp/v2/<type>` regardless of `public` / `publicly_queryable`
+(`WP_REST_Posts_Controller::check_read_permission()` returns true for any `publish`ed post of a
+rest-enabled type). That would have leaked teacher names / bios / photos before the Phase 2D
+public directory is designed — exactly what D30 set out to avoid. Flipping this back on is part of
+the Phase 2D directory work, alongside a deliberate public read design.

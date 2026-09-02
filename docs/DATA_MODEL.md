@@ -348,10 +348,37 @@ Uniqueness ((run, person, role) once; one primary instructor per run) is enforce
 | `recorded_at` | `datetime NOT NULL` | |
 | `created_at` / `updated_at` | `datetime NOT NULL` | |
 
-### `wp_options` markers added by Phase 2B
+### `{prefix}hedayati_audit_log` ✅ (migration `2.2.0` — metadata-only, append-only)
 
-`hedayati_core_db_version` advances to `2.1.0`; `hedayati_core_roles_version` advances to `2.1.0`;
-`hedayati_core_managed_capabilities` grows to **22** entries (adds `hedayati_manage_teachers`).
+Created by `class-db-schema.php::migrate_2_2_0`. Written **only** through
+`Hedayati_Audit_Log::record()` (INSERT); the service exposes no update/delete path (D33). Excluded
+from every domain deletion cascade — audit history outlives the objects it references.
+
+| Column | Definition | Notes |
+|---|---|---|
+| `id` | `bigint unsigned AI` | PK |
+| `actor_id` | `bigint unsigned NOT NULL DEFAULT 0` | WP user who acted; `0` = system / WP-CLI / unattributed. `KEY idx_actor` |
+| `action` | `varchar(64) NOT NULL DEFAULT ''` | dotted `<object>.<verb>` (e.g. `enrollment.status_changed`); `[a-z0-9_.-]`, length-capped. `KEY idx_action` |
+| `object_type` | `varchar(32) NOT NULL DEFAULT ''` | `course` / `course_run` / `session` / `run_staff` / `enrollment` / `attendance` / `teacher` / `user` |
+| `object_id` | `bigint unsigned NOT NULL DEFAULT 0` | affected row id; `0` if n/a. `KEY idx_object (object_type, object_id)` |
+| `note` | `varchar(255) NOT NULL DEFAULT ''` | short, PII-free context — safe enums (status/role names) + internal record ids only |
+| `created_at` | `datetime NOT NULL` | UTC. `KEY idx_created_at` |
+
+**Deliberately absent:** `ip`, `user_agent`, `updated_at`, any JSON/blob/`context` column. The
+IP/UA retention policy is unresolved (`docs/OPEN_QUESTIONS.md` Q13); no `updated_at` signals
+append-only.
+
+Action vocabulary (filterable via `hedayati_audit_actions` / `hedayati_audit_object_types`):
+`course.deleted`, `teacher.unlinked`, `course_run.created|updated|deleted`,
+`session.created|updated|deleted`, `run_staff.assigned|removed|purged_for_user|purged_for_teacher`,
+`enrollment.created|status_changed|deleted|purged_for_user`,
+`attendance.recorded|updated|deleted`. Unknown values are sanitized, not rejected.
+
+### `wp_options` markers added by Phase 2B / 2C
+
+`hedayati_core_db_version` advances to `2.2.0`; `hedayati_core_roles_version` advances to `2.1.0`;
+`hedayati_core_managed_capabilities` = **22** entries (adds `hedayati_manage_teachers`). Student
+address fields live in `wp_usermeta`, not options.
 
 ---
 

@@ -71,10 +71,11 @@ authorization must never depend on hidden UI.
     and the teacher/TA `view_assigned_*` caps (the scoped teacher/TA/student portals are Phase 2D).
     When building those, add the ownership/scope check alongside.
 - **Academic-operations authorization boundary:** the service classes
-  (`Hedayati_*_Service`) are a capability-agnostic data layer — exactly like
+  (`Hedayati_*_Service`, `Hedayati_Audit_Log`) are a capability-agnostic data layer — exactly like
   `Hedayati_User_Phone_Service` in Phase 2A. Every capability and nonce check lives in the caller
   (`class-academic-admin.php` today; the Phase 2D portals later). A future REST/AJAX/CLI caller
-  MUST repeat those checks.
+  MUST repeat those checks. `Hedayati_Audit_Log::current_user_can_view()` (→ `hedayati_view_audit_logs`)
+  is provided for read callers; the shipped viewer calls it.
 - **Capability sync is future-safe:** on version bump the plugin removes only capabilities it
   previously managed (tracked in `hedayati_core_managed_capabilities`) — never core or
   third-party caps.
@@ -124,10 +125,21 @@ authorization must never depend on hidden UI.
   records and documents are deliberately NOT stored** — see `docs/OPEN_QUESTIONS.md` Q10–Q13 and
   D15/D16. Do not add a national-ID field until `HEDAYATI_DATA_ENCRYPTION_KEY` + a separate HMAC
   secret are provisioned in server config (outside Git) with a key-versioning scheme.
-- Deleting a WordPress user triggers `delete_phone` cleanup. Preserve this hook.
+- Deleting a WordPress user triggers `delete_phone` cleanup plus the Phase 2B cleanup hooks
+  (enrollments + that student's attendance deleted; TA staff rows removed; Teacher profile
+  unlinked; `attendance.recorded_by` nulled). Preserve these hooks.
 - `format-detection: telephone=no` is set; phone links are explicit `tel:` from
   `Hedayati_Settings::tel_uri()`.
 - Never log phone numbers, and never place them (or any identifier) in URLs/query strings.
+- **Audit log** (`hedayati_audit_log`, D33): metadata only — actor id, dotted action, object
+  type/id, a short PII-free `note`, UTC timestamp. **No ip, no user-agent** (Q13 retention policy
+  unresolved), no `updated_at`, no serialized context. `note` may contain safe enums (status /
+  role names) and internal record ids (`user #45`, `run #12`) for the authorized reader
+  (`hedayati_view_audit_logs`) — **never** a name, phone, national ID, or document reference.
+  `Hedayati_Audit_Log` has no update/delete method (append-only at the API); the table is excluded
+  from every deletion cascade so history survives the objects it references.
+- **`teacher` CPT is `show_in_rest => false`** (D34) — a rest-enabled CPT leaks its published
+  posts via `/wp-json` regardless of `public`/`publicly_queryable`.
 
 ## Sensitive data — planned (Phase 2C, not yet built)
 

@@ -62,15 +62,14 @@ harmless to ship). Build ZIPs are gitignored (`*.zip`).
 
 1. **Pre-flight**
    - `git status` clean; you are deploying a known commit. Note the commit hash.
-   - Run checks: `node plugin/hedayati-core/tests/verify-phase2a.js` (expect 74/74),
-     `verify-phase2b.js` (expect 170/170), `verify-phase2c.js` (expect 25/25); where PHP is
-     available, `php plugin/hedayati-core/tests/test-phase2a.php` (expect 78/78 — cap-count
-     assertion updated to 22), `php plugin/hedayati-core/tests/test-phase2b.php`, and `php -l` on
-     every changed PHP file.
-   - Confirm version headers bumped if behavior changed (`hedayati-core.php` /
-     `style.css` / `HEDAYATI_CORE_VERSION` / `HEDAYATI_VERSION` / `CURRENT_DB_VERSION` /
-     `ROLES_VERSION` as appropriate). Current branch: `HEDAYATI_CORE_VERSION` `1.3.0`,
-     `CURRENT_DB_VERSION` `2.1.0`, `ROLES_VERSION` `2.1.0`.
+   - Run checks: `node …/verify-phase2a.js` (74/74), `verify-phase2b.js` (171/171),
+     `verify-phase2c.js` (25/25), `verify-audit-log.js` (98/98); where PHP is available,
+     `php …/test-phase2a.php` (cap-count assertion now 22), `php …/test-phase2b.php`,
+     `php …/test-audit-log.php`, and `php -l` on every changed PHP file.
+   - Confirm version headers bumped if behavior changed (`hedayati-core.php` / `style.css` /
+     `HEDAYATI_CORE_VERSION` / `HEDAYATI_VERSION` / `CURRENT_DB_VERSION` / `ROLES_VERSION`).
+     Current branch: `HEDAYATI_CORE_VERSION` `1.4.0`, `CURRENT_DB_VERSION` `2.2.0`,
+     `ROLES_VERSION` `2.1.0`.
 2. **Backup first** — take a full cPanel backup (files + database) and download an independent copy
    before replacing anything.
 3. **Upload** — replace **only** the exact `wp-content/themes/hedayati/` and/or
@@ -80,9 +79,10 @@ harmless to ship). Build ZIPs are gitignored (`*.zip`).
    `Hedayati_DB_Schema::maybe_migrate()` and `Hedayati_Roles::maybe_sync_roles()` run on
    `admin_init`, so **log in to `wp-admin` and load the Dashboard / Plugins page** to trigger them.
 5. **Verify migration & options** (as admin):
-   - `{prefix}hedayati_user_phones` exists; after the Phase 2B deploy, also
-     `{prefix}hedayati_course_runs` / `_run_staff` / `_sessions` / `_enrollments` / `_attendance`.
-   - Options present: `hedayati_core_db_version` = `2.1.0`, `hedayati_core_roles_version` =
+   - `{prefix}hedayati_user_phones` exists; after this branch's deploy, also
+     `{prefix}hedayati_course_runs` / `_run_staff` / `_sessions` / `_enrollments` / `_attendance`
+     / `_audit_log`.
+   - Options present: `hedayati_core_db_version` = `2.2.0`, `hedayati_core_roles_version` =
      `2.1.0`, `hedayati_core_managed_capabilities` = 22 entries (incl. `hedayati_manage_teachers`).
    - Roles `student` / `teacher` / `teacher_assistant` / `reception` / `hedayati_manager` exist;
      `hedayati_manager` + `administrator` have `hedayati_manage_teachers`.
@@ -99,11 +99,11 @@ harmless to ship). Build ZIPs are gitignored (`*.zip`).
 
 ### Rollback
 
-Redeploy the previous artifact / restore the pre-deploy backup. The `2.0.0` and `2.1.0` migrations
-only **add** tables, roles and one capability — they do not transform existing data — so a code
-rollback is low risk; do **not** drop any `hedayati_*` table or delete roles/capabilities as part
-of a routine rollback. Rolling the plugin back below `1.2.0` leaves the Phase 2B tables in place
-but dormant (harmless); re-deploying re-attaches to them.
+Redeploy the previous artifact / restore the pre-deploy backup. The `2.0.0`, `2.1.0` and `2.2.0`
+migrations only **add** tables, roles and one capability — they do not transform existing data —
+so a code rollback is low risk; do **not** drop any `hedayati_*` table or delete
+roles/capabilities as part of a routine rollback. Rolling the plugin back leaves the newer tables
+in place but dormant (harmless); re-deploying re-attaches to them.
 
 ---
 

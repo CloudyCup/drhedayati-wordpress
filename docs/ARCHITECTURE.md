@@ -14,7 +14,9 @@ WordPress core (users, passwords, sessions, email, posts/pages/media/menus, REST
     ├── authentication adapter (username OR phone + password) + rate limiter
     ├── Phase 2B — Teacher CPT + academic-operations tables (course runs, run staff,
     │   sessions, enrollments, attendance) + services + «عملیات آموزشی» admin UI
-    └── (future) Phase 2C tables: student profile/verification, documents, audit
+    ├── Phase 2B — metadata-only append-only audit log (+ read-only viewer)
+    ├── Phase 2C (foundation) — student address fields in usermeta
+    └── (future) Phase 2C: verification, private documents, national-ID encryption
 ```
 
 **Principle:** WordPress authentication and content primitives stay authoritative. Business
@@ -29,7 +31,7 @@ explicitly from `hedayati-core.php`.
 
 ---
 
-## Plugin: `hedayati-core` (v1.2.0)
+## Plugin: `hedayati-core` (v1.4.0)
 
 ### Bootstrap (`hedayati-core.php`)
 
@@ -41,7 +43,8 @@ explicitly from `hedayati-core.php`.
    then the Phase 2B group: `Hedayati_Teacher::init()`, `Hedayati_Course_Run_Service::init()`,
    `Hedayati_Run_Staff_Service::init()`, `Hedayati_Session_Service::init()`,
    `Hedayati_Enrollment_Service::init()`, `Hedayati_Attendance_Service::init()`,
-   `Hedayati_Academic_Admin::init()`.
+   `Hedayati_Academic_Admin::init()`; then `Hedayati_Student_Profile::init()`.
+   (`Hedayati_Text`, `Hedayati_Academic_Validation`, `Hedayati_Audit_Log` are pure static — required, not `init()`ed.)
 5. Defines the shared helper `hedayati_phone_to_tel_uri()`.
 6. `register_activation_hook`: register post types + taxonomies + Teacher CPT, run
    `Hedayati_DB_Schema::migrate()`, `Hedayati_Roles::register_roles()`, `flush_rewrite_rules()`.
@@ -77,7 +80,8 @@ explicitly from `hedayati-core.php`.
 | `class-session-service.php` · `Hedayati_Session_Service` | `hedayati_sessions` CRUD; `UNIQUE(run_id, session_number)`; datetime canonicalization; cascade attendance on delete |
 | `class-enrollment-service.php` · `Hedayati_Enrollment_Service` | `hedayati_enrollments` enroll/status/delete; `UNIQUE(run_id, user_id)`; capacity enforcement (overridable); `deleted_user` → cascade |
 | `class-attendance-service.php` · `Hedayati_Attendance_Service` | `hedayati_attendance` upsert (`record()` / `record_bulk()`); same-run guard; `UNIQUE(session_id, enrollment_id)`; `deleted_user` → null `recorded_by` |
-| `class-academic-admin.php` · `Hedayati_Academic_Admin` | «عملیات آموزشی» admin screen (list / run detail / attendance); `admin-post.php` handlers, per-action nonce + capability + per-run scope; Persian labels |
+| `class-audit-log.php` · `Hedayati_Audit_Log` | Metadata-only append-only audit log (migration `2.2.0`). `record()` (INSERT only; re-entrancy guard; token/note sanitization; actor from `get_current_user_id()`, 0 = system) + read helpers `get()`/`query()`/`count()` + `current_user_can_view()`. **No** update/delete method. No ip/user-agent (Q13). Filterable `action` / `object_type` vocabularies. Called on the success path of every Phase 2B mutation; never in a deletion cascade |
+| `class-academic-admin.php` · `Hedayati_Academic_Admin` | «عملیات آموزشی» admin screen (list / run detail / attendance); `admin-post.php` handlers, per-action nonce + capability + per-run scope; Persian labels. Submenu «گزارش رویدادها» — read-only audit viewer (`hedayati_view_audit_logs`, GET-only, filters validated against the vocabularies, paginated) |
 
 ### Hook registration
 
@@ -114,10 +118,11 @@ migration).
 
 ### Custom database tables
 
-`{$wpdb->prefix}hedayati_user_phones` (migration `2.0.0`) and the five Phase 2B academic-operations
+`{$wpdb->prefix}hedayati_user_phones` (migration `2.0.0`); the five Phase 2B academic-operations
 tables — `hedayati_course_runs`, `hedayati_run_staff`, `hedayati_sessions`, `hedayati_enrollments`,
-`hedayati_attendance` (migration `2.1.0`). See `docs/DATA_MODEL.md` for columns and constraints.
-All addressed via `Hedayati_DB_Schema::get_table_*()`.
+`hedayati_attendance` (migration `2.1.0`); and `hedayati_audit_log` (migration `2.2.0`). See
+`docs/DATA_MODEL.md` for columns and constraints. All addressed via
+`Hedayati_DB_Schema::get_table_*()`.
 
 ---
 
@@ -227,11 +232,15 @@ admin_init → Hedayati_DB_Schema::maybe_migrate()
     release_lock()
 ```
 
-`MIGRATIONS = { '2.0.0' => migrate_2_0_0, '2.1.0' => migrate_2_1_0 }`.
+`MIGRATIONS = { '2.0.0' => migrate_2_0_0, '2.1.0' => migrate_2_1_0, '2.2.0' => migrate_2_2_0 }`.
 - `migrate_2_0_0()` — `dbDelta` for `hedayati_user_phones`, then `SHOW TABLES LIKE` to confirm.
 - `migrate_2_1_0()` — `dbDelta` for the five academic-operations tables, then confirms **every**
   one with `SHOW TABLES LIKE`; returns `false` (no version advance, safe retry) if any is missing.
   Additive only — does not touch `hedayati_user_phones` or any Phase 2A data.
+- `migrate_2_2_0()` — `dbDelta` for `hedayati_audit_log`, then `SHOW TABLES LIKE`. Additive; no
+  existing table touched. Runs in version order after 2.1.0.
+
+`CURRENT_DB_VERSION` is `2.2.0`.
 
 Roles sync is parallel and version-gated the same way (`ROLES_VERSION` `2.1.0` — adds
 `hedayati_manage_teachers`, removes nothing).

@@ -9,8 +9,8 @@ Phase 2A staging acceptance (`docs/PHASE_2A_ACCEPTANCE.md`): the static + read-o
 on branch `feature/phase-2b-academic-operations` — repository + Node static tests only; its staging
 acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
 **Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
-`hedayati-core` **1.2.0** · DB schema **2.1.0** · roles schema **2.1.0**.
-**`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (Phase 2B not merged).
+`hedayati-core` **1.4.0** · DB schema **2.2.0** · roles schema **2.1.0**.
+**`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (nothing from this branch is merged).
 
 > The repository is authoritative for "what is implemented". It contains **code only** — no
 > WordPress core, no database, no content. Anything requiring a running WordPress instance
@@ -94,7 +94,8 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
 > Repository + Node-suite verified only. **No staging/runtime verification** — see
 > `docs/PHASE_2B_ACCEPTANCE.md`. Not on `main`.
 
-- **`teacher` CPT** (`class-teacher.php`): admin-only (`public`/`publicly_queryable` false — D30),
+- **`teacher` CPT** (`class-teacher.php`): admin-only (`public` / `publicly_queryable` / `show_in_rest`
+  all false — D30/D34, classic editor),
   `supports` title/editor/thumbnail/revisions, caps mapped to `hedayati_manage_teachers`. Meta:
   `_hedayati_teacher_user_id` (optional 1:1 WP-user link, uniqueness enforced in the save handler),
   `_hedayati_teacher_headline`. Side meta box (nonce + `edit_post` + autosave guards). `deleted_user`
@@ -139,10 +140,20 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
   headline / linked-account columns on the Teacher list table.
 - **Roles schema `2.1.0`** (`class-roles.php`): adds `hedayati_manage_teachers` (22nd managed
   capability) to `hedayati_manager` + `administrator`; future-safe sync removes nothing.
-- **Tests:** `tests/verify-phase2b.js` — Node static + pure-logic + in-memory behavioural port,
-  **170 passed, 0 failed**. `tests/test-phase2b.php` — PHP unit + contract suite (validation
-  matrix, vocabularies, service API contracts, wiring) — **NOT RUN** (no PHP here).
-  `tests/test-phase2a.php` cap-count assertion updated 21 → 22.
+- **Audit log** (`class-audit-log.php` + migration `2.2.0`, `CURRENT_DB_VERSION` `2.2.0`):
+  `{prefix}hedayati_audit_log` — `actor_id`, `action`, `object_type`, `object_id`, `note`,
+  `created_at`. **No ip / user-agent / updated_at / serialized context** (D33; IP/UA retention is
+  Q13). `Hedayati_Audit_Log::record()` (INSERT only, re-entrancy guard, PII-free `note`) is called
+  on the **success** path of every Phase 2B mutation (create / update / delete / assign / remove /
+  status / recorded) and the deletion-cleanup hooks; **never** on failure, **never** inside a
+  cascade (audit history outlives its objects). Read helpers `get()`/`query()`/`count()` +
+  `current_user_can_view()`. **No update/delete method** — append-only at the API. Minimal
+  read-only viewer: «عملیات آموزشی → گزارش رویدادها» (`hedayati_view_audit_logs`, GET-only,
+  filters validated against the vocabularies, paginated).
+- **Tests (Node, runnable here):** `verify-phase2a.js` **74/74** · `verify-phase2b.js` **171/171**
+  · `verify-phase2c.js` **25/25** · `verify-audit-log.js` **98/98**. PHP suites
+  (`test-phase2a.php` — cap count updated 21→22, `test-phase2b.php`, `test-audit-log.php`) and
+  `php -l` — **NOT RUN** (no PHP in this environment).
 
 ### Plugin — student profile (Phase 2C foundation — address only) — same branch
 
@@ -243,7 +254,8 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
   `_course_*` meta on the public course page).
 - Staff interfaces beyond the manager-facing «عملیات آموزشی» screen: reception panel, scoped
   teacher/TA portal (incl. teacher-facing attendance), audit-log viewer.
-- Application-level append-only audit logging.
+- Audit-log IP/user-agent capture + a retention policy (Q13); operational consumption of the log
+  (alerts, reports). The metadata-only append-only log itself is **built** (see Phase 2B above).
 - Dedicated `HEDAYATI_DATA_ENCRYPTION_KEY` + key versioning + HMAC for reversible national-ID
   storage and duplicate detection.
 - Self-hosted **Vazirmatn** WOFF2 fonts — `functions.php` deliberately does **not** enqueue a

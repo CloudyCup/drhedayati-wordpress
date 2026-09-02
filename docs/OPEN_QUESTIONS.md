@@ -81,8 +81,9 @@ and each run cascade-deletes its sessions, enrollments, attendance and staff row
 (`Hedayati_Course_Run_Service::on_course_deleted()` on `before_delete_post`).
 Trashing a course does **not** cascade (recoverable). This mirrors the
 `deleted_user` cleanup already established in Phase 2A.
-**Blocks:** nothing. Note for Phase 2C: audit-log entries, once they exist, must
-**not** be part of this cascade (handoff / D16 — academic history is preserved).
+**Blocks:** nothing. The audit log (D33) records `course.deleted` + one
+`course_run.deleted` per cohort and is **excluded** from the cascade — history is
+preserved (handoff / D16 / D31).
 
 ## Q7 — Enrollment eligibility: must the enrolled user hold the `student` role?
 
@@ -181,12 +182,20 @@ protocol (acknowledge/retry/delete/restore). **Do not store any real student
 document this session.** A schema-only foundation is possible later but adds risk
 with no user today; defer until the storage location and retention are confirmed.
 
-## Q13 — Audit log retention (BLOCKS the IP/UA part)
+## Q13 — Audit log retention (metadata log BUILT; IP/UA still BLOCKED)
 
-`docs/DECISIONS.md` D16 approves an application-level append-only audit log
-(metadata only). The blocker is narrow: **retention/privacy policy for IP and
-user-agent data is required and undecided.** An audit log that records
-*only* `{actor_id, action, object_type, object_id, note, created_at}` — no IP, no
-UA — has no retention landmine and would make Phase 2B operations auditable. It
-was **not** built this session to keep the branch focused on 2B + the approved
-profile slice, but it is a clean, low-risk next step (see the next-session note).
+**Partially resolved.** The metadata-only, append-only log is implemented
+(`hedayati_audit_log`, migration `2.2.0`, `Hedayati_Audit_Log`, D33) and records
+*only* `{actor_id, action, object_type, object_id, note, created_at}` — **no IP,
+no user-agent, no `updated_at`, no serialized context.** It is wired into every
+Phase 2B mutation and has a read-only viewer.
+
+**Still undecided (does not block anything built):**
+1. **IP / user-agent capture** — required by REQUIREMENTS 12.10 wording but with an
+   unresolved retention/privacy policy. Not added; adding it later is an additive
+   migration (`2.3.0`) plus a decision on how long those rows keep the IP/UA.
+2. **Retention of the metadata rows themselves** — the log grows unbounded. No
+   purge/rotation is implemented (append-only). If the institute wants a retention
+   window (e.g. "keep 3 years"), that is a separate policy + a scheduled prune that
+   must itself be audited. Low urgency at current volume.
+3. **Does anything consume the log operationally** (alerts, reports) — Phase 2D.

@@ -94,6 +94,7 @@ running throughout the rebuild.
 - **Academic operations (Phase 2B, backend + manager admin UI; on a feature branch, staging
   acceptance pending)** — Teacher profiles, Course Runs, class sessions, staff assignment,
   enrollments and attendance as prepared-SQL relational tables with capability + per-run
-  ownership-scope enforcement.
+  ownership-scope enforcement, plus a metadata-only append-only audit log (no IP / user-agent)
+  with a read-only viewer.
 
 See `docs/CURRENT_STATE.md` for exactly what is verified vs pending.
