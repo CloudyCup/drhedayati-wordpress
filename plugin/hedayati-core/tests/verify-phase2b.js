@@ -270,6 +270,7 @@ for (const f of [
 const teacher = read('includes/class-teacher.php');
 assert("Teacher CPT maps caps to hedayati_manage_teachers", teacher.includes("=> 'hedayati_manage_teachers'"));
 assert("Teacher CPT is not publicly queryable yet", teacher.includes("'publicly_queryable'  => false"));
+assert("Teacher CPT is NOT show_in_rest (published posts would leak via /wp-json)", /'show_in_rest'\s*=>\s*false/.test(teacher));
 assert("Teacher unlinks (not deletes) on user deletion", teacher.includes('on_user_deleted') && teacher.includes('META_USER_ID, 0'));
 
 // ─────────────────────────────────────────────────────────────────────────────

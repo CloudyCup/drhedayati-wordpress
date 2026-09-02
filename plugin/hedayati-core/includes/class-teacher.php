@@ -74,7 +74,12 @@ class Hedayati_Teacher {
 			'show_ui'             => true,
 			'show_in_menu'        => true,
 			'show_in_nav_menus'   => false,
-			'show_in_rest'        => true,
+			// show_in_rest is deliberately false: a `show_in_rest` CPT with published
+			// posts is readable by anyone via /wp-json/wp/v2/... regardless of
+			// `public`/`publicly_queryable`. Teacher profiles must not leak before the
+			// Phase 2D public directory is designed (D30). Classic editor is fine for
+			// an admin-only record.
+			'show_in_rest'        => false,
 			'menu_position'       => 6,
 			'menu_icon'           => 'dashicons-businessperson',
 			'hierarchical'        => false,
