@@ -629,12 +629,11 @@ class Hedayati_Academic_Admin {
 		}
 
 		foreach ( $entries as $row ) {
-			$actor = '—';
 			if ( $row['actor_id'] > 0 ) {
 				$u     = get_user_by( 'id', $row['actor_id'] );
 				$actor = $u ? $u->user_login : sprintf( '#%d', $row['actor_id'] );
 			} else {
-				$actor = esc_html__( 'سیستم', 'hedayati-core' );
+				$actor = __( 'سیستم', 'hedayati-core' );
 			}
 
 			echo '<tr>';
