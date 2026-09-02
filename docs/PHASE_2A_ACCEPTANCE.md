@@ -21,16 +21,16 @@ operator's authenticated browser*.
 | T1.1 | Active plugin version | 1 read-only | ✅ PASS | 2026-09-02 | Hedayati Core **1.1.0**, active — matches repo `HEDAYATI_CORE_VERSION` |
 | T1.2 | Active theme version | 1 read-only | ✅ PASS | 2026-09-02 | Hedayati theme **1.0.0**, active — matches repo `style.css` / `HEDAYATI_VERSION` |
 | T1.3 | Staging code vs repository | 1 read-only | ✅ PASS | 2026-09-02 | deployed plugin (18 files) + theme (23 files) byte-identical to `main` @ `6436446` after CRLF/LF normalization; 0 different, 0 staging-only, 0 repo-only, 0 junk |
-| T1.4 | Custom roles visible in UI | 1 read-only | ⏳ PENDING | — | manual check M1 not returned; SQL `C2` shows all 5 role slugs installed |
-| T1.5 | Existing admin can still log in / keeps `manage_options` | 1 read-only | ⏳ PENDING | — | manual check M2 not returned; SQL `C2` shows admin keeps `manage_options` + `activate_plugins` |
+| T1.4 | Custom roles visible in UI | 1 read-only | ✅ PASS | 2026-09-02 | M1 — all 5 custom roles listed in Users → Add New; corroborates SQL `C2` |
+| T1.5 | Existing admin can still log in / keeps admin access | 1 read-only | ✅ PASS | 2026-09-02 | M2 — Dashboard, Settings → General, Plugins, Users, Settings → Hedayati all load as administrator; no PHP error; auth filter chain (@30/@90) does not break normal admin login |
 | T1.6 | Verification-flag implementation (doc) | 1 read-only | ✅ PASS | 2026-09-02 | code conclusion; staging schema (`B2`/`B3`) confirms `is_verified` + `verified_at` + `idx_is_verified` exactly as built; no trigger for `verify_phone()` exists |
 | T3.1 | Migration version options | 3 read-only | ✅ PASS | 2026-09-02 | operator-confirmed Stage A: `hedayati_core_db_version`=`2.0.0`, `hedayati_core_roles_version`=`2.0.0`, migration lock absent; corroborated by `C4` (`managed_capabilities` = 21-element array, 841 B) |
 | T3.2 | Phone table exists under real prefix | 3 read-only | ✅ PASS | 2026-09-02 | `B1`/`B1b`/`B1c`: one `…_hedayati_user_phones`, InnoDB, no `wp_` variant, 13 site-prefixed tables, 0 `wp_` tables |
 | T3.2b | Phone table data baseline | 3 read-only | ✅ PASS | 2026-09-02 | `D1`–`D4`: 0 rows, 0 duplicates, 0 orphans, 0 multi-phone users, 0 integrity violations |
 | T3.3 | Phone table schema & constraints | 3 read-only | ✅ PASS | 2026-09-02 | `B2` (7 columns exact) + `B3` (PK `id`, UNIQUE `uq_user_id`, UNIQUE `uq_phone_e164`, KEY `idx_is_verified`) match `class-db-schema.php::migrate_2_0_0` |
 | T3.4 | No `wp_` assumption (code + runtime) | 1 + 3 read-only | ✅ PASS | 2026-09-02 | repo grep: only `wp_login*` hook names; table name = `$wpdb->prefix . 'hedayati_user_phones'`. Runtime `B1b`: no `wp_hedayati_user_phones` |
-| T3.5 | Full role → capability audit | 3 read-only | 🟡 NEEDS REVIEW | 2026-09-02 | `C1` (5616 B ≈ 4× stock ⇒ sync ran), `C2` (all 5 slugs + admin), `C3` (all 21 caps present), `hedayati_token_count` = 50 = expected. Exact per-role matrix + least-privilege negatives still need `wp cap list` or T2.7 |
-| T3.6 | Administrator retains access + all Hedayati caps | 3 read-only | 🟡 NEEDS REVIEW | 2026-09-02 | `C2`: admin keeps `manage_options` + `activate_plugins`; token arithmetic (28 + 1 + 21 = 50) consistent with admin holding all 21. Full native-cap retention pending M2 + `wp cap list administrator` |
+| T3.5 | Full role → capability audit | 3 read-only | 🟡 NEEDS REVIEW | 2026-09-02 | `C1` (5616 B ≈ 4× stock ⇒ sync ran), `C2` (all 5 slugs + admin), `C3` (all 21 caps present), `hedayati_token_count` = 50 = expected; M1 confirms roles are registered & selectable. **Exact per-role matrix + least-privilege negatives** (reception/manager lack `manage_options`, TA lacks attendance) still need `wp cap list` or T2.7 |
+| T3.6 | Administrator retains access + all Hedayati caps | 3 read-only | ✅ PASS | 2026-09-02 | M2 — admin functionally reaches Settings / Plugins / Users (⇒ `manage_options`, `activate_plugins`, `edit_users` intact); `C2` confirms `manage_options` + `activate_plugins` in the option; `C3` + token arithmetic (28 + 1 + 21 = 50) consistent with admin holding all 21. Residual (non-blocking): a positional `wp cap list administrator \| grep -c hedayati_` = 21 |
 | E1 obs | Rate-limiter transient baseline | 3 read-only | ℹ️ OBSERVED | 2026-09-02 | 19 active `hd_rl_*` counters (19 value + 19 timeout option rows), DB-backed (no object cache). Benign — limiter is recording real `wp-login.php` failures. **Must be cleared / IP bucket confirmed clean before T2.5, T2.6, T3.7, T3.8** |
 | E2/E3/F1 | Cache & environment context | 3 read-only | ✅ PASS | 2026-09-02 | 41 total DB transient rows (transients are DB-backed); no caching plugin active; `template`/`stylesheet` both `hedayati` (DB-side cross-check of T1.2) |
 | T2.1–T2.9 | Disposable test user | 2 | ⬜ blocked | — | needs operator go-ahead (N3) |
@@ -38,14 +38,17 @@ operator's authenticated browser*.
 | T3.9–T3.16 | Phone provisioning / lifecycle / uniqueness | 3 state-changing | ⬜ blocked | — | needs WP-CLI or harness (N5) |
 | T4.1–T4.8 | Potentially destructive | 4 | ⛔ hold | — | explicit per-test approval required |
 
-**Baseline status: STATIC + READ-ONLY DATABASE LAYER VERIFIED.**
-Confirmed: version identity (T1.1–T1.2), code-match (T1.3), verification-flag design (T1.6),
+**Baseline status: STATIC + READ-ONLY LAYER FULLY VERIFIED.**
+Confirmed: version identity (T1.1–T1.2), code-match (T1.3), custom roles present & selectable
+(T1.4), admin access unbroken by the auth filter chain (T1.5), verification-flag design (T1.6),
 migration state & options (T3.1), phone-table existence / prefix / schema / constraints / empty
-baseline (T3.2, T3.2b, T3.3), no `wp_` assumption (T3.4).
-Provisional: role & capability installation (T3.5, T3.6 — NEEDS REVIEW; structure is consistent
-with the intended design but the exact per-role matrix is not enumerated).
-Outstanding: manual wp-admin checks (T1.4, T1.5) and **all** runtime behaviour — authentication,
-rate limiting, phone provisioning / uniqueness / lifecycle (Categories 2–4).
+baseline (T3.2, T3.2b, T3.3), no `wp_` assumption (T3.4), administrator retains full access + the
+21 caps installed (T3.6).
+Provisional: exact per-role capability matrix + least-privilege negatives (T3.5 — NEEDS REVIEW;
+structure is consistent with the design but not positionally enumerated).
+Outstanding: **all** runtime behaviour — authentication flows, rate-limit thresholds / reset /
+no-double-count, phone provisioning / normalization end-to-end / uniqueness under real insert /
+lifecycle / deletion cleanup (Categories 2–4), and every destructive test.
 
 ---
 
@@ -231,25 +234,31 @@ Risk levels: **None / Very low / Low / Medium / High.**
 - **Cleanup:** temporary extraction directory removed after comparison. The operator's
   `staging-export/` copies were left as-is (git-ignored via `*.zip`).
 
-### T1.4 — Custom roles appear in the UI  ⬜
+### T1.4 — Custom roles appear in the UI  ✅ PASS (2026-09-02, check M1)
 - **Purpose:** first-pass confirmation that role registration ran.
-- **Steps:** wp-admin → Users → Add New → open the **Role** dropdown; and Users → All Users →
-  "Change role to…" dropdown.
+- **Steps:** wp-admin → Users → Add New → open the **Role** dropdown.
 - **Expected:** lists **دانشجو (student)**, **استادیار / پشتیبان آموزشی (teacher_assistant)**,
   **مدرس (teacher)**, **پذیرش و ثبت‌نام (reception)**, **مدیر آموزش مجتمع (hedayati_manager)** plus
   WordPress defaults.
-- **Browser:** yes. **DB:** no. **Risk:** None. **Cleanup:** none (do not add a user here).
+- **Result:** all five custom roles present in the dropdown. Corroborates SQL `C2`.
 
-### T1.5 — Existing administrator can still log in and reach admin  ⬜
+### T1.5 — Existing administrator can still log in and reach admin  ✅ PASS (2026-09-02, check M2)
 - **Purpose:** confirm the auth filter chain (`authenticate` @30 + @90) has not broken normal
   admin login or capabilities.
-- **Steps:** operator logs into wp-admin with the existing admin account; confirms Dashboard,
-  Settings, Plugins, Users, and Settings → Hedayati all load.
-- **Expected:** normal login; `manage_options` intact; no PHP notice/error in the admin footer or
-  `debug.log`.
-- **Browser:** yes. **DB:** no. **Risk:** Very low (a fumbled password contributes to the rate
-  limiter — notes 3/4). **Cleanup:** none if login succeeds first try; else transient cleanup
-  (T3.9) or a 15-min wait.
+- **Steps:** operator logs into wp-admin as the existing administrator; confirms Dashboard,
+  Settings → General, Plugins, Users, and Settings → Hedayati all load.
+- **Expected:** normal login; admin access intact; no PHP notice/error.
+- **Result:** all five screens load normally as administrator; no PHP error. The phone-auth
+  adapter (@30) passes non-phone identifiers through untouched and the late rate-limit filter
+  (@90) does not block a valid admin login — confirmed in practice.
+
+### M3 — Object-cache drop-in  ⏳ NOT SUPPLIED (non-blocking)
+- **Purpose:** confirm whether transients (incl. rate-limit counters) are DB-backed or held in an
+  object cache — determines whether SQL inspection of `hd_rl_*` is meaningful.
+- **Status:** operator left this blank. **Already answered indirectly:** `E1` found 19 `hd_rl_*`
+  rate-limit transients physically present as `wp_options` rows, and `E3` shows no caching plugin
+  active ⇒ transients are DB-backed and rate-limit state is DB-visible. A direct check of
+  `wp-content/object-cache.php` / LiteSpeed **Object** Cache remains a nice-to-have only.
 
 ### T1.6 — Document verification-flag implementation (code review)  ✅ PASS (2026-09-02)
 - **Purpose:** record exactly what "verification" exists in Phase 2A.

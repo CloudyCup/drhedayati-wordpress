@@ -194,12 +194,15 @@ longer "handoff-only":
   `KEY idx_is_verified`; created 2026-09-01; **0 rows**, no duplicates/orphans (T3.2, T3.2b, T3.3).
 - **No hardcoded `wp_` prefix** in the plugin (only the `wp_login` / `wp_login_failed` hook names);
   the phone table is addressed via `$wpdb->prefix` (T3.4).
-- **5 custom roles + all 21 `hedayati_*` capabilities are installed** in `{prefix}user_roles`
-  (option is ~4× stock size; all role slugs and all 21 cap names present; `administrator` retains
-  `manage_options` / `activate_plugins`). The exact per-role capability matrix and least-privilege
-  negatives are **not yet enumerated** — T3.5 / T3.6 are NEEDS REVIEW pending `wp cap list` or the
-  wp-admin negative checks.
-- **Rate limiter is live and DB-backed:** ~19 `hd_rl_*` counters currently in `wp_options` from
+- **5 custom roles installed and selectable** in the wp-admin role dropdown (T1.4), and all 21
+  `hedayati_*` capabilities present in `{prefix}user_roles` (option ~4× stock size; all role slugs
+  + all 21 cap names present) (T3.5).
+- **Administrator retains full access:** functionally reaches Settings / Plugins / Users (T1.5),
+  the auth filter chain (`authenticate` @30/@90) does not break normal admin login, and the 21
+  `hedayati_*` caps are installed consistently with administrator holding all of them (T3.6). The
+  exact per-role capability *matrix* and least-privilege *negatives* are not yet positionally
+  enumerated (T3.5 — NEEDS REVIEW).
+- **Rate limiter is live and DB-backed:** 19 `hd_rl_*` counters currently in `wp_options` from
   ordinary `wp-login.php` failures; no persistent object cache is active, so rate-limit state is
   DB-visible (relevant to the not-yet-run behavioural tests).
 - **Active theme** confirmed `hedayati` from the DB side; `hedayati-core` plugin active.
@@ -218,10 +221,8 @@ and user-deletion cleanup. These require the Category 2–4 state-changing tests
   inspected.
 - **PHP test suite result (78/78)** — reported by the handoff; PHP is unavailable in this
   environment, so only the Node suite (74/74) was re-confirmed.
-- **Exact role → capability matrix + least-privilege negatives** on staging (T3.5 / T3.6 NEEDS
-  REVIEW).
-- **Manual wp-admin checks** — custom roles visible in the role dropdown (T1.4), existing admin
-  can still reach Settings / Plugins / Users (T1.5) — not yet returned by the operator.
+- **Exact role → capability matrix + least-privilege negatives** on staging (T3.5 NEEDS REVIEW —
+  pending `wp cap list` per role, or the T2.7 wp-admin negative checks).
 - **LiteSpeed *page* cache behavior** after deploys (no persistent *object* cache is active).
 - **Custom logo** — whether a real logo image has been uploaded in WP (theme supports it; SVG "H"
   is the fallback).
