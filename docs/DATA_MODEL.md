@@ -252,6 +252,13 @@ See "Custom tables — Phase 2B" below for columns. All services are in
 `plugin/hedayati-core/includes/class-*-service.php`; the admin UI is
 `class-academic-admin.php` (menu «عملیات آموزشی», capability `hedayati_manage_course_runs`).
 
+**Status transitions are value-validated, not transition-validated.** Any of a field's allowed
+values can be set at any time (e.g. an enrollment may go `withdrawn → active`; a run may go
+`completed → scheduled`). There is no enforced state machine — the approved model specifies the
+*vocabularies*, not the legal transitions, and unrestricted transitions are operationally correct
+here (correcting a mistaken status, re-activating a withdrawal). Add per-field transition rules
+only if the institute asks for them.
+
 ### Planned ⬜ (Phase 2C — approved model, no code)
 
 - `student` —(1:1)— verification record (protected national-ID representation, review state,
