@@ -540,7 +540,9 @@ class Hedayati_Academic_Admin {
 
 		$payload = [];
 		foreach ( [ 'label', 'run_status', 'registration_status', 'start_date', 'end_date', 'schedule_text', 'capacity', 'tuition_rial', 'notes' ] as $k ) {
-			if ( isset( $_POST[ $k ] ) ) {
+			if ( isset( $_POST[ $k ] ) && is_string( $_POST[ $k ] ) ) {
+				// The service is the sanitization boundary (allowlist / date / int parsers);
+				// here we only unslash and guarantee a scalar reaches it.
 				$payload[ $k ] = wp_unslash( $_POST[ $k ] );
 			}
 		}
@@ -728,6 +730,10 @@ class Hedayati_Academic_Admin {
 		$errors   = 0;
 
 		foreach ( $raw_marks as $enrollment_id => $status ) {
+			if ( is_array( $status ) ) {
+				continue;
+			}
+
 			$enrollment_id = absint( $enrollment_id );
 			$status        = sanitize_text_field( (string) $status );
 
@@ -735,7 +741,8 @@ class Hedayati_Academic_Admin {
 				continue; // "not recorded" — skip, do not wipe an existing mark implicitly
 			}
 
-			$note   = isset( $raw_notes[ $enrollment_id ] ) ? sanitize_text_field( (string) $raw_notes[ $enrollment_id ] ) : '';
+			$raw_note = $raw_notes[ $enrollment_id ] ?? '';
+			$note     = is_array( $raw_note ) ? '' : sanitize_text_field( (string) $raw_note );
 			$result = Hedayati_Attendance_Service::record( $session_id, $enrollment_id, $status, [
 				'note'        => $note,
 				'recorded_by' => get_current_user_id(),
