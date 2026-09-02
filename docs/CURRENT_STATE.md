@@ -1,7 +1,9 @@
 # CURRENT_STATE.md
 
-**Last documentation update:** 2026-09-02
+**Last documentation update:** 2026-09-03
 **Method:** direct inspection of the repository, reconciled against `docs/HANDOFF_LEGACY.md`.
+Phase 2B + the Phase 2C address slice were implemented 2026-09-02/03 on
+`feature/phase-2b-academic-operations`.
 Phase 2A staging acceptance (`docs/PHASE_2A_ACCEPTANCE.md`): the static + read-only-DB layer on
 `mystik.ir` is verified; runtime behaviour is **not** yet tested. Phase 2B (below) is implemented
 on branch `feature/phase-2b-academic-operations` — repository + Node static tests only; its staging

@@ -88,8 +88,9 @@ integration.
 ## D10 — Custom roles with least privilege; no custom `super_admin`
 
 **Decided:** `student`, `teacher`, `teacher_assistant`, `reception`, `hedayati_manager`, plus
-native `administrator`. 21 granular `hedayati_*` capabilities. `hedayati_manager` runs institute
-operations but has **no** `manage_options`; `administrator` is the technical/system owner.
+native `administrator`. 21 granular `hedayati_*` capabilities (raised to 22 by D28 —
+`hedayati_manage_teachers`). `hedayati_manager` runs institute operations but has **no**
+`manage_options`; `administrator` is the technical/system owner.
 **Why:** WordPress reserves "Super Admin" for Multisite. Institute operations and technical
 control need a clean boundary. Roles are necessary but not sufficient — services must also check
 assignment/ownership scope.
