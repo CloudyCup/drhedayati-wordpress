@@ -1,8 +1,10 @@
 # CURRENT_STATE.md
 
 **Last documentation update:** 2026-09-02
-**Method:** direct inspection of the repository at branch `main`, commit `a51237d`, reconciled
-against `docs/HANDOFF_LEGACY.md`.
+**Method:** direct inspection of the repository (`main`), reconciled against
+`docs/HANDOFF_LEGACY.md`; plus the in-progress Phase 2A staging acceptance
+(`docs/PHASE_2A_ACCEPTANCE.md`) — as of 2026-09-02 the static + read-only-DB layer on `mystik.ir`
+is verified (see "Verified on staging" below); runtime behaviour is not yet tested.
 **Repo versions:** theme `hedayati` 1.0.0 · plugin `hedayati-core` 1.1.0 · DB schema & roles `2.0.0`.
 
 > The repository is authoritative for "what is implemented". It contains **code only** — no
@@ -142,7 +144,7 @@ against `docs/HANDOFF_LEGACY.md`.
 
 | Area | What exists | What is missing |
 |---|---|---|
-| **Username-or-phone login** | Full backend adapter, normalization, rate limiting, roles — extends the standard `wp-login.php` pipeline | No custom/branded login form or account UI; **no staging integration acceptance** (see handoff §2.2 matrix) |
+| **Username-or-phone login** | Full backend adapter, normalization, rate limiting, roles — extends the standard `wp-login.php` pipeline; deployed code + DB schema + roles/caps **verified on staging 2026-09-02** | No custom/branded login form or account UI; **runtime behaviour not yet acceptance-tested** (Category 2–4 of `docs/PHASE_2A_ACCEPTANCE.md`) |
 | **Roles & capabilities** | 5 roles + 21 caps registered; least-privilege verified in unit tests | No UI or services consume the operational caps yet (`hedayati_manage_course_runs`, `hedayati_verify_students`, `hedayati_view_private_documents`, etc. are defined but unused) |
 | **Student accounts** | WordPress user + `student` role + phone-identity table + `hedayati_view_own_portal` etc. | No profile fields, no portal, no enrollment view, no document upload |
 | **Homepage impact/value section** | Dark editorial band with 4 institutional bullet points and copy | Stat numbers (years, graduates, …) intentionally omitted pending verified data + an input mechanism (Customizer or plugin settings) — **neither mechanism is coded** |
@@ -175,19 +177,52 @@ against `docs/HANDOFF_LEGACY.md`.
 
 ---
 
+## ✅ Verified on staging (`mystik.ir`) — 2026-09-02
+
+From the Phase 2A staging acceptance process (`docs/PHASE_2A_ACCEPTANCE.md`); these items are no
+longer "handoff-only":
+
+- **Deployed code matches the repository.** The `hedayati-core` plugin (18 files) and `hedayati`
+  theme (23 files) on `mystik.ir` are byte-identical to `main` after line-ending normalization —
+  0 different, 0 staging-only, 0 repo-only, 0 junk (T1.3).
+- **Deployed versions:** plugin `1.1.0`, theme `1.0.0` (T1.1–T1.2).
+- **Migration recorded success:** `hedayati_core_db_version` = `2.0.0`,
+  `hedayati_core_roles_version` = `2.0.0`, migration lock absent,
+  `hedayati_core_managed_capabilities` = a 21-element serialized array (T3.1).
+- **`{prefix}hedayati_user_phones` exists** (non-`wp_` prefix) with the **exact** Phase 2A schema:
+  7 columns, `InnoDB`, `utf8mb4`, `PRIMARY KEY (id)`, `UNIQUE uq_user_id`, `UNIQUE uq_phone_e164`,
+  `KEY idx_is_verified`; created 2026-09-01; **0 rows**, no duplicates/orphans (T3.2, T3.2b, T3.3).
+- **No hardcoded `wp_` prefix** in the plugin (only the `wp_login` / `wp_login_failed` hook names);
+  the phone table is addressed via `$wpdb->prefix` (T3.4).
+- **5 custom roles + all 21 `hedayati_*` capabilities are installed** in `{prefix}user_roles`
+  (option is ~4× stock size; all role slugs and all 21 cap names present; `administrator` retains
+  `manage_options` / `activate_plugins`). The exact per-role capability matrix and least-privilege
+  negatives are **not yet enumerated** — T3.5 / T3.6 are NEEDS REVIEW pending `wp cap list` or the
+  wp-admin negative checks.
+- **Rate limiter is live and DB-backed:** ~19 `hd_rl_*` counters currently in `wp_options` from
+  ordinary `wp-login.php` failures; no persistent object cache is active, so rate-limit state is
+  DB-visible (relevant to the not-yet-run behavioural tests).
+- **Active theme** confirmed `hedayati` from the DB side; `hedayati-core` plugin active.
+
+**Still not verified on staging:** any runtime *behaviour* — real username/phone login, phone
+normalization end-to-end, uniqueness enforcement under a real insert, rate-limit thresholds /
+reset / no-double-count, role least-privilege in use, phone assign/change/verify/delete lifecycle,
+and user-deletion cleanup. These require the Category 2–4 state-changing tests.
+
+---
+
 ## ❓ Uncertain — requires verification against a running environment or the institute
 
-- **Phase 2A deployment & migration on staging.** The handoff states the plugin is deployed to
-  `mystik.ir`, that the migration ran from an admin request, that
-  `{prefix}hedayati_user_phones` exists (staging uses a non-`wp_` randomized prefix), and that
-  `hedayati_core_db_version` / `hedayati_core_roles_version` / `hedayati_core_managed_capabilities`
-  options were written. **None of this is verifiable from the repository.**
-- **The CCNA example course** and any other content — database content, not in the repo.
+- **Phase 2A runtime behaviour** — see "Still not verified on staging" above.
+- **The CCNA example course** and any other content — database content, not in the repo; not
+  inspected.
 - **PHP test suite result (78/78)** — reported by the handoff; PHP is unavailable in this
   environment, so only the Node suite (74/74) was re-confirmed.
-- **Whether the deployed artifact exactly matches this repo** — no tags; the handoff flags a risk
-  of server-only hotfixes diverging from Git.
-- **LiteSpeed cache behavior** after deploys.
+- **Exact role → capability matrix + least-privilege negatives** on staging (T3.5 / T3.6 NEEDS
+  REVIEW).
+- **Manual wp-admin checks** — custom roles visible in the role dropdown (T1.4), existing admin
+  can still reach Settings / Plugins / Users (T1.5) — not yet returned by the operator.
+- **LiteSpeed *page* cache behavior** after deploys (no persistent *object* cache is active).
 - **Custom logo** — whether a real logo image has been uploaded in WP (theme supports it; SVG "H"
   is the fallback).
 

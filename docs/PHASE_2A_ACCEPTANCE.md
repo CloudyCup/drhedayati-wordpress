@@ -21,15 +21,83 @@ operator's authenticated browser*.
 | T1.1 | Active plugin version | 1 read-only | ✅ PASS | 2026-09-02 | Hedayati Core **1.1.0**, active — matches repo `HEDAYATI_CORE_VERSION` |
 | T1.2 | Active theme version | 1 read-only | ✅ PASS | 2026-09-02 | Hedayati theme **1.0.0**, active — matches repo `style.css` / `HEDAYATI_VERSION` |
 | T1.3 | Staging code vs repository | 1 read-only | ✅ PASS | 2026-09-02 | deployed plugin (18 files) + theme (23 files) byte-identical to `main` @ `6436446` after CRLF/LF normalization; 0 different, 0 staging-only, 0 repo-only, 0 junk |
-| T1.4 | Custom roles visible in UI | 1 read-only | ⬜ not started | — | |
-| T1.5 | Existing admin can still log in / keeps `manage_options` | 1 read-only | ⬜ not started | — | |
-| T1.6 | Verification-flag implementation (doc) | 1 read-only | ⬜ not started | — | conclusion recorded below; confirm vs T1.3 files |
+| T1.4 | Custom roles visible in UI | 1 read-only | ⏳ PENDING | — | manual check M1 not returned; SQL `C2` shows all 5 role slugs installed |
+| T1.5 | Existing admin can still log in / keeps `manage_options` | 1 read-only | ⏳ PENDING | — | manual check M2 not returned; SQL `C2` shows admin keeps `manage_options` + `activate_plugins` |
+| T1.6 | Verification-flag implementation (doc) | 1 read-only | ✅ PASS | 2026-09-02 | code conclusion; staging schema (`B2`/`B3`) confirms `is_verified` + `verified_at` + `idx_is_verified` exactly as built; no trigger for `verify_phone()` exists |
+| T3.1 | Migration version options | 3 read-only | ✅ PASS | 2026-09-02 | operator-confirmed Stage A: `hedayati_core_db_version`=`2.0.0`, `hedayati_core_roles_version`=`2.0.0`, migration lock absent; corroborated by `C4` (`managed_capabilities` = 21-element array, 841 B) |
+| T3.2 | Phone table exists under real prefix | 3 read-only | ✅ PASS | 2026-09-02 | `B1`/`B1b`/`B1c`: one `…_hedayati_user_phones`, InnoDB, no `wp_` variant, 13 site-prefixed tables, 0 `wp_` tables |
+| T3.2b | Phone table data baseline | 3 read-only | ✅ PASS | 2026-09-02 | `D1`–`D4`: 0 rows, 0 duplicates, 0 orphans, 0 multi-phone users, 0 integrity violations |
+| T3.3 | Phone table schema & constraints | 3 read-only | ✅ PASS | 2026-09-02 | `B2` (7 columns exact) + `B3` (PK `id`, UNIQUE `uq_user_id`, UNIQUE `uq_phone_e164`, KEY `idx_is_verified`) match `class-db-schema.php::migrate_2_0_0` |
+| T3.4 | No `wp_` assumption (code + runtime) | 1 + 3 read-only | ✅ PASS | 2026-09-02 | repo grep: only `wp_login*` hook names; table name = `$wpdb->prefix . 'hedayati_user_phones'`. Runtime `B1b`: no `wp_hedayati_user_phones` |
+| T3.5 | Full role → capability audit | 3 read-only | 🟡 NEEDS REVIEW | 2026-09-02 | `C1` (5616 B ≈ 4× stock ⇒ sync ran), `C2` (all 5 slugs + admin), `C3` (all 21 caps present), `hedayati_token_count` = 50 = expected. Exact per-role matrix + least-privilege negatives still need `wp cap list` or T2.7 |
+| T3.6 | Administrator retains access + all Hedayati caps | 3 read-only | 🟡 NEEDS REVIEW | 2026-09-02 | `C2`: admin keeps `manage_options` + `activate_plugins`; token arithmetic (28 + 1 + 21 = 50) consistent with admin holding all 21. Full native-cap retention pending M2 + `wp cap list administrator` |
+| E1 obs | Rate-limiter transient baseline | 3 read-only | ℹ️ OBSERVED | 2026-09-02 | 19 active `hd_rl_*` counters (19 value + 19 timeout option rows), DB-backed (no object cache). Benign — limiter is recording real `wp-login.php` failures. **Must be cleared / IP bucket confirmed clean before T2.5, T2.6, T3.7, T3.8** |
+| E2/E3/F1 | Cache & environment context | 3 read-only | ✅ PASS | 2026-09-02 | 41 total DB transient rows (transients are DB-backed); no caching plugin active; `template`/`stylesheet` both `hedayati` (DB-side cross-check of T1.2) |
 | T2.1–T2.9 | Disposable test user | 2 | ⬜ blocked | — | needs operator go-ahead (N3) |
-| T3.1–T3.16 | Database / phone provisioning | 3 | ⬜ blocked | — | needs DB access (N4) + WP-CLI or harness (N5) |
+| T3.7, T3.8 | Rate-limit counter behaviour | 3 state-changing | ⬜ blocked | — | needs disposable user + clean IP bucket (see E1 obs) |
+| T3.9–T3.16 | Phone provisioning / lifecycle / uniqueness | 3 state-changing | ⬜ blocked | — | needs WP-CLI or harness (N5) |
 | T4.1–T4.8 | Potentially destructive | 4 | ⛔ hold | — | explicit per-test approval required |
 
-**Baseline status: NOT YET ESTABLISHED.** Code/version identity and the code-match check are
-confirmed (T1.1–T1.3); all runtime verification (Categories 2–4) remains outstanding.
+**Baseline status: STATIC + READ-ONLY DATABASE LAYER VERIFIED.**
+Confirmed: version identity (T1.1–T1.2), code-match (T1.3), verification-flag design (T1.6),
+migration state & options (T3.1), phone-table existence / prefix / schema / constraints / empty
+baseline (T3.2, T3.2b, T3.3), no `wp_` assumption (T3.4).
+Provisional: role & capability installation (T3.5, T3.6 — NEEDS REVIEW; structure is consistent
+with the intended design but the exact per-role matrix is not enumerated).
+Outstanding: manual wp-admin checks (T1.4, T1.5) and **all** runtime behaviour — authentication,
+rate limiting, phone provisioning / uniqueness / lifecycle (Categories 2–4).
+
+---
+
+## Read-only database verification — evidence (2026-09-02)
+
+Operator ran a single consolidated read-only batch (`SELECT` / `SHOW` / `information_schema`) in
+phpMyAdmin against the staging database. Results, keyed by the `check_id` in the batch:
+
+| check_id | Result | Meaning |
+|---|---|---|
+| `B1_table_meta` | `…_hedayati_user_phones`, `InnoDB`, `utf8mb4_unicode_520_ci`, est_rows 0, created `2026-09-01 12:03:30` | table present, correct engine/charset |
+| `B1b_table_name_scan` | correct_prefix 1, legacy `wp_` 0, any 1 | exactly one phone table, no hardcoded-`wp_` variant |
+| `B1c_prefix_sanity` | 13 site-prefixed tables, 0 `wp_` tables | 12 core + 1 Hedayati table; prefix consistent |
+| `B2_columns` | 7 rows: `id` bigint unsigned auto_increment · `user_id` bigint unsigned NOT NULL · `phone_e164` varchar(20) NOT NULL utf8mb4 · `is_verified` tinyint(1) NOT NULL default 0 · `verified_at` datetime NULL · `created_at` datetime NOT NULL · `updated_at` datetime NOT NULL | exact match to `migrate_2_0_0` |
+| `B3_indexes` | `PRIMARY`(id) · `uq_user_id`(user_id, non_unique 0) · `uq_phone_e164`(phone_e164, non_unique 0) · `idx_is_verified`(is_verified, non_unique 1); all BTREE | both UNIQUE constraints real; lookup index present |
+| `B4` (`SHOW CREATE TABLE`) | executed OK; DDL text truncated on paste — **not relied upon**; B1–B3 fully cover the schema | — |
+| `C1_user_roles_option` | `{prefix}user_roles` present, autoload on, **5616 bytes** (stock WP ≈ 1300–1600) | role/capability sync ran |
+| `C2_role_slugs` | `student`, `teacher_assistant`, `teacher`, `reception`, `hedayati_manager`, `administrator` all present; admin has `manage_options` + `activate_plugins`; `hedayati_token_count` = **50** | all 5 custom roles installed; admin keeps core caps; token count = expected 28 (custom-role caps) + 1 (`hedayati_manager` key) + 21 (admin) |
+| `C3_capabilities_present` | `c01`–`c21` **all 1** | every one of the 21 managed capabilities is installed somewhere in the role structure |
+| `C4_managed_caps_option` | `hedayati_core_managed_capabilities` = 841 bytes, `a:21:{…}`, autoload auto | tracked managed-cap list has exactly 21 entries (corroborates Stage A / T3.1) |
+| `D1_aggregates` | total_rows 0; verified 0; unverified 0; bad_is_verified 0; timestamp-consistency 0/0; non_canonical_format 0 | phone table empty and internally consistent |
+| `D2` / `D3` / `D4` | 0 / 0 / 0 | no duplicate numbers, no orphan rows, no user with >1 phone row |
+| `E1_rate_limit_transients` | **19 value rows + 19 timeout rows** (`_transient_hd_rl_*`) | 19 active rate-limit counters — see the E1 analysis below |
+| `E2_transient_context` | 41 total `_transient_%` rows | transients are written to the DB (no object-cache interception) |
+| `E3_active_plugins` | `hedayati-core` active; no LiteSpeed/Redis/W3TC/Super-Cache | plugin active (corroborates T1.1); no persistent object cache |
+| `F1_active_theme` | `template` = `stylesheet` = `hedayati` | DB-side cross-check of T1.2 |
+
+### E1 analysis — 19 rate-limit counters
+
+`Hedayati_Rate_Limiter::record_failure()` calls `set_transient()` for the IP bucket and the
+identifier bucket on every failed login. WordPress `set_transient($k, $v, $ttl)` writes **two**
+option rows — `_transient_<k>` (value) and `_transient_timeout_<k>` (unix expiry). So 19 value +
+19 timeout rows = **19 distinct active rate-limit counters** (a mix of `hd_rl_ip_<hash>` and
+`hd_rl_id_<hash>`), each with its timeout companion (clean 1:1 — no orphaned rows).
+
+- **Where they came from:** ordinary failed logins at `wp-login.php` — almost certainly a mix of
+  the operator's own earlier sessions and the constant background of bot login attempts that hits
+  any internet-facing WordPress site. Each distinct username/phone a bot tries creates its own
+  `hd_rl_id_*` bucket.
+- **Is it expected / benign?** Yes. It is positive evidence that the limiter is live and recording
+  failures through the single `wp_login_failed` path, exactly as designed. The default TTL is 900 s;
+  WordPress does not proactively purge expired transient rows, so some of these may already be
+  logically expired but still present as rows.
+- **Does it affect acceptance?** No — it fails no read-only check. Recorded as an observation.
+- **Does any future test need them cleared first?** Yes. The rate-limit **behavioural** tests
+  (T2.5, T2.6, T3.7, T3.8) assert exact bucket values ("IP bucket = 1", "= 3", "identifier bucket
+  cleared on success"). They require the specific identifier buckets **and the tester's own IP
+  bucket** to start at 0. The disposable-user identifier buckets will be clean (they don't exist
+  yet), but the tester's IP bucket may not be. Before those tests: either (a) confirm the tester's
+  current `hd_rl_ip_*` bucket is absent, or (b) clear the `_transient_hd_rl_*` / `_transient_timeout_hd_rl_*`
+  rows (a **write** — deferred, needs approval as part of the T3.9 utility step), or (c) run the
+  tests from an IP with no recent failures.
 
 ---
 
@@ -82,10 +150,10 @@ confirmed (T1.1–T1.3); all runtime verification (Categories 2–4) remains out
 | N1 | Staging `wp-admin` URL + an operator who can log in as administrator | almost everything | ✅ have operator |
 | N2 | Read access to the deployed theme + plugin files (cPanel File Manager / SFTP / a zip), **or** ability to run a checksum command on the server | T1.3 | ✅ received (2 ZIPs, 2026-09-02) |
 | N3 | Go-ahead to create **one** disposable `student` user (Claude supplies username/email) | Category 2 | ⬜ pending |
-| N4 | Staging **database** read access (phpMyAdmin / Adminer / `wp db query`), or willingness to run ~10 `SELECT` / `SHOW` statements Claude provides and paste results | Category 3 | ⬜ pending |
+| N4 | Staging **database** read access (phpMyAdmin) | Category 3 read-only | ✅ have (phpMyAdmin; consolidated read-only batch run 2026-09-02) |
 | N5 | **One** of: (a) WP-CLI access (`wp shell` / `wp eval`), or (b) approval to install a temporary, admin-only, nonce-protected **must-use plugin harness** (Claude writes it; it only calls the existing `Hedayati_User_Phone_Service` methods; deleted afterward) | Category 3 phone tests | ⬜ pending |
-| N6 | Confirmation of the **actual table prefix** on staging (from N4) | all SQL | ⬜ pending |
-| N7 | Whether a persistent object cache (LiteSpeed / Redis) is active for `wp_options` / transients | E2, E4 accuracy | ⬜ pending |
+| N6 | Confirmation of the **actual table prefix** on staging | all SQL | ✅ operator supplied it directly (used in the Stage B–F batch) |
+| N7 | Whether a persistent object cache (LiteSpeed / Redis) is active for `wp_options` / transients | E1/E2 accuracy | ✅ resolved — `E1` shows 38 `hd_rl` transient rows **in the DB** and `E3` shows no cache plugin ⇒ transients are DB-backed and rate-limit state is DB-visible |
 | N8 | Confirmation that staging has **no real users / no live traffic** during testing | Category 4, IP-bucket safety | ⬜ pending |
 | N9 | A **fresh full staging backup** (files + DB) before Category 3 writes; mandatory before any Category 4 test | Categories 3–4 | ⬜ pending |
 | N10 | Explicit per-test written approval for anything in Category 4 | Category 4 | ⬜ pending |
@@ -183,10 +251,14 @@ Risk levels: **None / Very low / Low / Medium / High.**
   limiter — notes 3/4). **Cleanup:** none if login succeeds first try; else transient cleanup
   (T3.9) or a 15-min wait.
 
-### T1.6 — Document verification-flag implementation (code review)  ⬜
+### T1.6 — Document verification-flag implementation (code review)  ✅ PASS (2026-09-02)
 - **Purpose:** record exactly what "verification" exists in Phase 2A.
-- **Steps:** none on staging — restated here for the baseline record; confirm against the deployed
-  files in T1.3.
+- **Steps:** none on staging — restated here for the baseline record; confirmed against the deployed
+  files (T1.3) and the live schema (`B2`/`B3`).
+- **Result:** the deployed schema carries `is_verified` (`tinyint(1)` NOT NULL default 0) and
+  `verified_at` (`datetime` NULL) with `KEY idx_is_verified` — exactly as built. No trigger for
+  `verify_phone()` exists anywhere in the shipped code. Verification is a data-model + service
+  method only; there is no OTP/SMS/admin/reception path to set it, no UI, and nothing gated on it.
 - **Result (as built in `1.1.0`):**
   - **Implemented:** `is_verified TINYINT(1) DEFAULT 0` and `verified_at DATETIME NULL` columns;
     `KEY idx_is_verified`; `Hedayati_User_Phone_Service::verify_phone($user_id, $verified_at=null)`
@@ -286,8 +358,13 @@ Risk levels: **None / Very low / Low / Medium / High.**
 > backup N9 first. All writes here are test rows / transients / the temporary harness file —
 > enumerated for cleanup in T3.16. Substitute the site's real prefix for `P_` in every statement.
 
-### T3.1 — Migration version options
+### T3.1 — Migration version options  ✅ PASS (2026-09-02, operator-confirmed Stage A)
 - **Purpose:** confirm the Phase 2A migration recorded success.
+- **Result:** Stage A batch reported PASS — `hedayati_core_db_version` = `2.0.0`,
+  `hedayati_core_roles_version` = `2.0.0`, `hedayati_db_migration_lock` absent. `C4` in the
+  Stage B–F batch independently confirms `hedayati_core_managed_capabilities` is a serialized
+  21-element array (841 bytes). `hedayati_institute_settings` presence: operator-confirmed under
+  Stage A (its absence would not be a Phase 2A defect).
 - **Steps:**
   `SELECT option_name, option_value FROM P_options WHERE option_name IN
   ('hedayati_core_db_version','hedayati_core_roles_version','hedayati_core_managed_capabilities',
@@ -298,14 +375,27 @@ Risk levels: **None / Very low / Low / Medium / High.**
   ⇒ crashed / mid-migration ⇒ finding).
 - **Browser:** via phpMyAdmin/Adminer. **DB:** yes. **Risk:** None. **Cleanup:** none.
 
-### T3.2 — Phone table exists, under the real prefix
-- **Steps:** `SHOW TABLES LIKE '%hedayati\\_user\\_phones';` and `SHOW TABLES LIKE 'wp\\_%';`
-- **Expected:** exactly one `<prefix>hedayati_user_phones`; no `wp_*` tables unless `wp_` really is
-  the prefix.
+### T3.2 — Phone table exists, under the real prefix  ✅ PASS (2026-09-02)
+- **Steps:** `information_schema` checks `B1` / `B1b` / `B1c`.
+- **Expected:** exactly one `<prefix>hedayati_user_phones`; no `wp_*` variant.
+- **Result:** one table `…_hedayati_user_phones`, `InnoDB`, `utf8mb4_unicode_520_ci`, created
+  `2026-09-01 12:03:30`. `B1b`: no `wp_hedayati_user_phones`. `B1c`: 13 site-prefixed tables,
+  0 `wp_` tables.
 - **DB:** yes. **Risk:** None. **Cleanup:** none.
 
-### T3.3 — Phone table schema & constraints
-- **Steps:** `SHOW CREATE TABLE P_hedayati_user_phones;` and `SHOW INDEX FROM P_hedayati_user_phones;`
+### T3.2b — Phone table data baseline  ✅ PASS (2026-09-02)
+- **Steps:** `information_schema` / aggregate checks `D1`–`D4` (counts only, no phone numbers).
+- **Expected:** empty table on a fresh Phase 2A site; no duplicates, orphans, or integrity
+  violations.
+- **Result:** `total_rows` = 0; `verified` / `unverified` = 0; `bad_is_verified_values` = 0;
+  timestamp-consistency = 0/0; `non_canonical_format` = 0; `D2`/`D3`/`D4` = 0/0/0.
+- **DB:** yes. **Risk:** None. **Cleanup:** none.
+
+### T3.3 — Phone table schema & constraints  ✅ PASS (2026-09-02)
+- **Steps:** `information_schema` checks `B2` (columns) + `B3` (indexes). `SHOW CREATE TABLE`
+  (`B4`) ran but its pasted DDL was truncated and is **not relied upon** — `B2`+`B3` fully cover
+  columns, types, nullability, defaults, PK, both UNIQUE constraints, the lookup index, engine,
+  and charset.
 - **Expected (must match `class-db-schema.php::migrate_2_0_0`):**
   - `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT, PRIMARY KEY
   - `user_id` BIGINT(20) UNSIGNED NOT NULL — **UNIQUE KEY `uq_user_id`**
@@ -315,28 +405,56 @@ Risk levels: **None / Very low / Low / Medium / High.**
   - `created_at` DATETIME NOT NULL
   - `updated_at` DATETIME NOT NULL
   - table charset/collation = DB default from `get_charset_collate()` (typically `utf8mb4`).
+- **Result:** `B2` returned the 7 columns exactly as listed above (types, nullability, defaults,
+  `phone_e164` on `utf8mb4`). `B3` returned exactly `PRIMARY(id)`, `uq_user_id(user_id)` and
+  `uq_phone_e164(phone_e164)` both with `non_unique = 0`, and `idx_is_verified(is_verified)` with
+  `non_unique = 1` — all `BTREE`. Table collation `utf8mb4_unicode_520_ci`.
 - **DB:** yes. **Risk:** None. **Cleanup:** none.
 
-### T3.4 — No `wp_` assumption anywhere in the deployed code
-- **Steps:** on the server or the T1.3 download, search the plugin for string literals used as
-  table names; confirm `Hedayati_DB_Schema::get_table_user_phones()` returns
-  `$wpdb->prefix . 'hedayati_user_phones'`. `grep -rn "'wp_" wp-content/plugins/hedayati-core --include='*.php'`.
-- **Expected:** no hardcoded prefixes; only WordPress function/class names contain `wp_` / `WP_`.
-- **DB:** no. **Risk:** None. **Cleanup:** none.
+### T3.4 — No `wp_` assumption (code + runtime)  ✅ PASS (2026-09-02)
+- **Steps:** repo grep of the plugin for string literals used as table names + confirm
+  `Hedayati_DB_Schema::get_table_user_phones()` returns `$wpdb->prefix . 'hedayati_user_phones'`;
+  runtime check `B1b` (no `wp_hedayati_user_phones` on staging).
+- **Result:** the only `wp_` literals in the plugin are the WordPress **action-hook names**
+  `wp_login_failed` and `wp_login` (`class-auth.php`). The single table-name construction is
+  `$wpdb->prefix . 'hedayati_user_phones'` (`class-db-schema.php:64`), used everywhere via
+  `get_table_user_phones()`; charset from `$wpdb->get_charset_collate()`. Runtime `B1b` confirms
+  no `wp_`-prefixed phone table exists.
+- **DB:** partial (runtime half). **Risk:** None. **Cleanup:** none.
 
-### T3.5 — Full role → capability audit
-- **Steps:** `SELECT option_value FROM P_options WHERE option_name = 'P_user_roles';` (the option
-  name itself is prefixed), deserialize, compare to Appendix A. Or WP-CLI: `wp role list`, then
-  `wp cap list student` / `teacher_assistant` / `teacher` / `reception` / `hedayati_manager`.
+### T3.5 — Full role → capability audit  🟡 NEEDS REVIEW (2026-09-02)
+- **Steps:** SQL checks `C1` (option size), `C2` (role slugs + token count), `C3` (all 21 caps
+  present). Full enumeration would need `wp cap list <role>` (read-only) or the wp-admin negative
+  checks in T2.7.
 - **Expected:** exact match to Appendix A; every custom role also has `read`; no custom role has
   `manage_options`, `edit_theme_options`, `delete_users`, `activate_plugins`, `edit_users`.
+- **Result — what the SQL proves:** the `{prefix}user_roles` option is present, autoloaded, and
+  **5616 bytes** (≈4× a stock install) ⇒ the capability sync ran; all five custom role slugs and
+  `administrator` are present as serialized keys; all 21 `hedayati_*` capability names appear
+  somewhere in the structure (`C3` = all 1); the `hedayati_` token count is exactly **50**, which
+  equals the intended arithmetic — 28 custom-role cap assignments (student 4 + TA 2 + teacher 4 +
+  reception 5 + manager 13) + 1 (`hedayati_manager` role-slug key) + 21 (administrator).
+- **Result — what the SQL does NOT prove:** which specific capability sits on which specific role
+  (positional matrix), and the least-privilege **negatives** (e.g. `reception` / `hedayati_manager`
+  lack `manage_options`; `teacher_assistant` lacks `hedayati_record_attendance`). The exact-match
+  total of 50 makes a wrong assignment unlikely but not impossible.
+- **To close:** run `wp role list` + `wp cap list student|teacher_assistant|teacher|reception|hedayati_manager`
+  (read-only), or perform the T2.7 wp-admin negative checks. Then upgrade to PASS/FAIL.
 - **DB / WP-CLI.** **Risk:** None. **Cleanup:** none.
 
-### T3.6 — Administrator retains full access + gains all Hedayati caps
-- **Steps:** `wp cap list administrator` or inspect `P_user_roles`.
+### T3.6 — Administrator retains full access + gains all Hedayati caps  🟡 NEEDS REVIEW (2026-09-02)
+- **Steps:** SQL check `C2`; to complete: `wp cap list administrator` and/or manual check M2
+  (admin can load Settings / Plugins / Users).
 - **Expected:** `manage_options`, `activate_plugins`, `edit_users`, `delete_users`,
   `edit_theme_options`, `manage_categories`, **and** all 21 `hedayati_*` capabilities present;
   no native capability removed.
+- **Result — what the SQL proves:** `admin_has_manage_options` = 1 and
+  `admin_has_activate_plugins` = 1 (two core admin capabilities retained); the token-count
+  arithmetic (28 + 1 + 21 = 50) is consistent with `administrator` holding all 21 `hedayati_*`
+  capabilities.
+- **Result — not yet proven:** that **every** native administrator capability is retained (only
+  two were spot-checked), and a direct positional confirmation that all 21 sit on `administrator`.
+- **To close:** manual check M2 + `wp cap list administrator | grep -c hedayati_` (expect 21).
 - **DB / WP-CLI.** **Risk:** None. **Cleanup:** none.
 
 ### T3.7 — Failure counter increments by exactly 1 per attempt (no double count)
