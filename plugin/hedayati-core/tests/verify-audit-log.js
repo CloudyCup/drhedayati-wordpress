@@ -124,6 +124,16 @@ for (const file of ['includes/class-course-run-service.php', 'includes/class-ses
 		!/get_table_audit_log|hedayati_audit_log/.test(src));
 }
 
+// teacher-user unlink on account deletion is audited
+const teacher = read('includes/class-teacher.php');
+assert("teacher.unlinked recorded when a linked WP account is deleted", teacher.includes("'teacher.unlinked'") && /on_user_deleted[\s\S]*META_USER_ID, 0[\s\S]*Hedayati_Audit_Log::record/.test(teacher));
+assert("teacher.unlinked is in the action vocabulary", al.includes("'teacher.unlinked'"));
+
+// course deletion cascades ALL runs, not just one page
+const runSrc = read('includes/class-course-run-service.php');
+assert("on_course_deleted loops until the course has no runs left (no orphan page)",
+	/on_course_deleted[\s\S]*do \{[\s\S]*self::query\([\s\S]*\} while \(/.test(runSrc));
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. Admin viewer — read-only, capability-gated
 // ─────────────────────────────────────────────────────────────────────────────

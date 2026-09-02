@@ -61,6 +61,7 @@ class Hedayati_Audit_Log {
 	public static function actions(): array {
 		return (array) apply_filters( 'hedayati_audit_actions', [
 			'course.deleted',
+			'teacher.unlinked',
 			'course_run.created',
 			'course_run.updated',
 			'course_run.deleted',
@@ -118,12 +119,15 @@ class Hedayati_Audit_Log {
 		];
 
 		$in_progress = true;
-		$inserted    = $wpdb->insert(
-			$table,
-			$row,
-			[ '%d', '%s', '%s', '%d', '%s', '%s' ]
-		);
-		$in_progress = false;
+		try {
+			$inserted = $wpdb->insert(
+				$table,
+				$row,
+				[ '%d', '%s', '%s', '%d', '%s', '%s' ]
+			);
+		} finally {
+			$in_progress = false;
+		}
 
 		return ( false === $inserted ) ? false : (int) $wpdb->insert_id;
 	}

@@ -254,6 +254,7 @@ class Hedayati_Teacher {
 
 		if ( null !== $teacher_id ) {
 			update_post_meta( $teacher_id, self::META_USER_ID, 0 );
+			Hedayati_Audit_Log::record( 'teacher.unlinked', 'teacher', $teacher_id, 'linked account deleted' );
 		}
 	}
 

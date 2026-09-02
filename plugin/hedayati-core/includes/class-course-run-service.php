@@ -233,15 +233,24 @@ class Hedayati_Course_Run_Service {
 			return;
 		}
 
-		$runs = self::query( [ 'course_id' => $post_id, 'limit' => 500 ] );
+		$total = self::count_for_course( $post_id );
 
-		if ( ! empty( $runs ) ) {
-			Hedayati_Audit_Log::record( 'course.deleted', 'course', $post_id, count( $runs ) . ' run(s) cascade-deleted' );
+		if ( 0 === $total ) {
+			return;
 		}
 
-		foreach ( $runs as $run ) {
-			self::delete_run( (int) $run['id'] );
-		}
+		Hedayati_Audit_Log::record( 'course.deleted', 'course', $post_id, $total . ' run(s) cascade-deleted' );
+
+		// Delete in bounded batches until the course has no runs left — a course
+		// with hundreds of cohorts must not leave orphans behind one page.
+		$guard = 0;
+		do {
+			$runs = self::query( [ 'course_id' => $post_id, 'limit' => 200 ] );
+			foreach ( $runs as $run ) {
+				self::delete_run( (int) $run['id'] );
+			}
+			$guard++;
+		} while ( ! empty( $runs ) && $guard < 100 );
 	}
 
 	// ── Internals ───────────────────────────────────────────────────────────
