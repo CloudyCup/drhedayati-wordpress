@@ -46,7 +46,7 @@ several items still need institute decisions (marked ❓, see the bottom of this
    Enrollments (`UNIQUE(run_id, user_id)`, capacity check); attendance (`UNIQUE(session_id,
    enrollment_id)`, same-run guard). Migration `2.1.0`, five services, `hedayati_manage_teachers`
    capability, per-run ownership-scope enforcement in the «عملیات آموزشی» admin UI, Node static
-   tests (140/140).
+   tests (170/170).
    **Remaining before merge:** (a) staging behavioural acceptance — `docs/PHASE_2B_ACCEPTANCE.md`
    (NOT RUN); (b) run PHP suites + `php -l` where PHP is available; (c) theme-side fallback wiring
    so the public course page reads run data for `_course_teacher` / `_course_next_start_date` /

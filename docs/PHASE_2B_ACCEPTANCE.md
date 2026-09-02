@@ -18,7 +18,7 @@ production contact; take a fresh full backup before any state-changing test.
 
 | Check | Tool | Result |
 |---|---|---|
-| Node static + pure-logic suite | `node plugin/hedayati-core/tests/verify-phase2b.js` | **140 passed, 0 failed** (2026-09-02, this environment) |
+| Node static + pure-logic suite | `node plugin/hedayati-core/tests/verify-phase2b.js` | **170 passed, 0 failed** (2026-09-02, this environment) |
 | Node Phase 2A regression suite | `node plugin/hedayati-core/tests/verify-phase2a.js` | **74 passed, 0 failed** — no regression |
 | PHP unit + contract suite | `php plugin/hedayati-core/tests/test-phase2b.php` | **NOT RUN** — PHP unavailable in the dev environment |
 | PHP Phase 2A suite | `php plugin/hedayati-core/tests/test-phase2a.php` | **NOT RUN** — PHP unavailable (count assertion updated 21 → 22) |

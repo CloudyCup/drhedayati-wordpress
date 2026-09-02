@@ -71,9 +71,11 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
   DB-constraint race converted to `phone_already_exists`. `deleted_user` hook → `delete_phone`.
 - **Roles & capabilities** (`class-roles.php`, class `Hedayati_Roles`): `ROLES_VERSION` `2.0.0`,
   `admin_init` sync. Roles `student`, `teacher_assistant`, `teacher`, `reception`,
-  `hedayati_manager` + native `administrator` augmented with all Hedayati caps. Exactly **21**
-  `hedayati_*` capabilities. Future-safe cleanup: tracks `hedayati_core_managed_capabilities`,
-  removes only its own obsolete/unassigned caps, never touches core/third-party caps.
+  `hedayati_manager` + native `administrator` augmented with all Hedayati caps. **21**
+  `hedayati_*` capabilities as shipped in Phase 2A (`ROLES_VERSION` `2.0.0`); Phase 2B raises this
+  to **22** (`ROLES_VERSION` `2.1.0`, adds `hedayati_manage_teachers` — see the Phase 2B section).
+  Future-safe cleanup: tracks `hedayati_core_managed_capabilities`, removes only its own
+  obsolete/unassigned caps, never touches core/third-party caps.
 - **Rate limiter** (`class-rate-limiter.php`): transient buckets. Defaults 5 fails/identifier,
   30/IP, 900s window — filterable via `hedayati_rate_limit_config`. Identifier canonicalized
   (phone → E.164, else lowercased). Keys are SHA-256-truncated. `get_client_ip()` uses
@@ -133,7 +135,7 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
   labels; core WP admin markup; transient-backed notices.
 - **Roles schema `2.1.0`** (`class-roles.php`): adds `hedayati_manage_teachers` (22nd managed
   capability) to `hedayati_manager` + `administrator`; future-safe sync removes nothing.
-- **Tests:** `tests/verify-phase2b.js` — Node static + pure-logic suite, **140 passed, 0 failed**.
+- **Tests:** `tests/verify-phase2b.js` — Node static + pure-logic suite, **170 passed, 0 failed**.
   `tests/test-phase2b.php` — PHP unit + contract suite (validation matrix, vocabularies, service
   API contracts, wiring) — **NOT RUN** (no PHP here). `tests/test-phase2a.php` cap-count assertion
   updated 21 → 22.
