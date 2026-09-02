@@ -74,9 +74,13 @@ several items still need institute decisions (marked ❓, see the bottom of this
    already link to `/about/`, `/contact/`, `/consult/`.
 5. **Self-host Vazirmatn.** Add approved WOFF2 weights (400/500/600/700/800), enqueue in
    `functions.php`, `font-display: swap`, no CDN. The CSS/`theme.json` stack already names it.
-6. **Shamsi date layer.** Jalali input + display over the Gregorian ISO storage, consistently
-   across all new interfaces; plus Persian/Arabic → ASCII digit normalization for national ID and
-   other searchable numeric fields.
+6. **Shamsi date layer.** 🟡 **Conversion helper + Phase 2B admin display done**
+   (`Hedayati_Jalali` — `from/to_gregorian`, `format`/`format_long`, `parse_input`; Shamsi shown
+   alongside every Gregorian date in the «عملیات آموزشی» screens; 36/36 Node tests incl. a
+   multi-decade round-trip fuzz). **Remaining:** Shamsi *input* fields (a Shamsi picker / text
+   field that saves Gregorian via `Hedayati_Jalali::parse_input()`); public-site Shamsi rendering
+   on the course page and future student/teacher interfaces; plus Persian/Arabic → ASCII digit
+   normalization for national ID and other searchable numeric fields (national ID is Q10-blocked).
 7. **Homepage impact-section statistics.** ❓ verified numbers from the institute + a mechanism to
    edit them (Customizer options or plugin settings — neither exists yet). Until then the section
    stays number-free.

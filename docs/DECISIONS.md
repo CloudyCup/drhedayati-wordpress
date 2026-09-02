@@ -84,6 +84,13 @@ admin/API/import paths can't bypass it. No blind site-wide digit conversion of p
 gets an explicit rule.
 **Why:** Preserves sorting, indexing, searching, validation, reminders, and third-party
 integration.
+**Implemented (2026-09-03):** `Hedayati_Jalali` (`class-jalali.php`) is the Shamsi UI layer —
+`from_gregorian()` / `to_gregorian()` (standard 33-year-cycle integer algorithm), `format()` /
+`format_long()` (stored ISO → Shamsi label, Persian digits optional, **time part copied verbatim**
+per Q9), and `parse_input()` (Shamsi typed by a user → canonical Gregorian `Y-m-d`, round-trip
+guarded). `Hedayati_Text::digits_to_persian()` is the display-only ASCII→Persian digit map. Wired
+into the «عملیات آموزشی» admin displays (Gregorian retained, Shamsi added in parentheses). No
+storage-format change. Shamsi *input* fields and public-site Shamsi rendering are follow-on work.
 
 ## D10 — Custom roles with least privilege; no custom `super_admin`
 

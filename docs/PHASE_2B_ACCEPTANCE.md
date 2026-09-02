@@ -21,6 +21,7 @@ production contact; take a fresh full backup before any state-changing test.
 |---|---|---|
 | Node — Phase 2B static + logic + behavioural port | `node …/verify-phase2b.js` | **171 passed, 0 failed** (2026-09-03) |
 | Node — audit log | `node …/verify-audit-log.js` | **98 passed, 0 failed** (2026-09-03) |
+| Node — Shamsi/Jalali (incl. 15k-day round-trip fuzz) | `node …/verify-jalali.js` | **36 passed, 0 failed** (2026-09-03) |
 | Node — Phase 2C address slice | `node …/verify-phase2c.js` | **25 passed, 0 failed** |
 | Node — Phase 2A regression | `node …/verify-phase2a.js` | **74 passed, 0 failed** — no regression |
 | PHP — `test-phase2b.php` / `test-audit-log.php` / `test-phase2a.php` | `php …` | **NOT RUN** — PHP unavailable in the dev environment (2A count assertion updated 21 → 22) |
@@ -132,6 +133,16 @@ against a live user, or the deletion-cleanup hooks.
 | A3 | Direct POST with a valid nonce but insufficient capability → 403 | server-side cap check |
 | A4 | A non-manager staffed on run X cannot act on run Y (scope) | `require_run_scope()` |
 | A5 | `hedayati_manager` (no `hedayati_record_attendance`) sees attendance read-only, cannot POST it | matrix respected |
+
+### K. Shamsi/Jalali display (Phase 2B admin)
+
+| # | Test | Expected |
+|---|---|---|
+| K1 | Every date in the «عملیات آموزشی» screens shows Gregorian + Shamsi in parentheses | e.g. `2026-03-21 (۱۴۰۴/۱۲/۳۰)` |
+| K2 | A session datetime shows the wall-clock **time unchanged** next to the Shamsi date | Q9 — time is not timezone-converted |
+| K3 | Stored values are still Gregorian ISO / ASCII (check the DB, not the screen) | no storage change |
+| K4 | Nowruz boundary dates convert correctly (`2026-03-20` → `۱۴۰۴/۱۲/۲۹`, `2026-03-21` → `۱۴۰۵/۰۱/۰۱`) | 33-year-cycle algorithm |
+| K5 | An empty / malformed stored date renders as `—` / plain Gregorian, never a PHP warning | graceful fallback |
 
 ### J. Audit log (metadata-only, append-only)
 

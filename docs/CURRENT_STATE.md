@@ -9,7 +9,7 @@ Phase 2A staging acceptance (`docs/PHASE_2A_ACCEPTANCE.md`): the static + read-o
 on branch `feature/phase-2b-academic-operations` — repository + Node static tests only; its staging
 acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
 **Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
-`hedayati-core` **1.4.0** · DB schema **2.2.0** · roles schema **2.1.0**.
+`hedayati-core` **1.5.0** · DB schema **2.2.0** · roles schema **2.1.0**.
 **`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (nothing from this branch is merged).
 
 > The repository is authoritative for "what is implemented". It contains **code only** — no
@@ -106,8 +106,15 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
   `hedayati_attendance` (columns/keys in `docs/DATA_MODEL.md`), then confirms **all five** with
   `SHOW TABLES LIKE` before advancing the version. Additive — does not touch `hedayati_user_phones`.
   `CURRENT_DB_VERSION` `2.1.0`; five `get_table_*()` accessors added.
-- **`Hedayati_Text`** (`class-text.php`): shared `digits_to_ascii()` — the one place new code
-  normalizes Persian/Arabic numerals. `Hedayati_Phone` keeps its own inline map (verified 2A code).
+- **`Hedayati_Text`** (`class-text.php`): shared `digits_to_ascii()` (canonical/searchable) +
+  `digits_to_persian()` (display only). `Hedayati_Phone` keeps its own inline map (verified 2A code).
+- **`Hedayati_Jalali`** (`class-jalali.php`): Shamsi UI layer over Gregorian storage (D9) —
+  `from_gregorian()` / `to_gregorian()` (standard integer algorithm), `is_leap_year()`,
+  `format()` / `format_long()` (stored ISO → Shamsi label; Persian digits optional; **time part
+  copied verbatim**, Q9), `parse_input()` (Shamsi text → canonical `Y-m-d`, round-trip guarded).
+  **No storage-format change.** Wired into the «عملیات آموزشی» screens — every date/datetime shows
+  the Gregorian value **plus** the Shamsi equivalent (parentheses / field hint); machine-readable
+  Gregorian retained; graceful fallback for an unparseable value.
 - **`Hedayati_Academic_Validation`** (`class-academic-validation.php`): the approved business-state
   vocabularies as `const` arrays (validated strings, no ENUM), safe-fallback sanitizers, strict
   `parse_iso_date()` / `parse_datetime()` (canonical `Y-m-d H:i:s`, `checkdate()`), and
@@ -151,9 +158,9 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
   read-only viewer: «عملیات آموزشی → گزارش رویدادها» (`hedayati_view_audit_logs`, GET-only,
   filters validated against the vocabularies, paginated).
 - **Tests (Node, runnable here):** `verify-phase2a.js` **74/74** · `verify-phase2b.js` **171/171**
-  · `verify-phase2c.js` **25/25** · `verify-audit-log.js` **98/98**. PHP suites
-  (`test-phase2a.php` — cap count updated 21→22, `test-phase2b.php`, `test-audit-log.php`) and
-  `php -l` — **NOT RUN** (no PHP in this environment).
+  · `verify-phase2c.js` **25/25** · `verify-audit-log.js` **98/98** · `verify-jalali.js` **36/36**.
+  PHP suites (`test-phase2a.php` — cap count updated 21→22, `test-phase2b.php`, `test-audit-log.php`,
+  `test-jalali.php`) and `php -l` — **NOT RUN** (no PHP in this environment).
 
 ### Plugin — student profile (Phase 2C foundation — address only) — same branch
 

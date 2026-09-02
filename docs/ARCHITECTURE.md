@@ -31,7 +31,7 @@ explicitly from `hedayati-core.php`.
 
 ---
 
-## Plugin: `hedayati-core` (v1.4.0)
+## Plugin: `hedayati-core` (v1.5.0)
 
 ### Bootstrap (`hedayati-core.php`)
 
@@ -44,7 +44,7 @@ explicitly from `hedayati-core.php`.
    `Hedayati_Run_Staff_Service::init()`, `Hedayati_Session_Service::init()`,
    `Hedayati_Enrollment_Service::init()`, `Hedayati_Attendance_Service::init()`,
    `Hedayati_Academic_Admin::init()`; then `Hedayati_Student_Profile::init()`.
-   (`Hedayati_Text`, `Hedayati_Academic_Validation`, `Hedayati_Audit_Log` are pure static — required, not `init()`ed.)
+   (`Hedayati_Text`, `Hedayati_Jalali`, `Hedayati_Academic_Validation`, `Hedayati_Audit_Log` are pure static — required, not `init()`ed.)
 5. Defines the shared helper `hedayati_phone_to_tel_uri()`.
 6. `register_activation_hook`: register post types + taxonomies + Teacher CPT, run
    `Hedayati_DB_Schema::migrate()`, `Hedayati_Roles::register_roles()`, `flush_rewrite_rules()`.
@@ -72,7 +72,8 @@ explicitly from `hedayati-core.php`.
 
 | File / class | Responsibility |
 |---|---|
-| `class-text.php` · `Hedayati_Text` | Shared Persian/Arabic → ASCII digit normalization for all new code (`digits_to_ascii()`) |
+| `class-text.php` · `Hedayati_Text` | Shared digit normalization for new code — `digits_to_ascii()` (canonical/searchable) and `digits_to_persian()` (**display only**) |
+| `class-jalali.php` · `Hedayati_Jalali` | Shamsi UI layer over Gregorian storage (D9) — `from_gregorian()`/`to_gregorian()` (integer 33-year-cycle algorithm), `is_leap_year()`, `format()`/`format_long()` (stored ISO → Shamsi label; time copied verbatim, Q9), `parse_input()` (Shamsi text → canonical `Y-m-d`, round-trip guarded). Pure static; no storage change |
 | `class-academic-validation.php` · `Hedayati_Academic_Validation` | Business-state vocabularies (validated strings, no ENUM) + strict date / datetime / integer parsing; pure functions |
 | `class-teacher.php` · `Hedayati_Teacher` | `teacher` CPT (not publicly queryable), meta (`_hedayati_teacher_user_id` 1:1 link, `_hedayati_teacher_headline`), side meta box, `deleted_user` → unlink |
 | `class-course-run-service.php` · `Hedayati_Course_Run_Service` | Prepared CRUD + validation for `hedayati_course_runs`; `query()` listing; `before_delete_post` (course) → cascade `delete_run()` |

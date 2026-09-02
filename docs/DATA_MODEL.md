@@ -210,7 +210,12 @@ seconds (default 900).
   not a timezone-bearing instant). System timestamps (`created_at` / `updated_at` / `enrolled_at`
   / `recorded_at`) are UTC via `current_time('mysql', true)`, matching Phase 2A. See
   `docs/OPEN_QUESTIONS.md` Q9.
-- ⬜ Shamsi/Jalali is an input/display layer only — never a stored value.
+- 🟡 Shamsi/Jalali is an input/display layer only — never a stored value.
+  `Hedayati_Jalali` (`class-jalali.php`): `format()` / `format_long()` render a stored Gregorian
+  ISO value as a Shamsi label (Persian digits optional; **time part copied verbatim**, Q9);
+  `parse_input()` converts a user-typed Shamsi date back to canonical `Y-m-d` (round-trip guarded)
+  before storage. The Phase 2B admin shows Gregorian + Shamsi side by side; Shamsi input fields and
+  public-site rendering are follow-on work (ROADMAP P1.6).
 
 ### Rate-limit identifier canonicalization (`Hedayati_Rate_Limiter`) ✅
 

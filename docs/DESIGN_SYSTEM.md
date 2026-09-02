@@ -100,7 +100,11 @@ closed = `--hd-muted`. Used by `.seats-badge` / `.status-badge` / `.course-state
   `.course-english-tag`, `.course-english-badge`, `.nav-brandline`, `time[datetime]`, and footer
   phone spans.
 - Course English names are `strtoupper()`-ed and wrapped in `dir="ltr"` spans in templates.
-- Dates render inside `<time datetime="YYYY-MM-DD" dir="ltr">`.
+- Dates render inside `<time datetime="YYYY-MM-DD" dir="ltr">` (machine-readable Gregorian).
+- **Admin (Phase 2B «عملیات آموزشی»):** dates show the Gregorian value **plus** the Shamsi
+  equivalent with Persian digits in parentheses, e.g. `2026-03-21 (۱۴۰۴/۱۲/۳۰)`, via
+  `Hedayati_Jalali::format()`. Storage stays Gregorian ISO / ASCII (D9). Public-site Shamsi
+  rendering and Shamsi *input* fields are follow-on work (ROADMAP P1.6).
 
 ---
 
