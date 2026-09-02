@@ -103,7 +103,10 @@ class Hedayati_Session_Service {
 			return new WP_Error( 'db_insert_failed', esc_html__( 'ثبت جلسه ناموفق بود.', 'hedayati-core' ) );
 		}
 
-		return (int) $wpdb->insert_id;
+		$session_id = (int) $wpdb->insert_id;
+		Hedayati_Audit_Log::record( 'session.created', 'session', $session_id, 'run #' . $run_id . ' · session ' . $number );
+
+		return $session_id;
 	}
 
 	// ── Update ──────────────────────────────────────────────────────────────
@@ -145,6 +148,9 @@ class Hedayati_Session_Service {
 			return new WP_Error( 'db_update_failed', esc_html__( 'به‌روزرسانی جلسه ناموفق بود.', 'hedayati-core' ) );
 		}
 
+		$changed = array_values( array_diff( array_keys( $fields ), [ 'updated_at' ] ) );
+		Hedayati_Audit_Log::record( 'session.updated', 'session', $session_id, 'run #' . $existing['run_id'] . ' · fields: ' . implode( ', ', $changed ) );
+
 		return true;
 	}
 
@@ -162,7 +168,13 @@ class Hedayati_Session_Service {
 
 		$wpdb->delete( $attendance, [ 'session_id' => $session_id ], [ '%d' ] );
 
-		return false !== $wpdb->delete( $sessions, [ 'id' => $session_id ], [ '%d' ] );
+		$affected = $wpdb->delete( $sessions, [ 'id' => $session_id ], [ '%d' ] );
+
+		if ( $affected ) {
+			Hedayati_Audit_Log::record( 'session.deleted', 'session', $session_id, 'cascade: attendance' );
+		}
+
+		return false !== $affected;
 	}
 
 	// ── Internals ───────────────────────────────────────────────────────────

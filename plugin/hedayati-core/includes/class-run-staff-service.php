@@ -189,7 +189,15 @@ class Hedayati_Run_Staff_Service {
 			return new WP_Error( 'db_insert_failed', esc_html__( 'ثبت اختصاص عوامل دوره ناموفق بود.', 'hedayati-core' ) );
 		}
 
-		return (int) $wpdb->insert_id;
+		$assignment_id = (int) $wpdb->insert_id;
+		Hedayati_Audit_Log::record(
+			'run_staff.assigned',
+			'run_staff',
+			$assignment_id,
+			'run #' . $run_id . ' · ' . $role . ' · ' . ( $teacher_id > 0 ? 'teacher #' . $teacher_id : 'user #' . $user_id )
+		);
+
+		return $assignment_id;
 	}
 
 	public static function remove( int $assignment_id ): bool {
@@ -199,9 +207,17 @@ class Hedayati_Run_Staff_Service {
 			return false;
 		}
 
+		$row   = self::get( $assignment_id );
 		$table = Hedayati_DB_Schema::get_table_run_staff();
 
-		return false !== $wpdb->delete( $table, [ 'id' => $assignment_id ], [ '%d' ] );
+		$affected = $wpdb->delete( $table, [ 'id' => $assignment_id ], [ '%d' ] );
+
+		if ( $affected ) {
+			$context = $row ? 'run #' . $row['run_id'] . ' · ' . $row['staff_role'] : '';
+			Hedayati_Audit_Log::record( 'run_staff.removed', 'run_staff', $assignment_id, $context );
+		}
+
+		return false !== $affected;
 	}
 
 	// ── Lifecycle ───────────────────────────────────────────────────────────
@@ -213,8 +229,17 @@ class Hedayati_Run_Staff_Service {
 			return;
 		}
 
-		$table = Hedayati_DB_Schema::get_table_run_staff();
-		$wpdb->delete( $table, [ 'user_id' => $user_id ], [ '%d' ] );
+		$table    = Hedayati_DB_Schema::get_table_run_staff();
+		$affected = $wpdb->delete( $table, [ 'user_id' => $user_id ], [ '%d' ] );
+
+		if ( $affected ) {
+			Hedayati_Audit_Log::record(
+				'run_staff.purged_for_user',
+				'user',
+				$user_id,
+				(int) $affected . ' assistant assignment(s) removed on account deletion'
+			);
+		}
 	}
 
 	public static function on_post_deleted( int $post_id, WP_Post $post ): void {
@@ -224,8 +249,17 @@ class Hedayati_Run_Staff_Service {
 			return;
 		}
 
-		$table = Hedayati_DB_Schema::get_table_run_staff();
-		$wpdb->delete( $table, [ 'teacher_id' => $post_id ], [ '%d' ] );
+		$table    = Hedayati_DB_Schema::get_table_run_staff();
+		$affected = $wpdb->delete( $table, [ 'teacher_id' => $post_id ], [ '%d' ] );
+
+		if ( $affected ) {
+			Hedayati_Audit_Log::record(
+				'run_staff.purged_for_teacher',
+				'teacher',
+				$post_id,
+				(int) $affected . ' instructor assignment(s) removed on profile deletion'
+			);
+		}
 	}
 
 	// ── Internals ───────────────────────────────────────────────────────────

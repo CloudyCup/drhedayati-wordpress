@@ -142,7 +142,10 @@ class Hedayati_Course_Run_Service {
 			return new WP_Error( 'db_insert_failed', esc_html__( 'ثبت دورهٔ اجرایی در پایگاه داده ناموفق بود.', 'hedayati-core' ) );
 		}
 
-		return (int) $wpdb->insert_id;
+		$run_id = (int) $wpdb->insert_id;
+		Hedayati_Audit_Log::record( 'course_run.created', 'course_run', $run_id, 'course #' . $course_id );
+
+		return $run_id;
 	}
 
 	// ── Update ──────────────────────────────────────────────────────────────
@@ -172,6 +175,9 @@ class Hedayati_Course_Run_Service {
 		if ( false === $updated ) {
 			return new WP_Error( 'db_update_failed', esc_html__( 'به‌روزرسانی دورهٔ اجرایی ناموفق بود.', 'hedayati-core' ) );
 		}
+
+		$changed = array_values( array_diff( array_keys( $fields ), [ 'updated_at' ] ) );
+		Hedayati_Audit_Log::record( 'course_run.updated', 'course_run', $run_id, 'fields: ' . implode( ', ', $changed ) );
 
 		return true;
 	}
@@ -210,7 +216,16 @@ class Hedayati_Course_Run_Service {
 		$wpdb->delete( $enrollments, [ 'run_id' => $run_id ], [ '%d' ] );
 		$wpdb->delete( $run_staff, [ 'run_id' => $run_id ], [ '%d' ] );
 
-		return false !== $wpdb->delete( $runs, [ 'id' => $run_id ], [ '%d' ] );
+		$affected = $wpdb->delete( $runs, [ 'id' => $run_id ], [ '%d' ] );
+
+		if ( $affected ) {
+			// Child sessions/enrollments/attendance/staff are removed by the SQL
+			// above without individual audit rows — the run deletion is the
+			// auditable event; the cascade is implied and recorded here.
+			Hedayati_Audit_Log::record( 'course_run.deleted', 'course_run', $run_id, 'cascade: sessions, enrollments, attendance, staff' );
+		}
+
+		return false !== $affected;
 	}
 
 	public static function on_course_deleted( int $post_id, WP_Post $post ): void {
@@ -218,7 +233,13 @@ class Hedayati_Course_Run_Service {
 			return;
 		}
 
-		foreach ( self::query( [ 'course_id' => $post_id, 'limit' => 500 ] ) as $run ) {
+		$runs = self::query( [ 'course_id' => $post_id, 'limit' => 500 ] );
+
+		if ( ! empty( $runs ) ) {
+			Hedayati_Audit_Log::record( 'course.deleted', 'course', $post_id, count( $runs ) . ' run(s) cascade-deleted' );
+		}
+
+		foreach ( $runs as $run ) {
 			self::delete_run( (int) $run['id'] );
 		}
 	}

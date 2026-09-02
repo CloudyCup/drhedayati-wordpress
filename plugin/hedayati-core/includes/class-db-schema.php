@@ -22,7 +22,7 @@ class Hedayati_DB_Schema {
 	/**
 	 * Current target database schema version.
 	 */
-	public const CURRENT_DB_VERSION = '2.1.0';
+	public const CURRENT_DB_VERSION = '2.2.0';
 
 	/**
 	 * Option name for tracking the installed schema version.
@@ -45,6 +45,7 @@ class Hedayati_DB_Schema {
 	private const MIGRATIONS = [
 		'2.0.0' => 'migrate_2_0_0',
 		'2.1.0' => 'migrate_2_1_0',
+		'2.2.0' => 'migrate_2_2_0',
 	];
 
 	/**
@@ -92,6 +93,14 @@ class Hedayati_DB_Schema {
 	public static function get_table_attendance(): string {
 		global $wpdb;
 		return $wpdb->prefix . 'hedayati_attendance';
+	}
+
+	/**
+	 * Metadata-only append-only audit log (migration 2.2.0). Dynamic-prefixed.
+	 */
+	public static function get_table_audit_log(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'hedayati_audit_log';
 	}
 
 	/**
@@ -348,5 +357,57 @@ class Hedayati_DB_Schema {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Migration 2.2.0: metadata-only, append-only audit log.
+	 *
+	 * Records WHO did WHAT to WHICH object and WHEN — nothing more. There is
+	 * deliberately NO ip / user_agent / request-body / serialized-context column:
+	 * the IP/UA retention policy is unresolved (docs/OPEN_QUESTIONS.md Q13) and is
+	 * not solved by guessing. `note` is a short, bounded, PII-free string.
+	 *
+	 * Append-only: there is no `updated_at` column and the service exposes no
+	 * update/delete path. The table is NOT part of any domain deletion cascade —
+	 * audit history outlives the objects it references (docs/DECISIONS.md D16/D31).
+	 *
+	 * `actor_id` / `object_id` use `NOT NULL DEFAULT 0` (0 = "no actor" / "not
+	 * applicable") rather than NULL — an unambiguous sentinel that matches WP
+	 * conventions and keeps the lookup indexes simple.
+	 *
+	 * Additive only; touches no existing table.
+	 *
+	 * @return bool True once the table exists.
+	 */
+	private static function migrate_2_2_0(): bool {
+		global $wpdb;
+
+		$charset_collate = $wpdb->get_charset_collate();
+		$table_audit_log = self::get_table_audit_log();
+
+		$sql_audit_log = "CREATE TABLE {$table_audit_log} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			actor_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			action varchar(64) NOT NULL DEFAULT '',
+			object_type varchar(32) NOT NULL DEFAULT '',
+			object_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			note varchar(255) NOT NULL DEFAULT '',
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY idx_object (object_type, object_id),
+			KEY idx_actor (actor_id),
+			KEY idx_action (action),
+			KEY idx_created_at (created_at)
+		) {$charset_collate};";
+
+		if ( ! function_exists( 'dbDelta' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		}
+
+		dbDelta( $sql_audit_log );
+
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_audit_log ) );
+
+		return ( $exists === $table_audit_log );
 	}
 }

@@ -183,7 +183,7 @@ for (const f of NEW_FILES) {
 
 console.log('\n6. Migration 2.1.0 (class-db-schema.php):');
 const db = read('includes/class-db-schema.php');
-assert("CURRENT_DB_VERSION bumped to 2.1.0", db.includes("CURRENT_DB_VERSION = '2.1.0'"));
+assert("CURRENT_DB_VERSION >= 2.1.0 (Phase 2B schema present)", /CURRENT_DB_VERSION = '2\.(?:[1-9]|\d\d)\.\d+'/.test(db));
 assert("MIGRATIONS map has '2.1.0' => 'migrate_2_1_0'", /'2\.1\.0'\s*=>\s*'migrate_2_1_0'/.test(db));
 assert("migrate_2_1_0() method defined", db.includes('private static function migrate_2_1_0()'));
 assert("2.0.0 migration still present (no regression)", db.includes('migrate_2_0_0'));

@@ -68,7 +68,7 @@ assert("exposes a read API Hedayati_Student_Profile::get()", /public static func
 
 assert("plugin requires the class", boot.includes('includes/class-student-profile.php'));
 assert("plugin boots Hedayati_Student_Profile::init()", boot.includes('Hedayati_Student_Profile::init()'));
-assert("plugin version bumped to 1.3.0", boot.includes("HEDAYATI_CORE_VERSION', '1.3.0'"));
+assert("plugin version >= 1.3.0 (student profile present)", /HEDAYATI_CORE_VERSION', '1\.[3-9]\.\d+'/.test(boot));
 
 console.log(`\n========================================`);
 console.log(`PHASE 2C (FOUNDATION) SUMMARY: ${passed} PASSED, ${failed} FAILED`);

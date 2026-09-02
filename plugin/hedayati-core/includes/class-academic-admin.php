@@ -62,6 +62,15 @@ class Hedayati_Academic_Admin {
 			'dashicons-welcome-learn-more',
 			7
 		);
+
+		add_submenu_page(
+			self::MENU_SLUG,
+			'گزارش رویدادها (Audit Log)',
+			'گزارش رویدادها',
+			Hedayati_Audit_Log::VIEW_CAPABILITY,
+			self::MENU_SLUG . '-audit',
+			[ self::class, 'render_audit_log' ]
+		);
 	}
 
 	public static function render_screen(): void {
@@ -549,6 +558,114 @@ class Hedayati_Academic_Admin {
 		}
 
 		echo '</form>';
+	}
+
+	// ── Audit-log viewer (read-only) ───────────────────────────────────────
+
+	/**
+	 * Smallest secure read-only viewer for the append-only audit log
+	 * (`hedayati_view_audit_logs`). No actions, no state changes, no nonces
+	 * (GET only). Filters and pagination via sanitized query args. Richer UX
+	 * (export, date range, actor search) is Phase 2D and deliberately not invented
+	 * here.
+	 */
+	public static function render_audit_log(): void {
+		if ( ! current_user_can( Hedayati_Audit_Log::VIEW_CAPABILITY ) ) {
+			wp_die( esc_html__( 'شما اجازهٔ مشاهدهٔ گزارش رویدادها را ندارید.', 'hedayati-core' ), '', [ 'response' => 403 ] );
+		}
+
+		$per_page  = 50;
+		$page      = isset( $_GET['paged'] ) ? max( 1, absint( wp_unslash( $_GET['paged'] ) ) ) : 1;
+		$f_type    = isset( $_GET['flt_object_type'] ) ? sanitize_key( wp_unslash( $_GET['flt_object_type'] ) ) : '';
+		$f_action  = isset( $_GET['flt_action'] ) ? sanitize_text_field( wp_unslash( $_GET['flt_action'] ) ) : '';
+		$f_object  = isset( $_GET['flt_object_id'] ) ? absint( wp_unslash( $_GET['flt_object_id'] ) ) : 0;
+
+		$f_type   = in_array( $f_type, Hedayati_Audit_Log::object_types(), true ) ? $f_type : '';
+		$f_action = in_array( $f_action, Hedayati_Audit_Log::actions(), true ) ? $f_action : '';
+
+		$filters = array_filter( [
+			'object_type' => $f_type,
+			'action'      => $f_action,
+			'object_id'   => $f_object,
+		] );
+
+		$total   = Hedayati_Audit_Log::count( $filters );
+		$entries = Hedayati_Audit_Log::query( $filters + [ 'per_page' => $per_page, 'page' => $page ] );
+		$pages   = (int) max( 1, ceil( $total / $per_page ) );
+
+		echo '<div class="wrap">';
+		echo '<h1>' . esc_html__( 'گزارش رویدادها (Audit Log)', 'hedayati-core' ) . '</h1>';
+		echo '<p class="description">' . esc_html__( 'ثبت فقط-افزودنی رویدادهای عملیاتی. بدون IP، بدون user-agent، بدون اطلاعات هویتی دانشجو.', 'hedayati-core' ) . '</p>';
+
+		// Filter form (GET)
+		echo '<form method="get" style="margin:1em 0">';
+		echo '<input type="hidden" name="page" value="' . esc_attr( self::MENU_SLUG . '-audit' ) . '">';
+		echo '<select name="flt_object_type"><option value="">' . esc_html__( 'همهٔ انواع', 'hedayati-core' ) . '</option>';
+		foreach ( Hedayati_Audit_Log::object_types() as $ot ) {
+			echo '<option value="' . esc_attr( $ot ) . '"' . selected( $f_type, $ot, false ) . '>' . esc_html( $ot ) . '</option>';
+		}
+		echo '</select> ';
+		echo '<select name="flt_action"><option value="">' . esc_html__( 'همهٔ رویدادها', 'hedayati-core' ) . '</option>';
+		foreach ( Hedayati_Audit_Log::actions() as $ac ) {
+			echo '<option value="' . esc_attr( $ac ) . '"' . selected( $f_action, $ac, false ) . '>' . esc_html( $ac ) . '</option>';
+		}
+		echo '</select> ';
+		echo '<input type="number" name="flt_object_id" value="' . esc_attr( $f_object ?: '' ) . '" placeholder="' . esc_attr__( 'شناسهٔ شیء', 'hedayati-core' ) . '" style="width:9em" min="0"> ';
+		submit_button( esc_html__( 'فیلتر', 'hedayati-core' ), 'secondary', '', false );
+		echo '</form>';
+
+		echo '<p>' . esc_html( sprintf( __( '%d رویداد', 'hedayati-core' ), $total ) ) . '</p>';
+
+		echo '<table class="widefat striped"><thead><tr>';
+		echo '<th>' . esc_html__( 'زمان (UTC)', 'hedayati-core' ) . '</th>';
+		echo '<th>' . esc_html__( 'کاربر', 'hedayati-core' ) . '</th>';
+		echo '<th>' . esc_html__( 'رویداد', 'hedayati-core' ) . '</th>';
+		echo '<th>' . esc_html__( 'شیء', 'hedayati-core' ) . '</th>';
+		echo '<th>' . esc_html__( 'توضیح', 'hedayati-core' ) . '</th>';
+		echo '</tr></thead><tbody>';
+
+		if ( empty( $entries ) ) {
+			echo '<tr><td colspan="5">' . esc_html__( 'رویدادی ثبت نشده است.', 'hedayati-core' ) . '</td></tr>';
+		}
+
+		foreach ( $entries as $row ) {
+			$actor = '—';
+			if ( $row['actor_id'] > 0 ) {
+				$u     = get_user_by( 'id', $row['actor_id'] );
+				$actor = $u ? $u->user_login : sprintf( '#%d', $row['actor_id'] );
+			} else {
+				$actor = esc_html__( 'سیستم', 'hedayati-core' );
+			}
+
+			echo '<tr>';
+			echo '<td dir="ltr">' . esc_html( $row['created_at'] ) . '</td>';
+			echo '<td>' . esc_html( $actor ) . '</td>';
+			echo '<td dir="ltr"><code>' . esc_html( $row['action'] ) . '</code></td>';
+			echo '<td dir="ltr">' . esc_html( $row['object_type'] . ( $row['object_id'] ? ' #' . $row['object_id'] : '' ) ) . '</td>';
+			echo '<td dir="ltr">' . esc_html( $row['note'] ) . '</td>';
+			echo '</tr>';
+		}
+
+		echo '</tbody></table>';
+
+		if ( $pages > 1 ) {
+			$base_args         = $filters;
+			$base_args['page'] = self::MENU_SLUG . '-audit';
+			$base              = admin_url( 'admin.php' ) . '?' . http_build_query( $base_args ) . '&paged=%#%';
+
+			echo '<div class="tablenav"><div class="tablenav-pages">';
+			echo wp_kses_post( (string) paginate_links( [
+				'base'      => $base,
+				'format'    => '',
+				'current'   => $page,
+				'total'     => $pages,
+				'prev_text' => '‹',
+				'next_text' => '›',
+			] ) );
+			echo '</div></div>';
+		}
+
+		echo '</div>';
 	}
 
 	// ── POST handlers ───────────────────────────────────────────────────────

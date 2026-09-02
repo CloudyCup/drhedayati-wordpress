@@ -148,7 +148,15 @@ class Hedayati_Enrollment_Service {
 			return new WP_Error( 'db_insert_failed', esc_html__( 'ثبت‌نام ناموفق بود.', 'hedayati-core' ) );
 		}
 
-		return (int) $wpdb->insert_id;
+		$enrollment_id = (int) $wpdb->insert_id;
+		Hedayati_Audit_Log::record(
+			'enrollment.created',
+			'enrollment',
+			$enrollment_id,
+			'run #' . $run_id . ' · user #' . $user_id . ( $allow_overfill ? ' · overfill' : '' )
+		);
+
+		return $enrollment_id;
 	}
 
 	// ── Status transitions ──────────────────────────────────────────────────
@@ -183,24 +191,45 @@ class Hedayati_Enrollment_Service {
 			return new WP_Error( 'db_update_failed', esc_html__( 'به‌روزرسانی وضعیت ثبت‌نام ناموفق بود.', 'hedayati-core' ) );
 		}
 
+		Hedayati_Audit_Log::record(
+			'enrollment.status_changed',
+			'enrollment',
+			$enrollment_id,
+			'run #' . $existing['run_id'] . ' · ' . $existing['status'] . ' -> ' . $canonical
+		);
+
 		return true;
 	}
 
 	// ── Delete ──────────────────────────────────────────────────────────────
 
-	public static function delete_enrollment( int $enrollment_id ): bool {
+	/**
+	 * @param string $reason short audit context, e.g. 'account deleted'
+	 */
+	public static function delete_enrollment( int $enrollment_id, string $reason = '' ): bool {
 		global $wpdb;
 
 		if ( $enrollment_id <= 0 ) {
 			return false;
 		}
 
+		$existing     = self::get( $enrollment_id );
 		$attendance   = Hedayati_DB_Schema::get_table_attendance();
 		$enrollments  = Hedayati_DB_Schema::get_table_enrollments();
 
 		$wpdb->delete( $attendance, [ 'enrollment_id' => $enrollment_id ], [ '%d' ] );
 
-		return false !== $wpdb->delete( $enrollments, [ 'id' => $enrollment_id ], [ '%d' ] );
+		$affected = $wpdb->delete( $enrollments, [ 'id' => $enrollment_id ], [ '%d' ] );
+
+		if ( $affected ) {
+			$note = $existing ? 'run #' . $existing['run_id'] . ' · user #' . $existing['user_id'] : '';
+			if ( '' !== $reason ) {
+				$note = '' === $note ? $reason : $note . ' · ' . $reason;
+			}
+			Hedayati_Audit_Log::record( 'enrollment.deleted', 'enrollment', $enrollment_id, $note . ' · cascade: attendance' );
+		}
+
+		return false !== $affected;
 	}
 
 	public static function on_user_deleted( int $user_id ): void {
@@ -208,8 +237,19 @@ class Hedayati_Enrollment_Service {
 			return;
 		}
 
-		foreach ( self::list_for_user( $user_id ) as $enrollment ) {
-			self::delete_enrollment( (int) $enrollment['id'] );
+		$enrollments = self::list_for_user( $user_id );
+
+		foreach ( $enrollments as $enrollment ) {
+			self::delete_enrollment( (int) $enrollment['id'], 'account deleted' );
+		}
+
+		if ( ! empty( $enrollments ) ) {
+			Hedayati_Audit_Log::record(
+				'enrollment.purged_for_user',
+				'user',
+				$user_id,
+				count( $enrollments ) . ' enrollment(s) removed on account deletion'
+			);
 		}
 	}
 

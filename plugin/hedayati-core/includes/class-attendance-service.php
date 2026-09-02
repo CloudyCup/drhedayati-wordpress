@@ -93,11 +93,11 @@ class Hedayati_Attendance_Service {
 		$now         = current_time( 'mysql', true );
 		$table       = Hedayati_DB_Schema::get_table_attendance();
 
-		$existing = $wpdb->get_var( $wpdb->prepare(
-			"SELECT id FROM {$table} WHERE session_id = %d AND enrollment_id = %d",
+		$existing = $wpdb->get_row( $wpdb->prepare(
+			"SELECT id, status FROM {$table} WHERE session_id = %d AND enrollment_id = %d",
 			$session_id,
 			$enrollment_id
-		) );
+		), ARRAY_A );
 
 		if ( $existing ) {
 			$updated = $wpdb->update(
@@ -109,7 +109,7 @@ class Hedayati_Attendance_Service {
 					'recorded_at' => $now,
 					'updated_at'  => $now,
 				],
-				[ 'id' => (int) $existing ],
+				[ 'id' => (int) $existing['id'] ],
 				[ '%s', '%s', '%d', '%s', '%s' ],
 				[ '%d' ]
 			);
@@ -118,7 +118,16 @@ class Hedayati_Attendance_Service {
 				return new WP_Error( 'db_update_failed', esc_html__( 'ثبت حضور و غیاب ناموفق بود.', 'hedayati-core' ) );
 			}
 
-			return (int) $existing;
+			if ( (string) $existing['status'] !== $canonical ) {
+				Hedayati_Audit_Log::record(
+					'attendance.updated',
+					'attendance',
+					(int) $existing['id'],
+					'session #' . $session_id . ' · enrollment #' . $enrollment_id . ' · ' . $existing['status'] . ' -> ' . $canonical
+				);
+			}
+
+			return (int) $existing['id'];
 		}
 
 		$inserted = $wpdb->insert(
@@ -151,7 +160,15 @@ class Hedayati_Attendance_Service {
 			return new WP_Error( 'db_insert_failed', esc_html__( 'ثبت حضور و غیاب ناموفق بود.', 'hedayati-core' ) );
 		}
 
-		return (int) $wpdb->insert_id;
+		$attendance_id = (int) $wpdb->insert_id;
+		Hedayati_Audit_Log::record(
+			'attendance.recorded',
+			'attendance',
+			$attendance_id,
+			'session #' . $session_id . ' · enrollment #' . $enrollment_id . ' · ' . $canonical
+		);
+
+		return $attendance_id;
 	}
 
 	/**
@@ -184,11 +201,21 @@ class Hedayati_Attendance_Service {
 			return false;
 		}
 
-		$table = Hedayati_DB_Schema::get_table_attendance();
+		$table    = Hedayati_DB_Schema::get_table_attendance();
+		$affected = $wpdb->delete( $table, [ 'id' => $id ], [ '%d' ] );
 
-		return false !== $wpdb->delete( $table, [ 'id' => $id ], [ '%d' ] );
+		if ( $affected ) {
+			Hedayati_Audit_Log::record( 'attendance.deleted', 'attendance', $id );
+		}
+
+		return false !== $affected;
 	}
 
+	/**
+	 * On account deletion, the attendance ROW is kept (academic history) — only the
+	 * `recorded_by` back-reference is nulled. This is integrity housekeeping, not a
+	 * domain action, so it is intentionally NOT written to the audit log.
+	 */
 	public static function on_user_deleted( int $user_id ): void {
 		global $wpdb;
 
