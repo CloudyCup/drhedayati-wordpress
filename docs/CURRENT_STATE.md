@@ -132,7 +132,9 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
   `admin-post.php` with a per-action nonce, a server-side capability check, and a per-run access
   scope check (`require_run_scope()` — managers/admins bypass, other staff limited to their runs).
   Attendance writes gated on `hedayati_record_attendance` (managers see it read-only). Persian
-  labels; core WP admin markup; transient-backed notices.
+  labels; core WP admin markup; transient-backed notices. Also: a read-only "دوره‌های اجرایی این
+  دوره" side box on the `course` edit screen (links each run to the academic screen), and
+  headline / linked-account columns on the Teacher list table.
 - **Roles schema `2.1.0`** (`class-roles.php`): adds `hedayati_manage_teachers` (22nd managed
   capability) to `hedayati_manager` + `administrator`; future-safe sync removes nothing.
 - **Tests:** `tests/verify-phase2b.js` — Node static + pure-logic suite, **170 passed, 0 failed**.

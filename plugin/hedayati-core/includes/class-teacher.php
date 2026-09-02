@@ -43,6 +43,9 @@ class Hedayati_Teacher {
 		add_action( 'add_meta_boxes_' . self::POST_TYPE, [ self::class, 'register_box' ] );
 		add_action( 'save_post_' . self::POST_TYPE, [ self::class, 'save' ], 10, 2 );
 		add_action( 'deleted_user', [ self::class, 'on_user_deleted' ] );
+
+		add_filter( 'manage_' . self::POST_TYPE . '_posts_columns', [ self::class, 'columns' ] );
+		add_action( 'manage_' . self::POST_TYPE . '_posts_custom_column', [ self::class, 'column_content' ], 10, 2 );
 	}
 
 	// ── Registration ─────────────────────────────────────────────────────────
@@ -202,6 +205,41 @@ class Hedayati_Teacher {
 			}
 		} else {
 			update_post_meta( $post_id, self::META_USER_ID, 0 );
+		}
+	}
+
+	// ── List table columns ──────────────────────────────────────────────────
+
+	/**
+	 * @param array<string,string> $columns
+	 * @return array<string,string>
+	 */
+	public static function columns( array $columns ): array {
+		$out = [];
+		foreach ( $columns as $key => $label ) {
+			$out[ $key ] = $label;
+			if ( 'title' === $key ) {
+				$out['hd_headline'] = esc_html__( 'عنوان کوتاه', 'hedayati-core' );
+				$out['hd_account']  = esc_html__( 'حساب کاربری', 'hedayati-core' );
+			}
+		}
+		return $out;
+	}
+
+	public static function column_content( string $column, int $post_id ): void {
+		if ( 'hd_headline' === $column ) {
+			echo esc_html( (string) get_post_meta( $post_id, self::META_HEADLINE, true ) ?: '—' );
+			return;
+		}
+
+		if ( 'hd_account' === $column ) {
+			$user_id = self::get_user_id( $post_id );
+			if ( null === $user_id ) {
+				echo '—';
+				return;
+			}
+			$user = get_user_by( 'id', $user_id );
+			echo esc_html( $user ? $user->user_login : sprintf( '#%d', $user_id ) );
 		}
 	}
 

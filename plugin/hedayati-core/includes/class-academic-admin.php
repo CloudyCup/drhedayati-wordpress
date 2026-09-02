@@ -35,6 +35,7 @@ class Hedayati_Academic_Admin {
 	public static function init(): void {
 		add_action( 'admin_menu', [ self::class, 'register_menu' ] );
 		add_action( 'admin_notices', [ self::class, 'render_notices' ] );
+		add_action( 'add_meta_boxes_course', [ self::class, 'register_course_runs_box' ] );
 
 		$actions = [
 			'hedayati_run_save', 'hedayati_run_delete',
@@ -84,6 +85,51 @@ class Hedayati_Academic_Admin {
 		}
 
 		echo '</div>';
+	}
+
+	// ── Course edit screen: read-only "Course Runs" panel ───────────────────
+
+	public static function register_course_runs_box(): void {
+		if ( ! current_user_can( self::CAP_VIEW ) ) {
+			return;
+		}
+
+		add_meta_box(
+			'hedayati-course-runs',
+			'دوره‌های اجرایی این دوره',
+			[ self::class, 'render_course_runs_box' ],
+			'course',
+			'side',
+			'default'
+		);
+	}
+
+	public static function render_course_runs_box( WP_Post $post ): void {
+		$runs = Hedayati_Course_Run_Service::query( [ 'course_id' => $post->ID, 'limit' => 100, 'orderby' => 'start_date', 'order' => 'DESC' ] );
+
+		if ( empty( $runs ) ) {
+			echo '<p>' . esc_html__( 'هنوز دورهٔ اجرایی برای این دوره ثبت نشده است.', 'hedayati-core' ) . '</p>';
+		} else {
+			echo '<ul style="margin:0">';
+			foreach ( $runs as $run ) {
+				$url = add_query_arg(
+					[ 'page' => self::MENU_SLUG, 'view' => 'run', 'run_id' => $run['id'] ],
+					admin_url( 'admin.php' )
+				);
+				printf(
+					'<li style="margin-bottom:.4em"><a href="%s">%s</a> — %s%s</li>',
+					esc_url( $url ),
+					esc_html( $run['label'] ?: sprintf( __( 'دورهٔ اجرایی #%d', 'hedayati-core' ), $run['id'] ) ),
+					esc_html( self::run_status_label( $run['run_status'] ) ),
+					$run['start_date'] ? ' — <span dir="ltr">' . esc_html( $run['start_date'] ) . '</span>' : ''
+				);
+			}
+			echo '</ul>';
+		}
+
+		$new_url = add_query_arg( [ 'page' => self::MENU_SLUG ], admin_url( 'admin.php' ) );
+		echo '<p><a class="button button-small" href="' . esc_url( $new_url ) . '">' . esc_html__( 'مدیریت دوره‌های اجرایی', 'hedayati-core' ) . '</a></p>';
+		echo '<p class="description">' . esc_html__( 'دورهٔ اجرایی، منبعِ رسمیِ مدرس، زمان‌بندی، شهریه و ظرفیتِ هر ترم است.', 'hedayati-core' ) . '</p>';
 	}
 
 	// ── Access scope ────────────────────────────────────────────────────────

@@ -95,3 +95,25 @@ service does not enforce role — so an importer or a future self-service flow i
 boxed in.
 **Open:** if the institute wants a hard rule ("only students can be enrolled"),
 add it in `Hedayati_Enrollment_Service::enroll()`. Non-blocking.
+
+## Q8 — Which Course Run does a public course page display?
+
+**Status:** OPEN — blocks the Phase 2B theme-fallback wiring, not the backend.
+**Context:** `docs/DECISIONS.md` D12 says the `_course_teacher` / `_course_next_start_date` /
+`_course_price` / `_course_registration_state` meta become "backward-compatible fallbacks" once
+Course Runs exist. The backend is built and the run layer never writes that meta — but the public
+`single-course.php` still reads **only** the meta. To make the run the display source, the theme
+needs to pick **one** run per course to surface, and that choice is a product decision:
+- the next run whose `start_date` is in the future?
+- the run with `registration_status = 'open'` (and if several, the soonest)?
+- the most recently created non-draft run?
+- show a *list* of upcoming runs instead of folding into the existing single-value fields?
+And: what to show when a course has **no** runs (keep the current meta), and whether tuition should
+switch from the free-text `_course_price` string to a formatted `tuition_rial` (rial→toman
+formatting rules also unconfirmed).
+**Why it matters:** changes public-site rendering; must not regress the current course page.
+**Safe options:** (a) leave the theme untouched until decided (current state — no regression);
+(b) add a `Hedayati_Course_Run_Service::get_display_run( $course_id )` with a documented, filterable
+default (`hedayati_course_display_run`) once the institute picks a rule.
+**Blocks:** the "theme reads run data" item only. The Phase 2B backend + admin do not depend on it.
+Recommend deferring to Phase 2D (interfaces) where the public course page is revisited anyway.
