@@ -205,7 +205,11 @@ seconds (default 900).
 ### Dates
 
 - Course dates: strict Gregorian ISO `YYYY-MM-DD`, `checkdate()`-validated, machine-sortable.
-- ⬜ Future sessions: canonical `starts_at` / `ends_at` datetimes.
+- ✅ Phase 2B sessions: canonical `starts_at` / `ends_at` as `Y-m-d H:i:s`, ASCII digits,
+  `checkdate()`-validated. Stored **as entered** (site-local wall-clock — a scheduled class time,
+  not a timezone-bearing instant). System timestamps (`created_at` / `updated_at` / `enrolled_at`
+  / `recorded_at`) are UTC via `current_time('mysql', true)`, matching Phase 2A. See
+  `docs/OPEN_QUESTIONS.md` Q9.
 - ⬜ Shamsi/Jalali is an input/display layer only — never a stored value.
 
 ### Rate-limit identifier canonicalization (`Hedayati_Rate_Limiter`) ✅
@@ -305,7 +309,7 @@ Uniqueness ((run, person, role) once; one primary instructor per run) is enforce
 | `id` | `bigint unsigned AI` | PK |
 | `run_id` | `bigint unsigned NOT NULL` | `KEY` |
 | `session_number` | `int unsigned NOT NULL` | **`UNIQUE KEY uq_run_session (run_id, session_number)`** |
-| `starts_at` | `datetime NOT NULL` | canonical; `KEY idx_starts_at` |
+| `starts_at` | `datetime NOT NULL` | canonical `Y-m-d H:i:s`, stored **as entered** (site-local wall-clock — a class time, not an instant); `KEY idx_starts_at` |
 | `ends_at` | `datetime NULL` | optional; must be > `starts_at` when set |
 | `topic` | `varchar(190) NOT NULL DEFAULT ''` | |
 | `status` | `varchar(20) NOT NULL DEFAULT 'scheduled'` | scheduled/held/cancelled |

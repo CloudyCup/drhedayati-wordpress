@@ -117,3 +117,17 @@ formatting rules also unconfirmed).
 default (`hedayati_course_display_run`) once the institute picks a rule.
 **Blocks:** the "theme reads run data" item only. The Phase 2B backend + admin do not depend on it.
 Recommend deferring to Phase 2D (interfaces) where the public course page is revisited anyway.
+
+## Q9 — Session datetime timezone model
+
+**Status:** resolved by implementation (single-country institute), flagged for staging sign-off.
+**Context:** `hedayati_sessions.starts_at` / `ends_at` are stored exactly as the operator enters
+them (`Y-m-d H:i:s`, ASCII digits) — site-local wall-clock, because a session is a scheduled class
+time ("جلسه ساعت ۹ صبح"), not a timezone-bearing instant. System timestamps elsewhere
+(`created_at`, `recorded_at`, …) are UTC, consistent with Phase 2A.
+**Why it matters:** if the institute ever needs cross-timezone scheduling (online cohorts in
+different regions) or exports to a calendar system, wall-clock storage would need a companion
+timezone or a migration to UTC instants.
+**Assessment:** for a Tabriz/Tehran in-person institute this is the correct, simplest model.
+**Blocks:** nothing. Confirm the expectation with the institute during Phase 2B staging acceptance;
+revisit only if online/multi-timezone delivery becomes a requirement.
