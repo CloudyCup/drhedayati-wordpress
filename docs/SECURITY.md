@@ -61,11 +61,15 @@ authorization must never depend on hidden UI.
     `hedayati_record_attendance` (attendance writes). Each state-changing request checks the
     capability **and** a per-run access scope (`Hedayati_Run_Staff_Service::user_is_staff_on_run()`
     for non-managers) — roles alone are not sufficient.
+  - **Consumed by the Phase 2C foundation** (`class-student-profile.php`):
+    `hedayati_edit_own_profile` (a user editing their own address fields) and
+    `hedayati_view_student_profiles_basic` (staff viewing/editing another user's fields, in
+    addition to core `edit_user`).
   - **Still defined but not yet consumed:** `hedayati_verify_students`,
     `hedayati_view_private_documents`, `hedayati_view_audit_logs`, `hedayati_initiate_verification`,
-    `hedayati_view_own_*` / `hedayati_upload_own_documents`, and the teacher/TA `view_assigned_*`
-    caps (the scoped teacher/TA/student portals are Phase 2D). When building those, add the
-    ownership/scope check alongside.
+    `hedayati_view_own_portal` / `hedayati_view_own_enrollments` / `hedayati_upload_own_documents`,
+    and the teacher/TA `view_assigned_*` caps (the scoped teacher/TA/student portals are Phase 2D).
+    When building those, add the ownership/scope check alongside.
 - **Academic-operations authorization boundary:** the service classes
   (`Hedayati_*_Service`) are a capability-agnostic data layer — exactly like
   `Hedayati_User_Phone_Service` in Phase 2A. Every capability and nonce check lives in the caller
@@ -114,6 +118,12 @@ authorization must never depend on hidden UI.
 
 - `hedayati_user_phones` holds real phone numbers. Access it only through
   `Hedayati_User_Phone_Service` (prepared statements, normalization, race handling).
+- Phase 2C foundation stores a student **mailing address** (`hedayati_address` / `hedayati_city` /
+  `hedayati_postal_code`) in `wp_usermeta` — standard-sensitivity contact PII, `show_in_rest`
+  false, capability-gated read/write via `Hedayati_Student_Profile`. **National ID, verification
+  records and documents are deliberately NOT stored** — see `docs/OPEN_QUESTIONS.md` Q10–Q13 and
+  D15/D16. Do not add a national-ID field until `HEDAYATI_DATA_ENCRYPTION_KEY` + a separate HMAC
+  secret are provisioned in server config (outside Git) with a key-versioning scheme.
 - Deleting a WordPress user triggers `delete_phone` cleanup. Preserve this hook.
 - `format-detection: telephone=no` is set; phone links are explicit `tel:` from
   `Hedayati_Settings::tel_uri()`.

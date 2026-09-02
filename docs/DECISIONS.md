@@ -289,3 +289,19 @@ Teacher profile, and nulls `attendance.recorded_by`. **Trashing** a course/run d
 worse than lost ones here (there is no student-facing history in 2B yet). **Caveat for Phase 2C:**
 once an append-only audit log exists it must be excluded from every cascade (D16 — academic /
 audit history is preserved, not cascade-deleted).
+
+## D32 — Phase 2C: only the mailing-address profile slice was built
+
+**Decided:** implement `Hedayati_Student_Profile` — `hedayati_address` / `hedayati_city` /
+`hedayati_postal_code` in `wp_usermeta` (per ROADMAP P1.2), with an extensible field registry
+(`hedayati_student_profile_fields` filter), server-side sanitization, Iranian postal-code
+digit-normalization + 10-digit validation, and admin fields on the WordPress user-edit screen.
+Self-edit gated on `hedayati_edit_own_profile`; other-user access on
+`hedayati_view_student_profiles_basic` + core `edit_user`.
+**Explicitly deferred** (see `docs/OPEN_QUESTIONS.md` Q10–Q13): national ID (needs the D15
+encryption key + HMAC secret provisioned outside Git), the verification state machine (reset rules
++ benefit linkage undecided), private documents (storage location + retention undecided), and the
+audit log's IP/UA fields (retention policy undecided).
+**Why:** the address is the one part of the profile with no policy landmine; building it now
+establishes the usermeta pattern and consumes two previously-unused capabilities without guessing
+at any of the unresolved sensitive-data questions.

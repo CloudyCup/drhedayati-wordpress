@@ -108,9 +108,9 @@ current repository. Status reflects the repository as of 2026-09-02.
 
 | # | Requirement | Status |
 |---|---|---|
-| 8.1 | WordPress user-based student account | 🟡 (role + phone identity only) |
-| 8.2 | Profile: phone, email, address, national ID, extensible fields; identity fields normalized server-side before validation/search/storage | ⬜ |
-| 8.3 | Verification state independent of role and of phone verification; conceptual states unverified/pending/verified/rejected | ⬜ |
+| 8.1 | WordPress user-based student account | 🟡 (role + phone identity + address profile fields) |
+| 8.2 | Profile: phone, email, address, national ID, extensible fields; identity fields normalized server-side before validation/search/storage | 🟡 (address/city/postal in usermeta with an extensible registry + server-side normalization; national ID **blocked** on the D15 encryption key — `docs/OPEN_QUESTIONS.md` Q10) |
+| 8.3 | Verification state independent of role and of phone verification; conceptual states unverified/pending/verified/rejected | ⬜ (blocked — reset rules + benefit linkage undecided, Q11) |
 | 8.4 | Upload national ID card, birth certificate, other requested documents | ⬜ |
 | 8.5 | Student sees enrolled courses/runs and sessions | ⬜ |
 | 8.6 | No approved policy that verification unlocks certificates/exams/benefits — requires institute input | ❓ |
@@ -147,7 +147,7 @@ acceptance on staging (`docs/PHASE_2B_ACCEPTANCE.md`) is a **pre-merge gate** an
 |---|---|---|
 | 11.1 | Canonical stored dates/datetimes are Gregorian, machine-sortable | ✅ (course dates) |
 | 11.2 | Shamsi/Jalali is an input/display layer only, never storage | ⬜ |
-| 11.3 | Persian (`۰-۹`) and Arabic-Indic (`٠-٩`) digits normalized to ASCII wherever a field is canonical/searchable; backend normalization is authoritative | 🟡 (phone only; national ID etc. pending) |
+| 11.3 | Persian (`۰-۹`) and Arabic-Indic (`٠-٩`) digits normalized to ASCII wherever a field is canonical/searchable; backend normalization is authoritative | 🟡 (phone; Phase 2B run/session numeric + date fields; Phase 2C postal code — all via `Hedayati_Text`. National ID pending Q10) |
 | 11.4 | Field-specific normalization — no blind site-wide digit conversion of prose | ✅ (principle honored) |
 | 11.5 | Mixed Persian/English technical strings get deliberate bidi treatment | ✅ |
 

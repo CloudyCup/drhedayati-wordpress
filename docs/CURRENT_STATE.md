@@ -137,10 +137,28 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
   headline / linked-account columns on the Teacher list table.
 - **Roles schema `2.1.0`** (`class-roles.php`): adds `hedayati_manage_teachers` (22nd managed
   capability) to `hedayati_manager` + `administrator`; future-safe sync removes nothing.
-- **Tests:** `tests/verify-phase2b.js` — Node static + pure-logic suite, **170 passed, 0 failed**.
-  `tests/test-phase2b.php` — PHP unit + contract suite (validation matrix, vocabularies, service
-  API contracts, wiring) — **NOT RUN** (no PHP here). `tests/test-phase2a.php` cap-count assertion
-  updated 21 → 22.
+- **Tests:** `tests/verify-phase2b.js` — Node static + pure-logic + in-memory behavioural port,
+  **170 passed, 0 failed**. `tests/test-phase2b.php` — PHP unit + contract suite (validation
+  matrix, vocabularies, service API contracts, wiring) — **NOT RUN** (no PHP here).
+  `tests/test-phase2a.php` cap-count assertion updated 21 → 22.
+
+### Plugin — student profile (Phase 2C foundation — address only) — same branch
+
+> Repository + Node-suite verified only. The rest of Phase 2C is **blocked on institute policy** —
+> see `docs/OPEN_QUESTIONS.md` Q10–Q13.
+
+- **`Hedayati_Student_Profile`** (`class-student-profile.php`): `hedayati_address`,
+  `hedayati_city`, `hedayati_postal_code` in `wp_usermeta` (no table, no migration). Fields come
+  from a filterable registry (`hedayati_student_profile_fields`). Postal code is
+  digit-normalized via `Hedayati_Text` and must be exactly 10 digits or empty
+  (`user_profile_update_errors` blocks the save otherwise). Admin fields render on the WordPress
+  user-edit screen; self-edit needs `hedayati_edit_own_profile`, other-user access needs
+  `hedayati_view_student_profiles_basic` + core `edit_user`. Read API
+  `Hedayati_Student_Profile::get( $user_id )`. `HEDAYATI_CORE_VERSION` → `1.3.0`.
+- **Deliberately not built:** national ID (needs the D15 encryption key), verification state
+  machine (reset rules undecided), private documents (storage/retention undecided), audit log
+  (IP/UA retention undecided). Each is documented as a block, not a TODO.
+- **Tests:** `tests/verify-phase2c.js` — **25 passed, 0 failed**.
 
 ### Plugin — tests
 
@@ -206,7 +224,7 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
 |---|---|---|
 | **Username-or-phone login** | Full backend adapter, normalization, rate limiting, roles — extends the standard `wp-login.php` pipeline; deployed code + DB schema + roles/caps **verified on staging 2026-09-02** | No custom/branded login form or account UI; **runtime behaviour not yet acceptance-tested** (Category 2–4 of `docs/PHASE_2A_ACCEPTANCE.md`) |
 | **Roles & capabilities** | 5 roles + **22** caps registered; least-privilege verified in unit tests. Phase 2B consumes `hedayati_manage_course_runs`, `hedayati_manage_teachers`, `hedayati_assign_staff`, `hedayati_create_enrollments`, `hedayati_manage_enrollments`, `hedayati_record_attendance` | `hedayati_verify_students`, `hedayati_view_private_documents`, `hedayati_view_audit_logs`, `hedayati_initiate_verification`, `hedayati_view_own_*`, teacher/TA `view_assigned_*` still unused (Phase 2C/2D) |
-| **Student accounts** | WordPress user + `student` role + phone-identity table + `hedayati_view_own_portal` etc. | No profile fields, no portal, no enrollment view, no document upload |
+| **Student accounts** | WordPress user + `student` role + phone-identity table + address profile fields (usermeta) + enrollments (Phase 2B) | No portal UI, no verification state, no national ID, no document upload (all blocked — Q10–Q13) |
 | **Homepage impact/value section** | Dark editorial band with 4 institutional bullet points and copy | Stat numbers (years, graduates, …) intentionally omitted pending verified data + an input mechanism (Customizer or plugin settings) — **neither mechanism is coded** |
 | **Contact / consultation** | Phone/address settings, footer + CTA rendering, links to `/consult/` | The `/consult/`, `/contact/`, `/about/` pages do not exist; no consultation form or submission handler |
 | **Course commerce fields** | `_course_price` as a display string; state as `open`/`closed`/`soon`. Phase 2B adds `Course Run` with integer-rial `tuition_rial` (nullable) | No payment; the theme does not yet read run tuition / dates as fallbacks (Phase 2D) |

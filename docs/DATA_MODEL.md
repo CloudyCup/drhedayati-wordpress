@@ -11,7 +11,7 @@ staging install uses a non-`wp_` randomized prefix. Code always uses `$wpdb->pre
 
 | Entity | Use |
 |---|---|
-| `wp_users` / `wp_usermeta` | ✅ Identity authority — usernames, password hashes, sessions, email, display name. Future: student profile fields in usermeta. |
+| `wp_users` / `wp_usermeta` | ✅ Identity authority — usernames, password hashes, sessions, email, display name. Phase 2C foundation adds student **address** fields in usermeta (`hedayati_address` / `hedayati_city` / `hedayati_postal_code`); national ID / verification / documents are **not** stored (blocked — see `docs/OPEN_QUESTIONS.md` Q10–Q13). |
 | Posts — `post` type `course` | ✅ Course catalog entries. |
 | Posts — `page` | ✅ (planned content) About / Contact / consultation / articles. |
 | Post revisions | ✅ Enabled for `course`. |
@@ -345,3 +345,23 @@ Uniqueness ((run, person, role) once; one primary instructor per run) is enforce
 
 `hedayati_core_db_version` advances to `2.1.0`; `hedayati_core_roles_version` advances to `2.1.0`;
 `hedayati_core_managed_capabilities` grows to **22** entries (adds `hedayati_manage_teachers`).
+
+---
+
+## Student profile usermeta — Phase 2C foundation ✅ (address only)
+
+`Hedayati_Student_Profile` (`class-student-profile.php`). No new table; no schema migration.
+
+| `wp_usermeta` key | Sanitizer | Notes |
+|---|---|---|
+| `hedayati_address` | `sanitize_textarea_field` | mailing address (multi-line) |
+| `hedayati_city` | `sanitize_text_field` | |
+| `hedayati_postal_code` | `Hedayati_Text::digits_to_ascii` → digits only; `user_profile_update_errors` rejects a non-empty value that is not exactly 10 digits | Iranian postal code, ASCII |
+
+Fields come from `Hedayati_Student_Profile::field_registry()`, filterable via
+`hedayati_student_profile_fields`. Read API: `Hedayati_Student_Profile::get( $user_id )`.
+`show_in_rest => false` for all three. Authorization: own profile → `hedayati_edit_own_profile`;
+other user → `hedayati_view_student_profiles_basic` + core `edit_user`.
+
+**Not stored** (blocked — `docs/OPEN_QUESTIONS.md` Q10–Q13): national ID, verification state,
+document metadata, audit log.

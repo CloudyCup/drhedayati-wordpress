@@ -131,3 +131,62 @@ timezone or a migration to UTC instants.
 **Assessment:** for a Tabriz/Tehran in-person institute this is the correct, simplest model.
 **Blocks:** nothing. Confirm the expectation with the institute during Phase 2B staging acceptance;
 revisit only if online/multi-timezone delivery becomes a requirement.
+
+---
+
+## Phase 2C — what is blocked and why
+
+Only the **mailing-address** slice of the student profile was built
+(`class-student-profile.php` — `hedayati_address` / `hedayati_city` /
+`hedayati_postal_code` usermeta, per `docs/ROADMAP.md` P1.2). Everything below is a
+deliberate non-implementation.
+
+## Q10 — National ID storage (BLOCKS implementation)
+
+**Needs an institute + infrastructure decision.** Per `docs/DECISIONS.md` D15 a
+reversible national-ID field requires a dedicated `HEDAYATI_DATA_ENCRYPTION_KEY`
+(and a separate keyed-HMAC secret for duplicate detection) placed in
+`wp-config.php` / server config — **outside Git** — with key versioning. None of
+that exists and it cannot be created from this repo.
+**Do not** add a national-ID field, encrypted or not, until: (a) the key + HMAC
+secret are provisioned on staging and production, (b) the key-versioning scheme is
+agreed, (c) the institute confirms national ID is actually required and what it
+unlocks. **This is a stop-and-ask item (sensitive data + encryption guarantees).**
+
+## Q11 — Verification workflow semantics (BLOCKS implementation)
+
+The conceptual states (`unverified` / `pending` / `verified` / `rejected`) are
+approved, but three things are undecided and each changes the data model:
+1. **Reset rules** — does editing the profile / phone / documents drop a
+   `verified` record back to `pending`? Which field changes trigger it?
+2. **Benefit linkage** — `docs/REQUIREMENTS.md` 8.6: "No approved policy that
+   verification unlocks certificates/exams/benefits." Until there is one, a
+   verification system has nothing to gate and its urgency is unclear.
+3. **Reviewer workflow** — who moves `pending → verified/rejected`, what evidence
+   is required, is a rejection reason mandatory/visible to the student?
+**Safe interim:** none built. `reception` already has `hedayati_initiate_verification`
+and `hedayati_manager` has `hedayati_verify_students` (defined, unused). When
+unblocked, store the record as usermeta `{status, reviewed_by, reviewed_at,
+reason}` and add the reset rule as an explicit, documented policy — not a guess.
+
+## Q12 — Private document storage (BLOCKS implementation)
+
+Per `docs/DECISIONS.md` D14 + `docs/SECURITY.md`: bytes outside `public_html`,
+application-controlled streaming after capability + ownership checks, abstract
+`storage_backend` + `storage_key`, MIME allowlist, generated names,
+archive/deleted lifecycle. Undecided: the actual storage location on ParsPack
+(can PHP write outside the web root there?), the MIME/size allowlist, the
+mandatory-document list, the retention period, and the ~48-hour offsite-transfer
+protocol (acknowledge/retry/delete/restore). **Do not store any real student
+document this session.** A schema-only foundation is possible later but adds risk
+with no user today; defer until the storage location and retention are confirmed.
+
+## Q13 — Audit log retention (BLOCKS the IP/UA part)
+
+`docs/DECISIONS.md` D16 approves an application-level append-only audit log
+(metadata only). The blocker is narrow: **retention/privacy policy for IP and
+user-agent data is required and undecided.** An audit log that records
+*only* `{actor_id, action, object_type, object_id, note, created_at}` — no IP, no
+UA — has no retention landmine and would make Phase 2B operations auditable. It
+was **not** built this session to keep the branch focused on 2B + the approved
+profile slice, but it is a clean, low-risk next step (see the next-session note).

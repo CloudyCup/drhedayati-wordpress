@@ -223,8 +223,8 @@ assert("future-safe managed-cap tracking retained", roles.includes('OPTION_MANAG
 
 console.log('\n8. Plugin bootstrap (hedayati-core.php):');
 const boot = read('hedayati-core.php');
-assert("HEDAYATI_CORE_VERSION bumped to 1.2.0", boot.includes("HEDAYATI_CORE_VERSION', '1.2.0'"));
-assert("plugin header Version: 1.2.0", boot.includes('Version:           1.2.0'));
+assert("HEDAYATI_CORE_VERSION >= 1.2.0 (Phase 2B+)", /HEDAYATI_CORE_VERSION', '1\.(?:[2-9]|\d\d)\.\d+'/.test(boot));
+assert("plugin header Version >= 1.2.0", /Version:\s+1\.(?:[2-9]|\d\d)\.\d+/.test(boot));
 for (const cls of [
 	'class-text', 'class-academic-validation', 'class-teacher',
 	'class-course-run-service', 'class-run-staff-service', 'class-session-service',
