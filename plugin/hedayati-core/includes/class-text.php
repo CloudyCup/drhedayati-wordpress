@@ -35,6 +35,14 @@ class Hedayati_Text {
 	];
 
 	/**
+	 * ASCII digit → Persian digit map (display only).
+	 */
+	private const ASCII_TO_PERSIAN = [
+		'0' => '۰', '1' => '۱', '2' => '۲', '3' => '۳', '4' => '۴',
+		'5' => '۵', '6' => '۶', '7' => '۷', '8' => '۸', '9' => '۹',
+	];
+
+	/**
 	 * Transliterate any Persian/Arabic-Indic digits in a string to ASCII digits.
 	 * All other characters are preserved unchanged.
 	 *
@@ -43,5 +51,16 @@ class Hedayati_Text {
 	 */
 	public static function digits_to_ascii( string $value ): string {
 		return strtr( $value, self::DIGIT_MAP );
+	}
+
+	/**
+	 * Transliterate ASCII digits to Persian digits. **Display only** — never call
+	 * this on a value that will be stored, searched, or compared.
+	 *
+	 * @param string $value
+	 * @return string
+	 */
+	public static function digits_to_persian( string $value ): string {
+		return strtr( $value, self::ASCII_TO_PERSIAN );
 	}
 }

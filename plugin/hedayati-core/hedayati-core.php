@@ -3,7 +3,7 @@
  * Plugin Name:       Hedayati Core
  * Plugin URI:        https://mystik.ir
  * Description:       هسته عملکردی مجتمع آموزشی دکتر هدایتی — دوره‌ها، طبقه‌بندی‌ها، احراز هویت، متادیتا و توابع کمکی.
- * Version:           1.4.0
+ * Version:           1.5.0
  * Author:            مجتمع آموزشی دکتر هدایتی
  * Author URI:        https://mystik.ir
  * Text Domain:       hedayati-core
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_CORE_VERSION', '1.4.0' );
+define( 'HEDAYATI_CORE_VERSION', '1.5.0' );
 define( 'HEDAYATI_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HEDAYATI_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -45,6 +45,7 @@ require_once HEDAYATI_CORE_DIR . 'includes/class-auth.php';
 
 // Phase 2B Academic Operations
 require_once HEDAYATI_CORE_DIR . 'includes/class-text.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-jalali.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-academic-validation.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-audit-log.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-teacher.php';

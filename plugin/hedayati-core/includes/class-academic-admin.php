@@ -130,7 +130,7 @@ class Hedayati_Academic_Admin {
 					esc_url( $url ),
 					esc_html( $run['label'] ?: sprintf( __( 'دورهٔ اجرایی #%d', 'hedayati-core' ), $run['id'] ) ),
 					esc_html( self::run_status_label( $run['run_status'] ) ),
-					$run['start_date'] ? ' — <span dir="ltr">' . esc_html( $run['start_date'] ) . '</span>' : ''
+					$run['start_date'] ? ' — <span dir="ltr">' . self::date_cell( $run['start_date'] ) . '</span>' : ''
 				);
 			}
 			echo '</ul>';
@@ -214,7 +214,7 @@ class Hedayati_Academic_Admin {
 			echo '<td>' . esc_html( $run['label'] ?: '—' ) . '</td>';
 			echo '<td>' . esc_html( self::run_status_label( $run['run_status'] ) ) . '</td>';
 			echo '<td>' . esc_html( self::registration_status_label( $run['registration_status'] ) ) . '</td>';
-			echo '<td dir="ltr">' . esc_html( $run['start_date'] ?? '—' ) . '</td>';
+			echo '<td dir="ltr">' . self::date_cell( $run['start_date'] ) . '</td>';
 			echo '<td>' . esc_html( (string) Hedayati_Enrollment_Service::count_active( (int) $run['id'] ) )
 				. ( null !== $run['capacity'] ? ' / ' . esc_html( (string) $run['capacity'] ) : '' ) . '</td>';
 			echo '<td><a class="button button-small" href="' . esc_url( $detail_url ) . '">' . esc_html__( 'مدیریت', 'hedayati-core' ) . '</a></td>';
@@ -267,8 +267,8 @@ class Hedayati_Academic_Admin {
 		self::text_row( 'label', __( 'عنوان', 'hedayati-core' ), $run['label'] );
 		self::select_row( 'run_status', __( 'وضعیت اجرا', 'hedayati-core' ), self::run_status_choices(), $run['run_status'] );
 		self::select_row( 'registration_status', __( 'وضعیت ثبت‌نام', 'hedayati-core' ), self::registration_status_choices(), $run['registration_status'] );
-		self::text_row( 'start_date', __( 'تاریخ شروع (میلادی YYYY-MM-DD)', 'hedayati-core' ), $run['start_date'] ?? '', 'ltr' );
-		self::text_row( 'end_date', __( 'تاریخ پایان (میلادی YYYY-MM-DD)', 'hedayati-core' ), $run['end_date'] ?? '', 'ltr' );
+		self::text_row( 'start_date', __( 'تاریخ شروع (میلادی YYYY-MM-DD)', 'hedayati-core' ), $run['start_date'] ?? '', 'ltr', self::shamsi_hint( $run['start_date'] ?? '' ) );
+		self::text_row( 'end_date', __( 'تاریخ پایان (میلادی YYYY-MM-DD)', 'hedayati-core' ), $run['end_date'] ?? '', 'ltr', self::shamsi_hint( $run['end_date'] ?? '' ) );
 		self::text_row( 'schedule_text', __( 'برنامهٔ زمانی', 'hedayati-core' ), $run['schedule_text'] );
 		self::text_row( 'capacity', __( 'ظرفیت (خالی = نامشخص)', 'hedayati-core' ), null === $run['capacity'] ? '' : (string) $run['capacity'], 'ltr' );
 		self::text_row( 'tuition_rial', __( 'شهریه به ریال (خالی = نامشخص)', 'hedayati-core' ), null === $run['tuition_rial'] ? '' : (string) $run['tuition_rial'], 'ltr' );
@@ -384,7 +384,7 @@ class Hedayati_Academic_Admin {
 
 			echo '<tr>';
 			echo '<td>' . esc_html( (string) $s['session_number'] ) . '</td>';
-			echo '<td dir="ltr">' . esc_html( $s['starts_at'] ) . '</td>';
+			echo '<td dir="ltr">' . self::date_cell( $s['starts_at'], true ) . '</td>';
 			echo '<td>' . esc_html( $s['topic'] ?: '—' ) . '</td>';
 			echo '<td>' . esc_html( self::session_status_label( $s['status'] ) ) . '</td>';
 			echo '<td>';
@@ -444,7 +444,7 @@ class Hedayati_Academic_Admin {
 			echo '<tr>';
 			echo '<td>' . esc_html( $u ? $u->display_name . ' (' . $u->user_login . ')' : '#' . $e['user_id'] ) . '</td>';
 			echo '<td>' . esc_html( self::enrollment_status_label( $e['status'] ) ) . '</td>';
-			echo '<td dir="ltr">' . esc_html( $e['enrolled_at'] ) . '</td>';
+			echo '<td dir="ltr">' . self::date_cell( $e['enrolled_at'], true ) . '</td>';
 			echo '<td>';
 
 			if ( $can_manage ) {
@@ -519,7 +519,7 @@ class Hedayati_Academic_Admin {
 		);
 
 		echo '<h1>' . esc_html__( 'حضور و غیاب', 'hedayati-core' ) . ' — ' . esc_html( sprintf( __( 'جلسهٔ %d', 'hedayati-core' ), $session['session_number'] ) ) . '</h1>';
-		echo '<p>' . esc_html( get_the_title( $run['course_id'] ) . ' — ' . ( $run['label'] ?: '' ) ) . ' · <span dir="ltr">' . esc_html( $session['starts_at'] ) . '</span></p>';
+		echo '<p>' . esc_html( get_the_title( $run['course_id'] ) . ' — ' . ( $run['label'] ?: '' ) ) . ' · <span dir="ltr">' . self::date_cell( $session['starts_at'], true ) . '</span></p>';
 		echo '<p><a href="' . esc_url( $back ) . '">&larr; ' . esc_html__( 'بازگشت به دورهٔ اجرایی', 'hedayati-core' ) . '</a></p>';
 
 		if ( empty( $enrollments ) ) {
@@ -637,7 +637,7 @@ class Hedayati_Academic_Admin {
 			}
 
 			echo '<tr>';
-			echo '<td dir="ltr">' . esc_html( $row['created_at'] ) . '</td>';
+			echo '<td dir="ltr">' . self::date_cell( $row['created_at'], true ) . '</td>';
 			echo '<td>' . esc_html( $actor ) . '</td>';
 			echo '<td dir="ltr"><code>' . esc_html( $row['action'] ) . '</code></td>';
 			echo '<td dir="ltr">' . esc_html( $row['object_type'] . ( $row['object_id'] ? ' #' . $row['object_id'] : '' ) ) . '</td>';
@@ -949,14 +949,42 @@ class Hedayati_Academic_Admin {
 
 	// ── Small render helpers ────────────────────────────────────────────────
 
-	private static function text_row( string $name, string $label, string $value, string $dir = 'rtl' ): void {
+	/**
+	 * Escaped Gregorian value + the Shamsi equivalent in parentheses for the
+	 * Persian reader. Storage stays Gregorian (DESIGN_SYSTEM `<time datetime>`);
+	 * this is display sugar only. Returns '—' for an empty value.
+	 */
+	private static function date_cell( ?string $iso, bool $with_time = false ): string {
+		if ( null === $iso || '' === $iso ) {
+			return '—';
+		}
+
+		$shamsi = Hedayati_Jalali::format( $iso, true, $with_time );
+		$greg   = esc_html( $iso );
+
+		return '' === $shamsi
+			? $greg
+			: $greg . ' <span class="description">(' . esc_html( $shamsi ) . ')</span>';
+	}
+
+	private static function text_row( string $name, string $label, string $value, string $dir = 'rtl', string $hint = '' ): void {
 		printf(
-			'<tr><th scope="row"><label for="hd_%1$s">%2$s</label></th><td><input type="text" name="%1$s" id="hd_%1$s" value="%3$s" class="regular-text" dir="%4$s"></td></tr>',
+			'<tr><th scope="row"><label for="hd_%1$s">%2$s</label></th><td><input type="text" name="%1$s" id="hd_%1$s" value="%3$s" class="regular-text" dir="%4$s">%5$s</td></tr>',
 			esc_attr( $name ),
 			esc_html( $label ),
 			esc_attr( $value ),
-			esc_attr( $dir )
+			esc_attr( $dir ),
+			'' === $hint ? '' : ' <span class="description">' . esc_html( $hint ) . '</span>'
 		);
+	}
+
+	/**
+	 * Shamsi hint for a stored Gregorian date/datetime field, e.g. «معادل شمسی: ۱۴۰۴/۱۲/۳۰».
+	 */
+	private static function shamsi_hint( ?string $iso, bool $with_time = false ): string {
+		$s = ( null === $iso || '' === $iso ) ? '' : Hedayati_Jalali::format( $iso, true, $with_time );
+
+		return '' === $s ? '' : sprintf( __( 'معادل شمسی: %s', 'hedayati-core' ), $s );
 	}
 
 	/**
