@@ -29,7 +29,7 @@ class Hedayati_Roles {
 	/**
 	 * Version tracker for roles/capabilities synchronization.
 	 */
-	public const ROLES_VERSION = '2.0.0';
+	public const ROLES_VERSION = '2.1.0';
 	public const OPTION_ROLES_VERSION = 'hedayati_core_roles_version';
 
 	/**
@@ -112,6 +112,7 @@ class Hedayati_Roles {
 					'hedayati_view_student_profiles_basic' => true,
 					'hedayati_initiate_verification'       => true,
 					'hedayati_manage_courses'              => true,
+					'hedayati_manage_teachers'             => true,
 					'hedayati_manage_course_runs'          => true,
 					'hedayati_assign_staff'                => true,
 					'hedayati_verify_students'             => true,
@@ -145,6 +146,7 @@ class Hedayati_Roles {
 			'hedayati_view_student_profiles_basic',
 			'hedayati_initiate_verification',
 			'hedayati_manage_courses',
+			'hedayati_manage_teachers',
 			'hedayati_manage_course_runs',
 			'hedayati_assign_staff',
 			'hedayati_verify_students',
