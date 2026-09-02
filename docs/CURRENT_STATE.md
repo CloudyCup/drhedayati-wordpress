@@ -1,11 +1,14 @@
 # CURRENT_STATE.md
 
 **Last documentation update:** 2026-09-02
-**Method:** direct inspection of the repository (`main`), reconciled against
-`docs/HANDOFF_LEGACY.md`; plus the in-progress Phase 2A staging acceptance
-(`docs/PHASE_2A_ACCEPTANCE.md`) — as of 2026-09-02 the static + read-only-DB layer on `mystik.ir`
-is verified (see "Verified on staging" below); runtime behaviour is not yet tested.
-**Repo versions:** theme `hedayati` 1.0.0 · plugin `hedayati-core` 1.1.0 · DB schema & roles `2.0.0`.
+**Method:** direct inspection of the repository, reconciled against `docs/HANDOFF_LEGACY.md`.
+Phase 2A staging acceptance (`docs/PHASE_2A_ACCEPTANCE.md`): the static + read-only-DB layer on
+`mystik.ir` is verified; runtime behaviour is **not** yet tested. Phase 2B (below) is implemented
+on branch `feature/phase-2b-academic-operations` — repository + Node static tests only; its staging
+acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
+**Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
+`hedayati-core` **1.2.0** · DB schema **2.1.0** · roles schema **2.1.0**.
+**`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (Phase 2B not merged).
 
 > The repository is authoritative for "what is implemented". It contains **code only** — no
 > WordPress core, no database, no content. Anything requiring a running WordPress instance
@@ -82,6 +85,59 @@ is verified (see "Verified on staging" below); runtime behaviour is not yet test
   registered phone — **never** the shared IP bucket. Generic identical error for unknown
   phone / wrong password (no user enumeration).
 
+### Plugin — academic operations (Phase 2B) — branch `feature/phase-2b-academic-operations`
+
+> Repository + Node-suite verified only. **No staging/runtime verification** — see
+> `docs/PHASE_2B_ACCEPTANCE.md`. Not on `main`.
+
+- **`teacher` CPT** (`class-teacher.php`): admin-only (`public`/`publicly_queryable` false — D30),
+  `supports` title/editor/thumbnail/revisions, caps mapped to `hedayati_manage_teachers`. Meta:
+  `_hedayati_teacher_user_id` (optional 1:1 WP-user link, uniqueness enforced in the save handler),
+  `_hedayati_teacher_headline`. Side meta box (nonce + `edit_post` + autosave guards). `deleted_user`
+  → **unlinks** (never deletes) the profile. Query helpers `exists()`, `get_user_id()`,
+  `find_by_user_id()`.
+- **Migration `2.1.0`** (`class-db-schema.php::migrate_2_1_0`): `dbDelta` creates
+  `hedayati_course_runs`, `hedayati_run_staff`, `hedayati_sessions`, `hedayati_enrollments`,
+  `hedayati_attendance` (columns/keys in `docs/DATA_MODEL.md`), then confirms **all five** with
+  `SHOW TABLES LIKE` before advancing the version. Additive — does not touch `hedayati_user_phones`.
+  `CURRENT_DB_VERSION` `2.1.0`; five `get_table_*()` accessors added.
+- **`Hedayati_Text`** (`class-text.php`): shared `digits_to_ascii()` — the one place new code
+  normalizes Persian/Arabic numerals. `Hedayati_Phone` keeps its own inline map (verified 2A code).
+- **`Hedayati_Academic_Validation`** (`class-academic-validation.php`): the approved business-state
+  vocabularies as `const` arrays (validated strings, no ENUM), safe-fallback sanitizers, strict
+  `parse_iso_date()` / `parse_datetime()` (canonical `Y-m-d H:i:s`, `checkdate()`), and
+  `parse_optional_nonneg_int()` (empty ⇒ `null` = unknown; negative/non-numeric ⇒ `WP_Error`) /
+  `parse_positive_int()`.
+- **Services** (`class-*-service.php`, static, prepared SQL, capability-agnostic data layer):
+  - `Hedayati_Course_Run_Service` — CRUD + `query()` + `count_for_course()`; cross-field date
+    validation; `before_delete_post` (course) → `delete_run()` **cascade** (sessions, enrollments,
+    attendance, staff).
+  - `Hedayati_Run_Staff_Service` — `assign()` / `remove()`; instructor rows need a Teacher profile,
+    assistant rows need a WP user (D11 asymmetry); one `primary_instructor` per run; duplicate
+    guard; `user_is_staff_on_run()` / `run_ids_for_user()` scope helpers; `deleted_user` +
+    `before_delete_post` (teacher) cleanup.
+  - `Hedayati_Session_Service` — CRUD; `UNIQUE(run_id, session_number)` (service pre-check + DB);
+    `next_session_number()`; datetime canonicalization; cascade attendance on delete.
+  - `Hedayati_Enrollment_Service` — `enroll()` (duplicate + closed-run + capacity checks, capacity
+    overridable), `set_status()`, `delete_enrollment()` (cascade attendance), `count_active()`;
+    `deleted_user` → cascade.
+  - `Hedayati_Attendance_Service` — `record()` upsert + `record_bulk()`; **same-run guard**
+    (enrollment.run_id must equal session.run_id); `UNIQUE(session_id, enrollment_id)`;
+    `deleted_user` → null `recorded_by` (row kept).
+- **Admin UI** (`class-academic-admin.php`): top-level menu «عملیات آموزشی» (cap
+  `hedayati_manage_course_runs`). Views: runs list (+ create), run detail (details form + staff +
+  sessions + enrollments), per-session attendance grid. Every state change routes through
+  `admin-post.php` with a per-action nonce, a server-side capability check, and a per-run access
+  scope check (`require_run_scope()` — managers/admins bypass, other staff limited to their runs).
+  Attendance writes gated on `hedayati_record_attendance` (managers see it read-only). Persian
+  labels; core WP admin markup; transient-backed notices.
+- **Roles schema `2.1.0`** (`class-roles.php`): adds `hedayati_manage_teachers` (22nd managed
+  capability) to `hedayati_manager` + `administrator`; future-safe sync removes nothing.
+- **Tests:** `tests/verify-phase2b.js` — Node static + pure-logic suite, **140 passed, 0 failed**.
+  `tests/test-phase2b.php` — PHP unit + contract suite (validation matrix, vocabularies, service
+  API contracts, wiring) — **NOT RUN** (no PHP here). `tests/test-phase2a.php` cap-count assertion
+  updated 21 → 22.
+
 ### Plugin — tests
 
 - `tests/verify-phase2a.js` — Node static/structural suite. **Ran during this update: 74 passed,
@@ -145,11 +201,11 @@ is verified (see "Verified on staging" below); runtime behaviour is not yet test
 | Area | What exists | What is missing |
 |---|---|---|
 | **Username-or-phone login** | Full backend adapter, normalization, rate limiting, roles — extends the standard `wp-login.php` pipeline; deployed code + DB schema + roles/caps **verified on staging 2026-09-02** | No custom/branded login form or account UI; **runtime behaviour not yet acceptance-tested** (Category 2–4 of `docs/PHASE_2A_ACCEPTANCE.md`) |
-| **Roles & capabilities** | 5 roles + 21 caps registered; least-privilege verified in unit tests | No UI or services consume the operational caps yet (`hedayati_manage_course_runs`, `hedayati_verify_students`, `hedayati_view_private_documents`, etc. are defined but unused) |
+| **Roles & capabilities** | 5 roles + **22** caps registered; least-privilege verified in unit tests. Phase 2B consumes `hedayati_manage_course_runs`, `hedayati_manage_teachers`, `hedayati_assign_staff`, `hedayati_create_enrollments`, `hedayati_manage_enrollments`, `hedayati_record_attendance` | `hedayati_verify_students`, `hedayati_view_private_documents`, `hedayati_view_audit_logs`, `hedayati_initiate_verification`, `hedayati_view_own_*`, teacher/TA `view_assigned_*` still unused (Phase 2C/2D) |
 | **Student accounts** | WordPress user + `student` role + phone-identity table + `hedayati_view_own_portal` etc. | No profile fields, no portal, no enrollment view, no document upload |
 | **Homepage impact/value section** | Dark editorial band with 4 institutional bullet points and copy | Stat numbers (years, graduates, …) intentionally omitted pending verified data + an input mechanism (Customizer or plugin settings) — **neither mechanism is coded** |
 | **Contact / consultation** | Phone/address settings, footer + CTA rendering, links to `/consult/` | The `/consult/`, `/contact/`, `/about/` pages do not exist; no consultation form or submission handler |
-| **Course commerce fields** | `_course_price` as a display string; state as `open`/`closed`/`soon` | No integer-rial tuition, no payment, no Course Run model |
+| **Course commerce fields** | `_course_price` as a display string; state as `open`/`closed`/`soon`. Phase 2B adds `Course Run` with integer-rial `tuition_rial` (nullable) | No payment; the theme does not yet read run tuition / dates as fallbacks (Phase 2D) |
 
 ---
 
@@ -158,11 +214,11 @@ is verified (see "Verified on staging" below); runtime behaviour is not yet test
 - Custom login / registration / password-reset UI.
 - Student profile storage (address, national ID, extensible fields), verification workflow and
   states, private-document upload/storage/streaming, document lifecycle.
-- Teacher custom post type and WP-user linkage; public teacher directory/profiles.
-- **Course Runs** (operational cohorts), sessions, enrollments, attendance, rosters — and their
-  migrations/services/capability scoping.
-- Staff interfaces: reception panel, teacher/TA portal, manager/admin operational dashboards,
-  audit-log viewer.
+- Public teacher directory/profiles (the `teacher` CPT exists but is not publicly routed — D30).
+- Theme-side consumption of Course Run data (run tuition/dates/registration as fallbacks for the
+  `_course_*` meta on the public course page).
+- Staff interfaces beyond the manager-facing «عملیات آموزشی» screen: reception panel, scoped
+  teacher/TA portal (incl. teacher-facing attendance), audit-log viewer.
 - Application-level append-only audit logging.
 - Dedicated `HEDAYATI_DATA_ENCRYPTION_KEY` + key versioning + HMAC for reversible national-ID
   storage and duplicate detection.

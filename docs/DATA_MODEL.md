@@ -20,7 +20,7 @@ staging install uses a non-`wp_` randomized prefix. Code always uses `$wpdb->pre
 | `wp_options` | ✅ Institute settings + plugin version/state markers (see below). |
 | Nav menus | ✅ `primary`, `footer` locations (fallbacks provided). |
 | Media library | ✅ Featured images (`course-card` 560×320, `course-hero` 1200×600). ⬜ **Not** for private student documents. |
-| Roles & capabilities | ✅ 5 custom roles + 21 `hedayati_*` caps (see `docs/SECURITY.md`). |
+| Roles & capabilities | ✅ 5 custom roles + 22 `hedayati_*` caps (21 from Phase 2A + `hedayati_manage_teachers` from Phase 2B; see `docs/SECURITY.md`). |
 | Transients | ✅ Auth rate-limit buckets. |
 
 ---
@@ -165,8 +165,11 @@ seconds (default 900).
 
 - **Required** wherever a field is canonical/searchable. Backend normalization is **authoritative**
   so admin/API/import paths cannot bypass it. Frontend conversion is optional UX only.
-- **Implemented:** phone input only (`Hedayati_Phone::DIGIT_MAP` maps `۰-۹` U+06F0–U+06F9 and
-  `٠-٩` U+0660–U+0669 to `0-9`).
+- **Implemented:** phone input (`Hedayati_Phone::DIGIT_MAP`, maps `۰-۹` U+06F0–U+06F9 and `٠-٩`
+  U+0660–U+0669 to `0-9`); and, from Phase 2B, the shared `Hedayati_Text::digits_to_ascii()` used
+  by `Hedayati_Academic_Validation` for every Course Run / Session numeric or date field
+  (capacity, tuition rial, session number, ISO dates, session datetimes). `Hedayati_Phone` keeps
+  its own inline map (verified Phase 2A code, left untouched); all new code uses `Hedayati_Text`.
 - **Planned:** national ID and any other searchable numeric identifier — each needs its own
   explicit field-specific rule. **Do not** apply a blind site-wide digit conversion to prose.
 - Persian/Arabic **display** of numerals is a UI choice; stored/searchable values stay ASCII.
@@ -222,26 +225,119 @@ phone formats therefore share one counter.
 - `wp_users` row —(1:1, optional)— `hedayati_user_phones` row (`user_id` UNIQUE).
 - `role` —(assigns)— capabilities (`hedayati_*`).
 
-### Planned ⬜ (Phase 2B — approved model, no code)
+### Phase 2B — Academic Operations ✅ (implemented in the repository; staging acceptance pending)
 
-- `Teacher` CPT —(0:1)— `wp_users` (public instructor identity, optionally linked to an account).
-- `Course` —(1:many)— `Course Run` (operational cohort; run is the source of truth for
-  teacher(s), start/end, schedule, tuition, capacity, registration state).
-- `Course Run` —(1:many)— `Session` (`UNIQUE(run_id, session_number)`,
-  canonical `starts_at`/`ends_at`).
-- `Course Run` —(many:many, roled)— staff (primary instructor / additional instructor / TA).
-  Instructor assignments require a Teacher profile; TA assignments require a WP staff user but not
-  a Teacher CPT.
-- `Course Run` —(1:many)— `Enrollment` —(many:1)— student (`wp_users`).
-- `Session` —(1:many)— `Attendance` —(many:1)— enrollment/student.
+- `Teacher` CPT (`teacher`) —(0:1)— `wp_users` via `_hedayati_teacher_user_id` (public instructor
+  identity, optionally linked to an account; 1:1 enforced in the save handler). Not publicly
+  queryable yet (D30).
+- `course` post —(1:many)— `Course Run` row (`hedayati_course_runs.course_id`). The run is the
+  operational source of truth for teacher(s), dates, schedule, tuition, capacity and registration
+  state; the `_course_*` meta stays as a display fallback only.
+- `Course Run` —(1:many)— `Session` (`hedayati_sessions`, `UNIQUE(run_id, session_number)`,
+  canonical `starts_at` / `ends_at` datetimes).
+- `Course Run` —(many:many, roled)— staff (`hedayati_run_staff`, `staff_role` ∈
+  primary_instructor / additional_instructor / assistant). Instructor rows reference a `Teacher`
+  profile (`teacher_id`); assistant rows reference a `wp_users` id (`user_id`). One
+  `primary_instructor` per run (service-enforced).
+- `Course Run` —(1:many)— `Enrollment` (`hedayati_enrollments`, `UNIQUE(run_id, user_id)`) —(many:1)—
+  student (`wp_users`).
+- `Session` —(1:many)— `Attendance` (`hedayati_attendance`, `UNIQUE(session_id, enrollment_id)`)
+  —(many:1)— `Enrollment`. Every write checks that the enrollment and session share one run.
+
+See "Custom tables — Phase 2B" below for columns. All services are in
+`plugin/hedayati-core/includes/class-*-service.php`; the admin UI is
+`class-academic-admin.php` (menu «عملیات آموزشی», capability `hedayati_manage_course_runs`).
+
+### Planned ⬜ (Phase 2C — approved model, no code)
+
 - `student` —(1:1)— verification record (protected national-ID representation, review state,
   reviewer, timestamps, notes) — separate from role and from phone verification.
 - `student` —(1:many)— private `Document` (abstract `storage_backend` + `storage_key`, MIME/size
   allowlist, generated names, `archive_reference` / `archived_at` / `deleted_at` lifecycle).
 - Append-only audit-log entries for upload/access/review/deletion/archive and verification actions
-  (metadata only — never document contents).
+  (metadata only — never document contents). **Must be excluded from every Phase 2B deletion
+  cascade** once it exists (D16 / D31).
 
-Planned run fields: nullable capacity and tuition (unknown ≠ 20, unknown ≠ 0); tuition stored as
-integer **rial**; `run_status` (draft/scheduled/in_progress/completed/cancelled) separate from
-`registration_status` (closed/open/soon); business states as validated strings, **not** MySQL
-ENUMs.
+---
+
+## Custom tables — Phase 2B ✅
+
+Created by migration `2.1.0` (`class-db-schema.php::migrate_2_1_0` via `dbDelta`; charset/collation
+from `get_charset_collate()`; InnoDB where supported). All addressed via
+`Hedayati_DB_Schema::get_table_*()` — never a literal `wp_`. Business-state columns are `varchar`
+validated by `Hedayati_Academic_Validation`, **not** MySQL ENUMs. No DB-level foreign keys;
+integrity is service-enforced + cleanup hooks (D29).
+
+### `{prefix}hedayati_course_runs`
+
+| Column | Definition | Notes |
+|---|---|---|
+| `id` | `bigint unsigned AI` | PK |
+| `course_id` | `bigint unsigned NOT NULL` | `KEY idx_course_id`; references `wp_posts.ID` of a `course` |
+| `label` | `varchar(190) NOT NULL DEFAULT ''` | staff-set cohort label; empty ⇒ UI falls back to course title |
+| `run_status` | `varchar(20) NOT NULL DEFAULT 'draft'` | `KEY`; draft/scheduled/in_progress/completed/cancelled |
+| `registration_status` | `varchar(20) NOT NULL DEFAULT 'closed'` | `KEY`; closed/open/soon (safe default = closed) |
+| `start_date` / `end_date` | `date NULL` | strict Gregorian; end ≥ start enforced |
+| `schedule_text` | `varchar(255) NOT NULL DEFAULT ''` | free text |
+| `capacity` | `int unsigned NULL` | **NULL = unknown**, never 0/20 |
+| `tuition_rial` | `bigint unsigned NULL` | **NULL = unknown**; integer rial |
+| `notes` | `text NULL` | internal |
+| `created_at` / `updated_at` | `datetime NOT NULL` | UTC |
+
+### `{prefix}hedayati_run_staff`
+
+| Column | Definition | Notes |
+|---|---|---|
+| `id` | `bigint unsigned AI` | PK |
+| `run_id` | `bigint unsigned NOT NULL` | `KEY` |
+| `staff_role` | `varchar(30) NOT NULL` | primary_instructor / additional_instructor / assistant |
+| `teacher_id` | `bigint unsigned NULL` | `KEY`; set for instructor roles (references a `teacher` post) |
+| `user_id` | `bigint unsigned NULL` | `KEY`; set for assistant role (references `wp_users.ID`) |
+| `created_at` / `updated_at` | `datetime NOT NULL` | |
+
+Uniqueness ((run, person, role) once; one primary instructor per run) is enforced in
+`Hedayati_Run_Staff_Service` — the nullable ref columns can't carry a meaningful SQL UNIQUE.
+
+### `{prefix}hedayati_sessions`
+
+| Column | Definition | Notes |
+|---|---|---|
+| `id` | `bigint unsigned AI` | PK |
+| `run_id` | `bigint unsigned NOT NULL` | `KEY` |
+| `session_number` | `int unsigned NOT NULL` | **`UNIQUE KEY uq_run_session (run_id, session_number)`** |
+| `starts_at` | `datetime NOT NULL` | canonical; `KEY idx_starts_at` |
+| `ends_at` | `datetime NULL` | optional; must be > `starts_at` when set |
+| `topic` | `varchar(190) NOT NULL DEFAULT ''` | |
+| `status` | `varchar(20) NOT NULL DEFAULT 'scheduled'` | scheduled/held/cancelled |
+| `created_at` / `updated_at` | `datetime NOT NULL` | |
+
+### `{prefix}hedayati_enrollments`
+
+| Column | Definition | Notes |
+|---|---|---|
+| `id` | `bigint unsigned AI` | PK |
+| `run_id` | `bigint unsigned NOT NULL` | `KEY` |
+| `user_id` | `bigint unsigned NOT NULL` | `KEY`; student (`wp_users.ID`) |
+| — | | **`UNIQUE KEY uq_run_user (run_id, user_id)`** |
+| `status` | `varchar(20) NOT NULL DEFAULT 'active'` | `KEY`; active/withdrawn/completed/cancelled |
+| `enrolled_at` | `datetime NOT NULL` | |
+| `created_at` / `updated_at` | `datetime NOT NULL` | |
+
+### `{prefix}hedayati_attendance`
+
+| Column | Definition | Notes |
+|---|---|---|
+| `id` | `bigint unsigned AI` | PK |
+| `session_id` | `bigint unsigned NOT NULL` | `KEY` |
+| `enrollment_id` | `bigint unsigned NOT NULL` | `KEY` |
+| — | | **`UNIQUE KEY uq_session_enrollment (session_id, enrollment_id)`** |
+| `status` | `varchar(20) NOT NULL` | present/absent/late/excused (no implicit default) |
+| `note` | `varchar(255) NOT NULL DEFAULT ''` | |
+| `recorded_by` | `bigint unsigned NULL` | acting user; nulled (row kept) when that user is deleted |
+| `recorded_at` | `datetime NOT NULL` | |
+| `created_at` / `updated_at` | `datetime NOT NULL` | |
+
+### `wp_options` markers added by Phase 2B
+
+`hedayati_core_db_version` advances to `2.1.0`; `hedayati_core_roles_version` advances to `2.1.0`;
+`hedayati_core_managed_capabilities` grows to **22** entries (adds `hedayati_manage_teachers`).

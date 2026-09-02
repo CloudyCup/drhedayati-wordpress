@@ -1,5 +1,15 @@
 # Phase 2A — Staging Acceptance Test Plan & Log (`mystik.ir`)
 
+> **2026-09-02 — Phase 2B branch development has begun** on
+> `feature/phase-2b-academic-operations` (academic operations: Teacher CPT, Course Runs, sessions,
+> enrollments, attendance). This does **not** change Phase 2A's status: the behavioural acceptance
+> below (Categories 2–4 — auth flows, rate-limit thresholds, phone lifecycle, deletion cleanup)
+> **remains OPEN and is still the first pre-deployment / pre-merge gate**. Phase 2B was developed
+> against the code and its own Node static suite; its staging acceptance
+> (`docs/PHASE_2B_ACCEPTANCE.md`) is likewise NOT RUN and sits *behind* this one.
+> Phase 2B additionally changes the schema (`2.1.0`) and roles (`2.1.0`, +`hedayati_manage_teachers`),
+> so once Phase 2B reaches staging the T3.5 role-matrix review must cover 22 capabilities, not 21.
+
 **Goal:** establish a *verified* Phase 2A baseline before any Phase 2B work.
 **Scope:** the `hedayati-core` plugin identity foundation + `hedayati` theme, as deployed to staging.
 **Constraints:** no Phase 2B, no automatic deploy, no destructive DB change, no production

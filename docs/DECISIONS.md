@@ -233,3 +233,59 @@ future agents, distinct from the reconstructed historical handoff.
 `plugin/hedayati-core/` and `theme/hedayati/`. Removal is recommended but deferred pending owner
 sign-off (this documentation task was scoped "do not delete files").
 **Why:** Prevent future contributors or agents from editing or shipping the wrong plugin copy.
+
+---
+
+## Decisions recorded during Phase 2B implementation (2026-09-02)
+
+## D28 — `hedayati_manage_teachers` is a distinct capability
+
+**Decided:** Phase 2B adds a 22nd managed capability, `hedayati_manage_teachers`, granted to
+`hedayati_manager` and native `administrator`. The `teacher` CPT maps all of its meta-capabilities
+to it. Roles schema version → `2.1.0`.
+**Why:** The Phase 2A set has `hedayati_manage_courses` (catalog), `hedayati_manage_course_runs`
+and `hedayati_assign_staff`, but nothing teacher-specific. Folding teacher administration into
+`hedayati_manage_courses` would couple two lifecycles that may later need different delegation
+(e.g. an HR/coordination role that curates instructor profiles but not the course catalogue).
+A dedicated capability keeps that option open and matches the "granular, least-privilege" model.
+**Replaced:** the implicit assumption (Phase 2A acceptance) that the managed-capability count is
+permanently 21. It is now 22; the future-safe sync in `class-roles.php` adds it without touching
+any existing assignment.
+
+## D29 — Academic-operations data lives in five custom relational tables, not CPTs/postmeta
+
+**Decided:** `hedayati_course_runs`, `hedayati_run_staff`, `hedayati_sessions`,
+`hedayati_enrollments`, `hedayati_attendance` — created by migration `2.1.0`, dynamic-prefixed,
+InnoDB/utf8mb4, prepared SQL only. Business states (`run_status`, `registration_status`, session
+/ enrollment / attendance status, staff role) are validated `varchar` columns, **not** MySQL
+ENUMs. Capacity and tuition are **nullable** (`NULL` = unknown; never a fabricated `0` or `20`).
+Tuition is integer **rial**. No database-level foreign keys — referential integrity is enforced
+in the service layer plus `deleted_user` / `before_delete_post` cleanup hooks (cross-engine and
+legacy-core safety).
+**Why:** Direct application of D5 / D12 / D13 and handoff Audit 8 — relational operational records
+must not be forced into postmeta, evolving business states must stay migratable, and unknown money
+/ capacity must not be invented.
+**The `Course` CPT stays authoritative for catalogue identity.** The existing `_course_teacher` /
+`_course_next_start_date` / `_course_price` / `_course_registration_state` meta remain as display
+fallbacks; they are **not** written from the run layer and no dual data entry is introduced.
+
+## D30 — Teacher CPT is not publicly queryable in Phase 2B
+
+**Decided:** Register `teacher` with `public => false` / `publicly_queryable => false` /
+`rewrite => false`. It is an admin-managed record only for now.
+**Why:** "Public instructor identity" (a teacher directory / profile pages) is Phase 2D / P1.4
+public-content work. Shipping a routable but half-designed public CPT now would expose incomplete
+profiles and lock in URLs before the directory is designed. Flipping it public later is a
+one-line, reversible change.
+
+## D31 — Course/run deletion cascades operational records; trashing does not
+
+**Decided:** Permanently deleting a `course` deletes its runs and cascades to sessions,
+enrollments, attendance and staff rows. Deleting a run cascades the same way. Deleting a WP user
+deletes their enrollments (+ that student's attendance) and their TA staff rows, unlinks their
+Teacher profile, and nulls `attendance.recorded_by`. **Trashing** a course/run does nothing
+(recoverable).
+**Why:** Mirrors the Phase 2A `deleted_user` → phone-row cleanup. Orphaned operational rows are
+worse than lost ones here (there is no student-facing history in 2B yet). **Caveat for Phase 2C:**
+once an append-only audit log exists it must be excluded from every cascade (D16 — academic /
+audit history is preserved, not cascade-deleted).

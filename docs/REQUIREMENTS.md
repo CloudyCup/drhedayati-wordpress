@@ -100,9 +100,9 @@ current repository. Status reflects the repository as of 2026-09-02.
 |---|---|---|
 | 7.1 | Custom roles: `student`, `teacher`, `teacher_assistant`, `reception`, `hedayati_manager`; native `administrator` for technical/system ownership | ✅ |
 | 7.2 | No custom `super_admin` role (WordPress reserves it for Multisite) | ✅ |
-| 7.3 | Granular capabilities (21 `hedayati_*`), least privilege — TA has no attendance by default; reception/manager lack `manage_options` | ✅ |
-| 7.4 | Versioned, future-safe capability sync; remove only own obsolete caps, never core/third-party | ✅ |
-| 7.5 | Roles are necessary but not sufficient — every protected operational action must also verify assignment/ownership scope | ⬜ (to be enforced by future services) |
+| 7.3 | Granular capabilities (22 `hedayati_*`), least privilege — TA has no attendance by default; reception/manager lack `manage_options` | ✅ (21 in 2A + `hedayati_manage_teachers` in 2B) |
+| 7.4 | Versioned, future-safe capability sync; remove only own obsolete caps, never core/third-party | ✅ (schema `2.1.0`) |
+| 7.5 | Roles are necessary but not sufficient — every protected operational action must also verify assignment/ownership scope | 🟡 (enforced for Phase 2B academic-ops admin via `Hedayati_Run_Staff_Service::user_is_staff_on_run()` + `require_run_scope()`; Phase 2C/2D surfaces still to come) |
 
 ## 8. Students, profiles, verification, documents
 
@@ -115,18 +115,21 @@ current repository. Status reflects the repository as of 2026-09-02.
 | 8.5 | Student sees enrolled courses/runs and sessions | ⬜ |
 | 8.6 | No approved policy that verification unlocks certificates/exams/benefits — requires institute input | ❓ |
 
-## 9. Academic operations (Phase 2B — approved model, not built)
+## 9. Academic operations (Phase 2B — backend + admin implemented; staging acceptance pending)
+
+Repository implementation is complete on `feature/phase-2b-academic-operations`. Behavioural
+acceptance on staging (`docs/PHASE_2B_ACCEPTANCE.md`) is a **pre-merge gate** and is NOT RUN.
 
 | # | Requirement | Status |
 |---|---|---|
-| 9.1 | `Course Run` separate from catalog `Course` — operational source of truth for teacher(s), start/end, schedule, tuition, capacity, registration state | ⬜ |
-| 9.2 | Nullable capacity and tuition (unknown ≠ 20, unknown ≠ free); tuition stored as integer **rial**, displayed as toman where appropriate | ⬜ |
-| 9.3 | Separate `run_status` (draft/scheduled/in_progress/completed/cancelled) from `registration_status` (closed/open/soon); stored as validated strings, not MySQL ENUMs | ⬜ |
-| 9.4 | Sessions with canonical `starts_at`/`ends_at` datetimes and `UNIQUE(run_id, session_number)` | ⬜ |
-| 9.5 | Teacher CPT for public instructor identity, optionally linked to a WP user | ⬜ |
-| 9.6 | Run staff assignment: primary instructor, additional instructor, TA; instructors need a teacher profile, TAs need a WP staff user but not a public Teacher CPT | ⬜ |
-| 9.7 | Existing `_course_teacher` / `_course_next_start_date` / `_course_price` / `_course_registration_state` become backward-compatible fallbacks; no permanent dual source of truth | ⬜ |
-| 9.8 | Enrollments per Course Run; attendance per session | ⬜ |
+| 9.1 | `Course Run` separate from catalog `Course` — operational source of truth for teacher(s), start/end, schedule, tuition, capacity, registration state | ✅ repo (`hedayati_course_runs` + `Hedayati_Course_Run_Service`) |
+| 9.2 | Nullable capacity and tuition (unknown ≠ 20, unknown ≠ free); tuition stored as integer **rial**, displayed as toman where appropriate | ✅ repo (NULL columns; `parse_optional_nonneg_int`) — toman display is a Phase 2D UI concern |
+| 9.3 | Separate `run_status` (draft/scheduled/in_progress/completed/cancelled) from `registration_status` (closed/open/soon); stored as validated strings, not MySQL ENUMs | ✅ repo (`Hedayati_Academic_Validation`) |
+| 9.4 | Sessions with canonical `starts_at`/`ends_at` datetimes and `UNIQUE(run_id, session_number)` | ✅ repo (`hedayati_sessions`, `uq_run_session`) |
+| 9.5 | Teacher CPT for public instructor identity, optionally linked to a WP user | ✅ repo (`teacher` CPT + `_hedayati_teacher_user_id` 1:1) — not publicly routed yet (D30) |
+| 9.6 | Run staff assignment: primary instructor, additional instructor, TA; instructors need a teacher profile, TAs need a WP staff user but not a public Teacher CPT | ✅ repo (`Hedayati_Run_Staff_Service` enforces the asymmetry) |
+| 9.7 | Existing `_course_teacher` / `_course_next_start_date` / `_course_price` / `_course_registration_state` become backward-compatible fallbacks; no permanent dual source of truth | ✅ repo (run layer never writes the meta; theme fallback wiring is Phase 2D) |
+| 9.8 | Enrollments per Course Run; attendance per session | ✅ repo (`hedayati_enrollments` `uq_run_user`; `hedayati_attendance` `uq_session_enrollment` + same-run guard) |
 
 ## 10. Staff interfaces (Phase 2D — not built)
 
@@ -135,7 +138,7 @@ current repository. Status reflects the repository as of 2026-09-02.
 | 10.1 | Reception: student lookup, create/basic-edit enrollments, basic profile view, initiate verification | ⬜ |
 | 10.2 | Teacher: assigned runs, rosters, sessions, attendance | ⬜ |
 | 10.3 | TA: assigned runs and rosters only; no attendance by default | ⬜ |
-| 10.4 | Manager: courses, runs, assignments, enrollments, verification, private documents, settings, audit logs | 🟡 (courses/settings only) |
+| 10.4 | Manager: courses, runs, assignments, enrollments, verification, private documents, settings, audit logs | 🟡 (courses/settings + Phase 2B: teachers, runs, staff, sessions, enrollments via «عملیات آموزشی»; verification/documents/audit still Phase 2C) |
 | 10.5 | Audit-log viewer | ⬜ |
 
 ## 11. Data, localization, dates
@@ -153,8 +156,8 @@ current repository. Status reflects the repository as of 2026-09-02.
 | # | Requirement | Status |
 |---|---|---|
 | 12.1 | WordPress password/session primitives only | ✅ |
-| 12.2 | Server-side authorization (capability + object ownership/scope); hiding UI is not security | 🟡 (caps defined; scope checks await services) |
-| 12.3 | Nonces/CSRF on every state-changing admin/frontend action | ✅ (current actions) |
+| 12.2 | Server-side authorization (capability + object ownership/scope); hiding UI is not security | 🟡 (Phase 2B academic-ops admin enforces capability + per-run scope server-side; Phase 2C/2D surfaces pending) |
+| 12.3 | Nonces/CSRF on every state-changing admin/frontend action | ✅ (all current actions incl. every `admin-post.php` academic-ops handler) |
 | 12.4 | Validate & sanitize input; escape output per context | ✅ |
 | 12.5 | Prepared SQL, dynamic `$wpdb->prefix` | ✅ |
 | 12.6 | Phone identity DB-unique | ✅ |

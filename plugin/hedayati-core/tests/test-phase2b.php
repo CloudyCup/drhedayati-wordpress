@@ -1,0 +1,165 @@
+<?php
+/**
+ * Phase 2B — Academic Operations unit & contract test suite.
+ *
+ * Scope of THIS file (runnable with the PHP CLI, no WordPress boot):
+ *   1. Hedayati_Academic_Validation — the complete business-state vocabularies and
+ *      the date / datetime / integer parsing rules (pure functions).
+ *   2. Structural contracts — service classes expose the expected static API and
+ *      address every table through Hedayati_DB_Schema (never a literal `wp_`).
+ *
+ * OUT OF SCOPE here (needs a real $wpdb / WordPress — verified on staging, the same
+ * way Phase 2A behavioural acceptance is a pre-deployment gate):
+ *   - actual INSERT/UPDATE/DELETE, UNIQUE-constraint enforcement, cascade deletes,
+ *     capacity enforcement, per-run scope, deletion-cleanup hooks.
+ *   See docs/PHASE_2B_ACCEPTANCE.md for the staging matrix.
+ *
+ * @package Hedayati_Core
+ */
+
+declare( strict_types=1 );
+
+if ( ! defined( 'ABSPATH' ) ) {
+	define( 'ABSPATH', __DIR__ . '/../../../' );
+
+	class WP_Error {
+		public function __construct( public string $code = '', public string $message = '', public mixed $data = null ) {}
+		public function get_error_code(): string { return $this->code; }
+		public function get_error_message(): string { return $this->message; }
+	}
+
+	function is_wp_error( mixed $thing ): bool { return $thing instanceof WP_Error; }
+	function esc_html__( string $text, string $domain = 'default' ): string { return $text; }
+	function esc_html( string $text ): string { return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' ); }
+}
+
+require_once __DIR__ . '/../includes/class-text.php';
+require_once __DIR__ . '/../includes/class-academic-validation.php';
+
+$passed = 0;
+$failed = 0;
+
+function check( string $desc, bool $cond ): void {
+	global $passed, $failed;
+	if ( $cond ) { echo "  [PASS] {$desc}\n"; $passed++; }
+	else { echo "  [FAIL] {$desc}\n"; $failed++; }
+}
+
+echo "=== PHASE 2B UNIT & CONTRACT TEST SUITE ===\n\n";
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "1. Digit normalization (Hedayati_Text):\n";
+check( "Persian digits -> ASCII", Hedayati_Text::digits_to_ascii( '۱۲۳۴۵۶۷۸۹۰' ) === '1234567890' );
+check( "Arabic-Indic digits -> ASCII", Hedayati_Text::digits_to_ascii( '٠١٢٣٤٥٦٧٨٩' ) === '0123456789' );
+check( "non-digits preserved", Hedayati_Text::digits_to_ascii( 'دوره ۳ (CCNA)' ) === 'دوره 3 (CCNA)' );
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\n2. Business-state vocabularies:\n";
+check( "5 run statuses", Hedayati_Academic_Validation::RUN_STATUSES === [ 'draft', 'scheduled', 'in_progress', 'completed', 'cancelled' ] );
+check( "3 registration statuses", Hedayati_Academic_Validation::REGISTRATION_STATUSES === [ 'closed', 'open', 'soon' ] );
+check( "3 session statuses", Hedayati_Academic_Validation::SESSION_STATUSES === [ 'scheduled', 'held', 'cancelled' ] );
+check( "4 enrollment statuses", Hedayati_Academic_Validation::ENROLLMENT_STATUSES === [ 'active', 'withdrawn', 'completed', 'cancelled' ] );
+check( "4 attendance statuses", Hedayati_Academic_Validation::ATTENDANCE_STATUSES === [ 'present', 'absent', 'late', 'excused' ] );
+check( "3 staff roles", Hedayati_Academic_Validation::STAFF_ROLES === [ 'primary_instructor', 'additional_instructor', 'assistant' ] );
+check( "instructor roles = the two instructor slugs", Hedayati_Academic_Validation::INSTRUCTOR_ROLES === [ 'primary_instructor', 'additional_instructor' ] );
+check( "is_instructor_role(assistant) is false", ! Hedayati_Academic_Validation::is_instructor_role( 'assistant' ) );
+check( "is_instructor_role(primary_instructor) is true", Hedayati_Academic_Validation::is_instructor_role( 'primary_instructor' ) );
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\n3. Status sanitizers (safe fallback on invalid):\n";
+check( "run_status valid passes", Hedayati_Academic_Validation::sanitize_run_status( 'in_progress' ) === 'in_progress' );
+check( "run_status invalid -> draft", Hedayati_Academic_Validation::sanitize_run_status( 'nope' ) === 'draft' );
+check( "run_status trims + lowercases", Hedayati_Academic_Validation::sanitize_run_status( '  COMPLETED ' ) === 'completed' );
+check( "registration_status invalid -> closed (safe)", Hedayati_Academic_Validation::sanitize_registration_status( '' ) === 'closed' );
+check( "session_status invalid -> scheduled", Hedayati_Academic_Validation::sanitize_session_status( 'x' ) === 'scheduled' );
+check( "enrollment_status invalid -> active", Hedayati_Academic_Validation::sanitize_enrollment_status( 'x' ) === 'active' );
+check( "attendance invalid -> null (no implicit default)", Hedayati_Academic_Validation::parse_attendance_status( 'x' ) === null );
+check( "attendance 'LATE' -> 'late'", Hedayati_Academic_Validation::parse_attendance_status( 'LATE' ) === 'late' );
+check( "staff role invalid -> null", Hedayati_Academic_Validation::parse_staff_role( 'boss' ) === null );
+check( "staff role 'assistant' -> 'assistant'", Hedayati_Academic_Validation::parse_staff_role( 'assistant' ) === 'assistant' );
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\n4. ISO date parsing:\n";
+check( "valid date", Hedayati_Academic_Validation::parse_iso_date( '2026-03-21' ) === '2026-03-21' );
+check( "Persian-digit date normalized", Hedayati_Academic_Validation::parse_iso_date( '۲۰۲۶-۰۳-۲۱' ) === '2026-03-21' );
+check( "Feb 31 rejected", Hedayati_Academic_Validation::parse_iso_date( '2026-02-31' ) === null );
+check( "month 13 rejected", Hedayati_Academic_Validation::parse_iso_date( '2026-13-01' ) === null );
+check( "slashes rejected", Hedayati_Academic_Validation::parse_iso_date( '2026/03/21' ) === null );
+check( "empty -> null", Hedayati_Academic_Validation::parse_iso_date( '' ) === null );
+check( "leap day 2028-02-29 valid", Hedayati_Academic_Validation::parse_iso_date( '2028-02-29' ) === '2028-02-29' );
+check( "non-leap 2027-02-29 rejected", Hedayati_Academic_Validation::parse_iso_date( '2027-02-29' ) === null );
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\n5. Datetime parsing (canonical Y-m-d H:i:s):\n";
+check( "space form gets :00 seconds", Hedayati_Academic_Validation::parse_datetime( '2026-03-21 09:30' ) === '2026-03-21 09:30:00' );
+check( "datetime-local T form accepted", Hedayati_Academic_Validation::parse_datetime( '2026-03-21T09:30' ) === '2026-03-21 09:30:00' );
+check( "explicit seconds preserved", Hedayati_Academic_Validation::parse_datetime( '2026-03-21 09:30:45' ) === '2026-03-21 09:30:45' );
+check( "hour 24 rejected", Hedayati_Academic_Validation::parse_datetime( '2026-03-21 24:00' ) === null );
+check( "minute 60 rejected", Hedayati_Academic_Validation::parse_datetime( '2026-03-21 09:60' ) === null );
+check( "invalid calendar day rejected", Hedayati_Academic_Validation::parse_datetime( '2026-02-30 09:00' ) === null );
+check( "date-only rejected", Hedayati_Academic_Validation::parse_datetime( '2026-03-21' ) === null );
+check( "Persian-digit datetime normalized", Hedayati_Academic_Validation::parse_datetime( '۲۰۲۶-۰۳-۲۱ ۰۹:۳۰' ) === '2026-03-21 09:30:00' );
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\n6. Integer parsing — nullable 'unknown' vs invalid vs required:\n";
+$cap_empty = Hedayati_Academic_Validation::parse_optional_nonneg_int( '' );
+check( "empty capacity -> null (unknown, NOT fabricated 0)", $cap_empty === null );
+check( "'20' -> int 20", Hedayati_Academic_Validation::parse_optional_nonneg_int( '20' ) === 20 );
+check( "'0' -> int 0 (explicit zero allowed)", Hedayati_Academic_Validation::parse_optional_nonneg_int( '0' ) === 0 );
+check( "Persian '۲۵۰۰۰۰۰' -> 2500000", Hedayati_Academic_Validation::parse_optional_nonneg_int( '۲۵۰۰۰۰۰' ) === 2500000 );
+check( "'-5' -> WP_Error", is_wp_error( Hedayati_Academic_Validation::parse_optional_nonneg_int( '-5' ) ) );
+check( "'12x' -> WP_Error", is_wp_error( Hedayati_Academic_Validation::parse_optional_nonneg_int( '12x' ) ) );
+check( "session number '0' -> null (must be positive)", Hedayati_Academic_Validation::parse_positive_int( '0' ) === null );
+check( "session number '3' -> 3", Hedayati_Academic_Validation::parse_positive_int( '3' ) === 3 );
+check( "session number 'abc' -> null", Hedayati_Academic_Validation::parse_positive_int( 'abc' ) === null );
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\n7. Service API contracts (no DB — reflection only):\n";
+
+$service_api = [
+	'includes/class-course-run-service.php' => [ 'Hedayati_Course_Run_Service', [ 'init', 'get', 'query', 'create', 'update', 'delete_run', 'on_course_deleted', 'count_for_course' ] ],
+	'includes/class-run-staff-service.php'  => [ 'Hedayati_Run_Staff_Service', [ 'init', 'get', 'list_for_run', 'assign', 'remove', 'on_user_deleted', 'on_post_deleted', 'user_is_staff_on_run', 'run_ids_for_user' ] ],
+	'includes/class-session-service.php'    => [ 'Hedayati_Session_Service', [ 'init', 'get', 'list_for_run', 'create', 'update', 'delete_session', 'next_session_number' ] ],
+	'includes/class-enrollment-service.php' => [ 'Hedayati_Enrollment_Service', [ 'init', 'get', 'get_by_run_user', 'list_for_run', 'list_for_user', 'enroll', 'set_status', 'delete_enrollment', 'count_active', 'on_user_deleted' ] ],
+	'includes/class-attendance-service.php' => [ 'Hedayati_Attendance_Service', [ 'init', 'get', 'list_for_session', 'record', 'record_bulk', 'delete_mark', 'on_user_deleted' ] ],
+];
+
+foreach ( $service_api as $file => [ $class, $methods ] ) {
+	$src = file_get_contents( __DIR__ . '/../' . $file );
+
+	foreach ( $methods as $m ) {
+		check( "{$class}::{$m}() declared", (bool) preg_match( '/function ' . preg_quote( $m, '/' ) . '\s*\(/', $src ) );
+	}
+
+	check( "{$class} addresses tables via Hedayati_DB_Schema", str_contains( $src, 'Hedayati_DB_Schema::get_table_' ) );
+	check( "{$class} has no literal wp_ table name", ! preg_match( '/[\'"]wp_[a-z_]*(posts|users|options|hedayati)/', $src ) );
+	check( "{$class} uses \$wpdb->prepare", str_contains( $src, '$wpdb->prepare(' ) );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\n8. Migration & roles wiring (source inspection):\n";
+$db_src    = file_get_contents( __DIR__ . '/../includes/class-db-schema.php' );
+$roles_src = file_get_contents( __DIR__ . '/../includes/class-roles.php' );
+
+check( "DB target version 2.1.0", str_contains( $db_src, "CURRENT_DB_VERSION = '2.1.0'" ) );
+check( "migrate_2_1_0 registered in MIGRATIONS", (bool) preg_match( "/'2\\.1\\.0'\\s*=>\\s*'migrate_2_1_0'/", $db_src ) );
+check( "phone table untouched by 2.1.0", ! preg_match( '/ALTER TABLE[^;]*hedayati_user_phones/i', $db_src ) );
+check( "no MySQL ENUM in schema", ! preg_match( '/\bENUM\s*\(/i', $db_src ) );
+check( "roles version 2.1.0", str_contains( $roles_src, "ROLES_VERSION = '2.1.0'" ) );
+check( "hedayati_manage_teachers in capability list", substr_count( $roles_src, "'hedayati_manage_teachers'" ) >= 2 );
+
+require_once __DIR__ . '/../includes/class-roles.php';
+check( "get_all_hedayati_capabilities() returns 22", count( Hedayati_Roles::get_all_hedayati_capabilities() ) === 22 );
+$mgr = Hedayati_Roles::get_roles_definition()['hedayati_manager']['capabilities'];
+check( "manager has hedayati_manage_teachers", ! empty( $mgr['hedayati_manage_teachers'] ) );
+check( "manager still lacks manage_options", empty( $mgr['manage_options'] ) );
+$ta = Hedayati_Roles::get_roles_definition()['teacher_assistant']['capabilities'];
+check( "TA still lacks record_attendance (D11 preserved)", empty( $ta['hedayati_record_attendance'] ) );
+
+echo "\n=========================================\n";
+echo "PHASE 2B TEST RESULTS: {$passed} PASSED, {$failed} FAILED\n";
+echo "=========================================\n";
+
+if ( $failed > 0 ) {
+	exit( 1 );
+}

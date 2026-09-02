@@ -38,14 +38,21 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ## P1 — required for launch
 
-1. **Phase 2B — academic operations.** Teacher CPT (+ optional WP-user link); Course Runs
-   (operational source of truth, nullable capacity/tuition, integer-rial tuition, separate
-   `run_status` / `registration_status` as validated strings); Sessions
-   (`UNIQUE(run_id, session_number)`, canonical datetimes); staff assignments (primary/additional
-   instructor, TA); Enrollments; attendance. Migrations, services, capability + ownership-scope
-   enforcement, tests, then staging tests with realistic fixtures. Existing `_course_teacher` /
-   `_course_next_start_date` / `_course_price` / `_course_registration_state` become
-   backward-compatible fallbacks — no permanent dual data entry.
+1. **Phase 2B — academic operations.** 🟡 **Repository implementation complete** on branch
+   `feature/phase-2b-academic-operations` (not merged): Teacher CPT (+ optional 1:1 WP-user link);
+   Course Runs (nullable capacity/tuition, integer-rial tuition, separate `run_status` /
+   `registration_status` as validated strings); Sessions (`UNIQUE(run_id, session_number)`,
+   canonical datetimes); staff assignments (primary/additional instructor, TA — D11 asymmetry);
+   Enrollments (`UNIQUE(run_id, user_id)`, capacity check); attendance (`UNIQUE(session_id,
+   enrollment_id)`, same-run guard). Migration `2.1.0`, five services, `hedayati_manage_teachers`
+   capability, per-run ownership-scope enforcement in the «عملیات آموزشی» admin UI, Node static
+   tests (140/140).
+   **Remaining before merge:** (a) staging behavioural acceptance — `docs/PHASE_2B_ACCEPTANCE.md`
+   (NOT RUN); (b) run PHP suites + `php -l` where PHP is available; (c) theme-side fallback wiring
+   so the public course page reads run data for `_course_teacher` / `_course_next_start_date` /
+   `_course_price` / `_course_registration_state` (currently the meta is still the only display
+   source — no dual *entry*, but no fallback *read* yet); (d) close Phase 2A behavioural acceptance
+   first.
 2. **Phase 2C — student identity & security.** Profile storage (address + extensible fields in
    usermeta); verification workflow and states; `HEDAYATI_DATA_ENCRYPTION_KEY` + key versioning +
    separate HMAC (established **before** storing any real national ID); private document

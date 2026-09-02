@@ -48,15 +48,29 @@ authorization must never depend on hidden UI.
   | `teacher_assistant` | view assigned runs, view assigned roster | attendance, session management, student PII beyond roster |
   | `teacher` | + manage assigned sessions, record attendance | student management, verification, settings |
   | `reception` | lookup students, create/basic-edit enrollments, basic profile view, initiate verification | `manage_options`, `delete_users`, `edit_theme_options`, course/run management, verify students, private documents, audit logs |
-  | `hedayati_manager` | operational: manage courses, runs, staff assignment, enrollments, verify students, view private documents, view audit logs, manage settings | `manage_options` (no WordPress technical administration) |
+  | `hedayati_manager` | operational: manage courses, teachers, runs, staff assignment, enrollments, verify students, view private documents, view audit logs, manage settings | `manage_options` (no WordPress technical administration) |
   | `administrator` (native) | all of the above **plus** WordPress technical administration | — |
 
 - **No custom `super_admin`** (WordPress reserves that for Multisite). Technical control =
   `administrator`; institute operations = `hedayati_manager`.
-- **21 granular `hedayati_*` capabilities** — the operational ones
-  (`hedayati_manage_course_runs`, `hedayati_verify_students`, `hedayati_view_private_documents`,
-  `hedayati_view_audit_logs`, `hedayati_record_attendance`, …) are **defined but not yet consumed**
-  by any code. When building services that use them, add the ownership/scope check alongside.
+- **22 granular `hedayati_*` capabilities** (21 from Phase 2A + `hedayati_manage_teachers` added
+  by Phase 2B, roles schema `2.1.0` — D28).
+  - **Consumed by Phase 2B** (`class-academic-admin.php`): `hedayati_manage_course_runs` (screen
+    access + run/session CRUD), `hedayati_manage_teachers` (Teacher CPT), `hedayati_assign_staff`
+    (run staff), `hedayati_create_enrollments` / `hedayati_manage_enrollments` (enrollments),
+    `hedayati_record_attendance` (attendance writes). Each state-changing request checks the
+    capability **and** a per-run access scope (`Hedayati_Run_Staff_Service::user_is_staff_on_run()`
+    for non-managers) — roles alone are not sufficient.
+  - **Still defined but not yet consumed:** `hedayati_verify_students`,
+    `hedayati_view_private_documents`, `hedayati_view_audit_logs`, `hedayati_initiate_verification`,
+    `hedayati_view_own_*` / `hedayati_upload_own_documents`, and the teacher/TA `view_assigned_*`
+    caps (the scoped teacher/TA/student portals are Phase 2D). When building those, add the
+    ownership/scope check alongside.
+- **Academic-operations authorization boundary:** the service classes
+  (`Hedayati_*_Service`) are a capability-agnostic data layer — exactly like
+  `Hedayati_User_Phone_Service` in Phase 2A. Every capability and nonce check lives in the caller
+  (`class-academic-admin.php` today; the Phase 2D portals later). A future REST/AJAX/CLI caller
+  MUST repeat those checks.
 - **Capability sync is future-safe:** on version bump the plugin removes only capabilities it
   previously managed (tracked in `hedayati_core_managed_capabilities`) — never core or
   third-party caps.
@@ -68,8 +82,12 @@ authorization must never depend on hidden UI.
 ## Input / output / database
 
 - **Nonces** on every custom state-changing action: course meta box
-  (`hedayati_course_meta_save`), term meta (`hedayati_term_meta_save`); the Settings API handles
-  its own nonces.
+  (`hedayati_course_meta_save`), term meta (`hedayati_term_meta_save`), Teacher meta box
+  (`hedayati_teacher_meta_save`), and every academic-operations action routed through
+  `admin-post.php` (`hedayati_run_save`, `hedayati_staff_assign`, `hedayati_session_save`,
+  `hedayati_enroll_add`, `hedayati_attendance_save`, … — each with its own nonce + capability
+  check + per-run scope check in `Hedayati_Academic_Admin::verify()` / `require_run_scope()`); the
+  Settings API handles its own nonces.
 - **Sanitize on input** with context-appropriate callbacks (`sanitize_text_field`,
   `sanitize_textarea_field`, `absint`, `rest_sanitize_boolean`, custom allowlist/date/array/icon
   sanitizers). Meta sanitizers run both at `register_post_meta` level and again in the meta-box
@@ -84,7 +102,11 @@ authorization must never depend on hidden UI.
   Never mark a failed migration successful; never hand-edit `hedayati_core_db_version` to hide a
   problem.
 - Phone table uniqueness is enforced at the **database** level (`UNIQUE(user_id)`,
-  `UNIQUE(phone_e164)`), not just in PHP.
+  `UNIQUE(phone_e164)`), not just in PHP. Phase 2B adds DB-level `UNIQUE` on
+  `hedayati_sessions(run_id, session_number)`, `hedayati_enrollments(run_id, user_id)` and
+  `hedayati_attendance(session_id, enrollment_id)`; run-staff uniqueness is service-enforced only
+  (nullable ref columns). Attendance writes additionally verify the enrollment and session belong
+  to the same run (IDOR guard).
 
 ---
 
