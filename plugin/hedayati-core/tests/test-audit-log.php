@@ -38,6 +38,22 @@ if ( ! function_exists( 'current_time' ) ) {
 	function current_time( string $type, bool $gmt = false ): string { return gmdate( 'Y-m-d H:i:s' ); }
 }
 
+// Test-harness only: a UTF-8-correct mbstring fallback for CLI environments
+// without ext-mbstring. Production never relies on this — WordPress core ships
+// its own mb_* compat in wp-includes/compat.php, and ext-mbstring is the norm.
+if ( ! function_exists( 'mb_substr' ) ) {
+	function mb_substr( $str, $start, $length = null, $enc = null ) {
+		$chars = preg_split( '//u', (string) $str, -1, PREG_SPLIT_NO_EMPTY ) ?: [];
+		$slice = ( null === $length ) ? array_slice( $chars, $start ) : array_slice( $chars, $start, $length );
+		return implode( '', $slice );
+	}
+}
+if ( ! function_exists( 'mb_strlen' ) ) {
+	function mb_strlen( $str, $enc = null ): int {
+		return count( preg_split( '//u', (string) $str, -1, PREG_SPLIT_NO_EMPTY ) ?: [] );
+	}
+}
+
 // Minimal shim so the class file loads without the full schema class.
 if ( ! class_exists( 'Hedayati_DB_Schema' ) ) {
 	class Hedayati_DB_Schema {
@@ -117,12 +133,29 @@ check( 'record() params are exactly action/object_type/object_id/note/actor_id',
 check( 'no param named ip / ua / user_agent / request', 0 === count( array_intersect( $params, [ 'ip', 'ua', 'user_agent', 'request', 'context', 'meta' ] ) ) );
 
 // ─────────────────────────────────────────────────────────────────────────────
-echo "\n5. Migration + service wiring (source inspection):\n";
+echo "\n5. Migration 2.2.0 wiring + the AUDIT-TABLE DDL only:\n";
 $db_src = file_get_contents( __DIR__ . '/../includes/class-db-schema.php' );
-check( 'DB target version 2.2.0', str_contains( $db_src, "CURRENT_DB_VERSION = '2.2.0'" ) );
-check( "migrate_2_2_0 in MIGRATIONS", (bool) preg_match( "/'2\\.2\\.0'\\s*=>\\s*'migrate_2_2_0'/", $db_src ) );
-check( 'audit DDL has no ip / user_agent column', ! preg_match( '/(ip_address|ip_addr|\buser_agent\b)/i', $db_src ) );
-check( 'audit DDL has no updated_at (append-only)', ! preg_match( '/hedayati_audit_log[\s\S]*?updated_at[\s\S]*?charset_collate/', $db_src ) );
+
+preg_match( "/CURRENT_DB_VERSION\\s*=\\s*'([0-9.]+)'/", $db_src, $dbv );
+check( 'DB target version is >= 2.2.0 (audit-log schema present)', isset( $dbv[1] ) && version_compare( $dbv[1], '2.2.0', '>=' ) );
+check( 'migrate_2_2_0 in MIGRATIONS', (bool) preg_match( "/'2\\.2\\.0'\\s*=>\\s*'migrate_2_2_0'/", $db_src ) );
+check( 'earlier migrations 2.0.0 + 2.1.0 still registered', (bool) preg_match( "/'2\\.0\\.0'\\s*=>\\s*'migrate_2_0_0'/", $db_src ) && (bool) preg_match( "/'2\\.1\\.0'\\s*=>\\s*'migrate_2_1_0'/", $db_src ) );
+
+// Isolate the audit-table CREATE TABLE statement and evaluate THAT alone —
+// other tables legitimately have `updated_at`, and prose comments elsewhere
+// mention ip / user_agent.
+preg_match( '/CREATE TABLE \{\$table_audit_log\}\s*\((.*?)\)\s*\{\$charset_collate\};/s', $db_src, $ddlm );
+$audit_ddl = $ddlm[1] ?? '';
+check( 'audit CREATE TABLE statement was isolated', '' !== $audit_ddl && str_contains( $db_src, '{$table_audit_log}' ) );
+
+foreach ( [ 'id ', 'actor_id ', 'action ', 'object_type ', 'object_id ', 'note ', 'created_at ' ] as $col ) {
+	check( "audit DDL declares column: " . trim( $col ), (bool) preg_match( '/^\s*' . preg_quote( trim( $col ), '/' ) . '\s/m', $audit_ddl ) );
+}
+check( 'audit DDL has NO ip / ip_address column', ! preg_match( '/^\s*(ip|ip_address|ip_addr|remote_addr)\s/mi', $audit_ddl ) );
+check( 'audit DDL has NO user_agent column', ! preg_match( '/^\s*(user_agent|useragent|ua)\s/mi', $audit_ddl ) );
+check( 'audit DDL has NO updated_at column (append-only signal)', ! preg_match( '/^\s*updated_at\s/mi', $audit_ddl ) );
+check( 'audit DDL has NO json / blob / text / context / payload column', ! preg_match( '/^\s*[a-z_]*\s+(json|blob|longblob|mediumblob|text|longtext|mediumtext)\b/mi', $audit_ddl ) && ! preg_match( '/^\s*(context|payload|body|meta|data)\s/mi', $audit_ddl ) );
+check( 'migrate_2_2_0 verifies the table before advancing the version', (bool) preg_match( '/migrate_2_2_0.*?SHOW TABLES LIKE %s.*?\$exists === \$table_audit_log/s', $db_src ) );
 
 foreach ( [
 	'class-course-run-service'  => [ 'course_run.created', 'course_run.updated', 'course_run.deleted', 'course.deleted' ],

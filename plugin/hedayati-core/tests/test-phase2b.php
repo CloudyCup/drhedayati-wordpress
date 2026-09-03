@@ -141,9 +141,14 @@ echo "\n8. Migration & roles wiring (source inspection):\n";
 $db_src    = file_get_contents( __DIR__ . '/../includes/class-db-schema.php' );
 $roles_src = file_get_contents( __DIR__ . '/../includes/class-roles.php' );
 
-check( "DB target version 2.1.0", str_contains( $db_src, "CURRENT_DB_VERSION = '2.1.0'" ) );
+// Phase 2B requires at least the 2.1.0 schema. Later phases (2.2.0 audit log)
+// legitimately raise CURRENT_DB_VERSION — assert a minimum, not an exact string.
+preg_match( "/CURRENT_DB_VERSION\\s*=\\s*'([0-9.]+)'/", $db_src, $dbv );
+check( "DB target version is >= 2.1.0 (Phase 2B schema present)", isset( $dbv[1] ) && version_compare( $dbv[1], '2.1.0', '>=' ) );
 check( "migrate_2_1_0 registered in MIGRATIONS", (bool) preg_match( "/'2\\.1\\.0'\\s*=>\\s*'migrate_2_1_0'/", $db_src ) );
-check( "phone table untouched by 2.1.0", ! preg_match( '/ALTER TABLE[^;]*hedayati_user_phones/i', $db_src ) );
+check( "migrate_2_1_0() method still defined", str_contains( $db_src, 'function migrate_2_1_0(' ) );
+check( "Phase 2A migration 2.0.0 still present (2.1.0 did not replace it)", str_contains( $db_src, 'migrate_2_0_0' ) && (bool) preg_match( "/'2\\.0\\.0'\\s*=>\\s*'migrate_2_0_0'/", $db_src ) );
+check( "phone table untouched by 2.1.0 (no ALTER on hedayati_user_phones)", ! preg_match( '/ALTER TABLE[^;]*hedayati_user_phones/i', $db_src ) );
 check( "no MySQL ENUM in schema", ! preg_match( '/\bENUM\s*\(/i', $db_src ) );
 check( "roles version 2.1.0", str_contains( $roles_src, "ROLES_VERSION = '2.1.0'" ) );
 check( "hedayati_manage_teachers in capability list", substr_count( $roles_src, "'hedayati_manage_teachers'" ) >= 2 );

@@ -228,7 +228,17 @@ assert_test( "Role manager tracks managed capabilities option name", Hedayati_Ro
 echo "\n7. Testing Migration Framework Constants:\n";
 
 assert_test( "Migration lock option is defined", Hedayati_DB_Schema::LOCK_OPTION === 'hedayati_db_migration_lock' );
-assert_test( "Current DB version is 2.0.0", Hedayati_DB_Schema::CURRENT_DB_VERSION === '2.0.0' );
+// Phase 2A requires at least the 2.0.0 schema (phone table). Later phases add
+// migrations (2.1.0 academic ops, 2.2.0 audit log) and legitimately raise
+// CURRENT_DB_VERSION — so assert a minimum, not an exact string.
+assert_test(
+	"Current DB version is >= 2.0.0",
+	version_compare( Hedayati_DB_Schema::CURRENT_DB_VERSION, '2.0.0', '>=' )
+);
+assert_test(
+	"Phase 2A migration 2.0.0 is still registered (never removed)",
+	str_contains( file_get_contents( __DIR__ . '/../includes/class-db-schema.php' ), 'migrate_2_0_0' )
+);
 
 echo "\n=========================================\n";
 echo "TEST RESULTS: {$tests_passed} PASSED, {$tests_failed} FAILED\n";
