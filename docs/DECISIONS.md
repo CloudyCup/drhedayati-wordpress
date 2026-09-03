@@ -238,9 +238,15 @@ future agents, distinct from the reconstructed historical handoff.
 
 **Decided:** Treat `package-plugin/hedayati-core/` as a stale pre-Phase-2A copy, and the root
 `hedayati-core.zip` and root `drhedayati-wordpress` file as accidental artifacts. Build only from
-`plugin/hedayati-core/` and `theme/hedayati/`. Removal is recommended but deferred pending owner
-sign-off (this documentation task was scoped "do not delete files").
+`plugin/hedayati-core/` and `theme/hedayati/`.
 **Why:** Prevent future contributors or agents from editing or shipping the wrong plugin copy.
+**Executed 2026-09-03 (owner-approved):** `package-plugin/` (tracked — verified a strict subset of
+the old `1.0.0` Phase-1 code, no unique current source) and the root `drhedayati-wordpress` file
+(tracked — a 62-line `git diff` dump) were **removed** in an isolated cleanup commit. The stale
+gitignored ZIPs (`hedayati-core.zip` root + `plugin/`, and the old `staging-export/*.zip`, all
+containing `1.1.0` code) were deleted from the working tree. Release ZIPs are now produced only by
+`scripts/build-packages.ps1` (D35) from canonical source, into `staging-export/`, and stay
+gitignored.
 
 ---
 
@@ -344,3 +350,17 @@ yet. Everything else is safe, and it makes Phase 2B operations auditable now.
 rest-enabled type). That would have leaked teacher names / bios / photos before the Phase 2D
 public directory is designed — exactly what D30 set out to avoid. Flipping this back on is part of
 the Phase 2D directory work, alongside a deliberate public read design.
+
+## D35 — Releases are built only by `scripts/build-packages.ps1` from canonical source
+
+**Decided:** the two deployable ZIPs (`staging-export/hedayati-core.zip`,
+`staging-export/hedayati.zip`) are produced **only** by `scripts/build-packages.ps1`, whose
+**only** inputs are `plugin/hedayati-core/` and `theme/hedayati/`. It uses `tar -a` (D23), writes
+into `staging-export/`, and hard-fails unless the archive top-level layout is
+`hedayati-core/hedayati-core.php` / `hedayati/style.css` **and** the `HEDAYATI_CORE_VERSION` +
+header `Version:` inside the plugin ZIP match `plugin/hedayati-core/hedayati-core.php`.
+**Why:** an independent inspection (2026-09-03) found `./hedayati-core.zip`,
+`plugin/hedayati-core.zip` and `staging-export/*.zip` all still contained **Hedayati Core 1.1.0**
+while canonical source was `1.5.0` — a live deploy-the-wrong-code hazard. A verifying build script
++ removing the stale copies (D27) makes that mistake structurally hard. ZIPs stay gitignored;
+never commit a binary artifact; always rebuild.

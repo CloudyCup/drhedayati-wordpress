@@ -31,10 +31,10 @@ several items still need institute decisions (marked ❓, see the bottom of this
    plugin versions, any server-only edits, Vazirmatn status). Fix drift.
 3. **Commit / tag the accepted Phase 2A artifact** so local Git == staging. Fix only defects found
    by the P0 tests, re-run checks, redeploy, re-verify non-regression.
-4. **Repo hygiene (low effort):** decide the fate of `package-plugin/`, root `hedayati-core.zip`,
-   and the stray root file `drhedayati-wordpress` (accidental diff dump). Recommend removing them
-   in a dedicated commit — needs owner sign-off since "do not delete files" applied to this
-   documentation task.
+4. **Repo hygiene** — ✅ **done 2026-09-03** (owner-approved, isolated commit on
+   `feature/phase-2b-academic-operations`): `package-plugin/` and the root `drhedayati-wordpress`
+   dump removed; stale `1.1.0` ZIPs deleted; `scripts/build-packages.ps1` added so releases can
+   only be built from canonical source. See D27 / D35.
 
 ## P1 — required for launch
 
@@ -133,4 +133,4 @@ several items still need institute decisions (marked ❓, see the bottom of this
 - SMS provider (for future OTP/notifications).
 - Payment: needed for launch or not.
 - Cutover timing and the legacy-content scope to migrate vs redirect vs drop.
-- Fate of the stale repo artifacts (`package-plugin/`, root zip, stray diff file).
+- ~~Fate of the stale repo artifacts~~ — resolved (removed 2026-09-03, D27/D35).

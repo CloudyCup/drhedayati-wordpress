@@ -6,8 +6,9 @@ Phase 2B + the Phase 2C address slice were implemented 2026-09-02/03 on
 `feature/phase-2b-academic-operations`.
 Phase 2A staging acceptance (`docs/PHASE_2A_ACCEPTANCE.md`): the static + read-only-DB layer on
 `mystik.ir` is verified; runtime behaviour is **not** yet tested. Phase 2B (below) is implemented
-on branch `feature/phase-2b-academic-operations` — repository + Node static tests only; its staging
-acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
+on branch `feature/phase-2b-academic-operations` — repository + Node static tests (Claude) + an
+independent `php -l` / PHP-suite run on PHP 8.4 (see the Tests section); its **staging/runtime**
+acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is still NOT RUN.
 **Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
 `hedayati-core` **1.5.0** · DB schema **2.2.0** · roles schema **2.1.0**.
 **`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (nothing from this branch is merged).
@@ -157,10 +158,22 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is NOT RUN.
   `current_user_can_view()`. **No update/delete method** — append-only at the API. Minimal
   read-only viewer: «عملیات آموزشی → گزارش رویدادها» (`hedayati_view_audit_logs`, GET-only,
   filters validated against the vocabularies, paginated).
-- **Tests (Node, runnable here):** `verify-phase2a.js` **74/74** · `verify-phase2b.js` **171/171**
-  · `verify-phase2c.js` **25/25** · `verify-audit-log.js` **98/98** · `verify-jalali.js` **36/36**.
-  PHP suites (`test-phase2a.php` — cap count updated 21→22, `test-phase2b.php`, `test-audit-log.php`,
-  `test-jalali.php`) and `php -l` — **NOT RUN** (no PHP in this environment).
+- **Tests — CLAUDE-EXECUTED (Node):** `verify-phase2a.js` **74/74** · `verify-phase2b.js` **171/171**
+  · `verify-phase2c.js` **25/25** · `verify-audit-log.js` **98/98** · `verify-jalali.js` **36/36**
+  (404 assertions, 0 failed). The Claude dev environment has **no PHP** — it cannot run `php` or
+  `php -l`.
+- **Tests — INDEPENDENTLY EXECUTED (external inspection, PHP 8.4, 2026-09-03):**
+  - `php -l` on **all 56 PHP files in the repo → all pass** (syntax/parse only — *not* WordPress
+    runtime verification).
+  - `php test-phase2a.php` → **77/78**, sole failure the stale `CURRENT_DB_VERSION === '2.0.0'`
+    assertion; **fixed** this session (now `version_compare(>=, '2.0.0')`).
+  - `php test-phase2b.php` → **112/113**, sole failure the stale exact-`2.1.0` assertion; **fixed**
+    (now `version_compare(>=, '2.1.0')`, migrate_2_1_0 + Phase-2A-preservation still asserted).
+  - `php test-jalali.php` → **35/35** (repository-level PHP verification of the Shamsi layer).
+  - `php test-audit-log.php` → **harness defects** (no `ext-mbstring`; DDL assertions scanned the
+    whole schema file); **fixed** this session — UTF-8 mb_* test shim + the no-ip/ua/updated_at
+    checks now isolate the `migrate_2_2_0` CREATE TABLE only. Re-run pending on a PHP host.
+  - **`php -l` and all four PHP suites remain NOT re-executed by Claude** — no PHP here.
 
 ### Plugin — student profile (Phase 2C foundation — address only) — same branch
 
@@ -328,18 +341,18 @@ and user-deletion cleanup. These require the Category 2–4 state-changing tests
 
 ---
 
-## Repository artifacts that are not part of either deliverable
+## Repository artifacts
 
-- `package-plugin/hedayati-core/` — a **stale pre-Phase-2A copy** of the plugin (no
-  `class-auth`, `class-phone`, `class-roles`, `class-db-schema`, `class-user-phone-service`,
-  `class-rate-limiter`, no `tests/`; other files differ). Not referenced by the handoff.
-- `hedayati-core.zip` (repo root) — a build artifact; untracked (matched by `.gitignore` `*.zip`).
-- `drhedayati-wordpress` (repo root, no extension) — a 62-line git-diff dump accidentally committed
-  in `a51237d` ("checkpoint before Claude Code migration").
-- `.gitignore` already excludes `*.zip`, `node_modules/`, `vendor/`, `.env*`, build dirs, uploads,
-  logs.
-
-These are noted for awareness only. Do not build from them; do not delete them without asking.
+- **Removed 2026-09-03** (D27, owner-approved, commit on this branch): `package-plugin/`
+  (stale `1.0.0` Phase-1 subset) and the root `drhedayati-wordpress` git-diff dump. The stale
+  gitignored ZIPs (`./hedayati-core.zip`, `plugin/hedayati-core.zip`, old `staging-export/*.zip` —
+  all `1.1.0`) were deleted from the working tree.
+- **Release artifacts** are produced only by `scripts/build-packages.ps1` from
+  `plugin/hedayati-core/` + `theme/hedayati/`, into `staging-export/hedayati-core.zip` /
+  `staging-export/hedayati.zip`. The script verifies archive layout and that the version inside the
+  plugin ZIP matches canonical source. ZIPs stay gitignored (`.gitignore` `*.zip`).
+- `.gitignore` also excludes `node_modules/`, `vendor/`, `.env*`, build dirs, uploads, logs.
+- `reference-react/` — design prototype, visual reference only (never wired into production).
 
 ---
 

@@ -39,22 +39,36 @@ No nested wrappers (`hedayati-core-1/hedayati-core/hedayati-core.php` is wrong).
 
 ## Building the packages
 
-Use `tar -a` (produces a zip). **Do not use PowerShell `Compress-Archive`** — it produced archives
-this host mis-extracted / failed to recognize even when the listing looked correct.
+**Always use the build script — never package by hand, never reuse an old ZIP.**
 
-```bash
-# Theme
-cd theme && tar -a -c -f hedayati.zip hedayati && cd ..
-
-# Plugin
-cd plugin && tar -a -c -f hedayati-core.zip hedayati-core && cd ..
+```powershell
+pwsh ./scripts/build-packages.ps1
 ```
 
-Exclude dev-only files if you add any later (there are none today; the `tests/` folder is small and
-harmless to ship). Build ZIPs are gitignored (`*.zip`).
+It packages **only** `plugin/hedayati-core/` and `theme/hedayati/` with the approved `tar -a`
+convention (D23 — **never** `Compress-Archive`, which produced archives this host mis-extracted),
+writes fresh `staging-export/hedayati-core.zip` + `staging-export/hedayati.zip`, and **fails** unless:
 
-> Ignore `package-plugin/` and the repo-root `hedayati-core.zip` — stale artifacts, not build
-> inputs. Build from `plugin/hedayati-core/` and `theme/hedayati/` only.
+- the plugin ZIP's top-level entry is `hedayati-core/hedayati-core.php`;
+- the theme ZIP's top-level entry is `hedayati/style.css`;
+- the `HEDAYATI_CORE_VERSION` **and** the header `Version:` line inside the plugin ZIP both equal
+  `plugin/hedayati-core/hedayati-core.php`'s version.
+
+The equivalent manual commands (if `pwsh` is unavailable) are
+`cd plugin && tar -a -c -f ../staging-export/hedayati-core.zip hedayati-core` and
+`cd theme && tar -a -c -f ../staging-export/hedayati.zip hedayati` — but run the script so the
+layout/version checks happen.
+
+The `tests/` folder is small and harmless to ship (no other dev-only files exist). All ZIPs are
+gitignored (`*.zip`).
+
+> ### ⚠️ Stale-artifact hazard — do NOT deploy these
+> As of 2026-09-03 the canonical plugin is **Hedayati Core 1.5.0**. The following were **removed**
+> from the repo this session (D27) because they held OLD code and are a deploy trap:
+> `package-plugin/hedayati-core/` (`1.0.0`), the root `drhedayati-wordpress` diff dump, and the
+> stale gitignored ZIPs `./hedayati-core.zip`, `plugin/hedayati-core.zip`, `staging-export/*.zip`
+> (all `1.1.0`). If any reappear, they are junk — regenerate with `scripts/build-packages.ps1`.
+> The **only** deployable artifacts are the ones that script just built.
 
 ---
 
