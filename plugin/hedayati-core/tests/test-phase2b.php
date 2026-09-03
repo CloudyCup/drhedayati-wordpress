@@ -161,6 +161,47 @@ check( "manager still lacks manage_options", empty( $mgr['manage_options'] ) );
 $ta = Hedayati_Roles::get_roles_definition()['teacher_assistant']['capabilities'];
 check( "TA still lacks record_attendance (D11 preserved)", empty( $ta['hedayati_record_attendance'] ) );
 
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\n9. Teacher CPT capability model (1.5.2 meta-cap collision fix):\n";
+$teacher_src = file_get_contents( __DIR__ . '/../includes/class-teacher.php' );
+
+check( "Teacher CPT declares map_meta_cap => true", (bool) preg_match( "/'map_meta_cap'\\s*=>\\s*true/", $teacher_src ) );
+
+preg_match( "/'capabilities'\\s*=>\\s*\\[(.*?)\\]\\s*,\\s*\\n\\s*\\]\\s*\\)\\s*;/s", $teacher_src, $cap_block );
+check( "Teacher CPT 'capabilities' array parseable", isset( $cap_block[1] ) );
+
+$t_caps = [];
+if ( isset( $cap_block[1] ) ) {
+	preg_match_all( "/'([a-z_]+)'\\s*=>\\s*'([a-z_]+)'/", $cap_block[1], $pairs, PREG_SET_ORDER );
+	foreach ( $pairs as $p ) {
+		$t_caps[ $p[1] ] = $p[2];
+	}
+}
+
+$meta_keys       = [ 'edit_post', 'read_post', 'delete_post' ];
+$collection_keys = [ 'edit_posts', 'edit_others_posts', 'delete_posts', 'delete_others_posts', 'publish_posts', 'read_private_posts', 'create_posts' ];
+
+foreach ( $collection_keys as $k ) {
+	check( "collection cap '{$k}' requires hedayati_manage_teachers", ( $t_caps[ $k ] ?? null ) === 'hedayati_manage_teachers' );
+}
+foreach ( $meta_keys as $k ) {
+	check( "meta cap '{$k}' does NOT reuse the primitive (the 1.5.1 collision)", ( $t_caps[ $k ] ?? null ) !== 'hedayati_manage_teachers' );
+	check( "meta cap '{$k}' is present and distinct-named", isset( $t_caps[ $k ] ) && ! in_array( $t_caps[ $k ], $collection_keys, true ) );
+}
+check( "the three meta caps have three distinct names", count( array_unique( [ $t_caps['edit_post'] ?? '', $t_caps['read_post'] ?? '', $t_caps['delete_post'] ?? '' ] ) ) === 3 );
+
+// Port of WP core: _post_type_meta_capabilities() would copy these meta-cap
+// *values* into $post_type_meta_caps as KEYS; a key there is object-scoped and can
+// never be tested bare. The primitive must NOT become such a key.
+$ptmc = [];
+foreach ( $meta_keys as $core ) {
+	if ( isset( $t_caps[ $core ] ) ) {
+		$ptmc[ $t_caps[ $core ] ] = $core;
+	}
+}
+check( "hedayati_manage_teachers stays a bare primitive (not object-scoped)", ! array_key_exists( 'hedayati_manage_teachers', $ptmc ) );
+check( "negative control: the 1.5.1 config WOULD trip this guard", array_key_exists( 'hedayati_manage_teachers', [ 'hedayati_manage_teachers' => 'edit_post' ] ) );
+
 echo "\n=========================================\n";
 echo "PHASE 2B TEST RESULTS: {$passed} PASSED, {$failed} FAILED\n";
 echo "=========================================\n";

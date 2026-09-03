@@ -31,7 +31,7 @@ explicitly from `hedayati-core.php`.
 
 ---
 
-## Plugin: `hedayati-core` (v1.5.1)
+## Plugin: `hedayati-core` (v1.5.2)
 
 ### Bootstrap (`hedayati-core.php`)
 

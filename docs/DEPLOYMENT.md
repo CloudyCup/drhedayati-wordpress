@@ -63,7 +63,7 @@ The `tests/` folder is small and harmless to ship (no other dev-only files exist
 gitignored (`*.zip`).
 
 > ### ⚠️ Stale-artifact hazard — do NOT deploy these
-> As of 2026-09-03 the canonical plugin is **Hedayati Core 1.5.1**. The following were **removed**
+> As of 2026-09-03 the canonical plugin is **Hedayati Core 1.5.2**. The following were **removed**
 > from the repo this session (D27) because they held OLD code and are a deploy trap:
 > `package-plugin/hedayati-core/` (`1.0.0`), the root `drhedayati-wordpress` diff dump, and the
 > stale gitignored ZIPs `./hedayati-core.zip`, `plugin/hedayati-core.zip`, `staging-export/*.zip`
@@ -83,7 +83,7 @@ gitignored (`*.zip`).
      `php -l` on every PHP file (48/48, independently confirmed on PHP 8.4, 2026-09-03).
    - Confirm version headers bumped if behavior changed (`hedayati-core.php` / `style.css` /
      `HEDAYATI_CORE_VERSION` / `HEDAYATI_VERSION` / `CURRENT_DB_VERSION` / `ROLES_VERSION`).
-     Current branch: `HEDAYATI_CORE_VERSION` `1.5.1`, `CURRENT_DB_VERSION` `2.2.0`,
+     Current branch: `HEDAYATI_CORE_VERSION` `1.5.2`, `CURRENT_DB_VERSION` `2.2.0`,
      `ROLES_VERSION` `2.1.0`.
 2. **Backup first** — take a full cPanel backup (files + database) and download an independent copy
    before replacing anything.

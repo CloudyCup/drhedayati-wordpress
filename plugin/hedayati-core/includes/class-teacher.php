@@ -90,10 +90,35 @@ class Hedayati_Teacher {
 			'delete_with_user'    => false,
 			'capability_type'     => 'hedayati_teacher',
 			'map_meta_cap'        => true,
+			// Capability model — read this before touching it (fixes the 1.5.1 T1
+			// staging bug):
+			//
+			// `hedayati_manage_teachers` is the ONE primitive permission. It is
+			// granted to `hedayati_manager` + `administrator` by Hedayati_Roles and
+			// MUST stay a plain primitive so `current_user_can( 'hedayati_manage_teachers' )`
+			// resolves WITHOUT an object ID — that bare check drives the admin-menu
+			// visibility, the list-table screen, and every server-side guard.
+			//
+			// The three PER-OBJECT meta caps (`edit_post` / `read_post` /
+			// `delete_post`) must therefore get DISTINCT names. WordPress's
+			// `_post_type_meta_capabilities()` copies the *values* of exactly those
+			// three keys into the global `$post_type_meta_caps` lookup. If a value
+			// there is `hedayati_manage_teachers`, then `map_meta_cap()` rewrites a
+			// bare `hedayati_manage_teachers` capability check into a per-object
+			// `edit_post`/`read_post`/`delete_post` check, which fails for lack of an
+			// ID — the exact collision that hid the «اساتید» menu on staging 1.5.1.
+			//
+			// Distinct names (`edit_hedayati_teacher` etc.) sidestep the collision.
+			// They are NEVER added to any role: `map_meta_cap()` maps them back down
+			// to the collection caps below, all of which require the single primitive
+			// `hedayati_manage_teachers`.
 			'capabilities'        => [
-				'edit_post'              => 'hedayati_manage_teachers',
-				'read_post'              => 'hedayati_manage_teachers',
-				'delete_post'            => 'hedayati_manage_teachers',
+				// Per-object meta caps — distinct names, resolved by map_meta_cap().
+				'edit_post'              => 'edit_hedayati_teacher',
+				'read_post'              => 'read_hedayati_teacher',
+				'delete_post'            => 'delete_hedayati_teacher',
+
+				// Collection / status caps — all require the one primitive permission.
 				'edit_posts'             => 'hedayati_manage_teachers',
 				'edit_others_posts'      => 'hedayati_manage_teachers',
 				'delete_posts'           => 'hedayati_manage_teachers',

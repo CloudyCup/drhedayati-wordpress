@@ -15,29 +15,74 @@ production contact; take a fresh full backup before any state-changing test.
 
 ---
 
+## 2026-09-03 — staging pre-check finding: Teacher CPT authorization (T1) FAILED on 1.5.1; fixed in 1.5.2
+
+A staging capability probe of the (not-yet-deployed-as-current, but built) Teacher CPT
+found that **section C test T1 fails on plugin `1.5.1`**:
+
+- **Observed on staging:** `administrator` (user ID 1) — `get_role('administrator')->has_cap('hedayati_manage_teachers')` = YES and
+  `$user->allcaps['hedayati_manage_teachers']` = true, **but**
+  `current_user_can('hedayati_manage_teachers')` = **false**; the «اساتید» menu was
+  absent and `/wp-admin/edit.php?post_type=teacher` returned "you need a higher
+  level of permission".
+- **Root cause — WordPress meta-capability collision.** `class-teacher.php` registered
+  the CPT with `map_meta_cap => true` while assigning the **primitive**
+  `hedayati_manage_teachers` as the *value* of the singular meta caps `edit_post` /
+  `read_post` / `delete_post`. WordPress's `_post_type_meta_capabilities()` copies
+  those three values into the global `$post_type_meta_caps` map as **keys**, and
+  `map_meta_cap()` then rewrites any incoming `hedayati_manage_teachers` check into a
+  per-object `edit_post`/`read_post`/`delete_post` check. With no object ID
+  (`current_user_can('hedayati_manage_teachers')`, menu checks, list-table access)
+  the mapped check calls `get_post(null)` and returns `do_not_allow` — so the
+  primitive appeared "unheld" even though the role grants it.
+- **Fix (plugin `1.5.2`, `includes/class-teacher.php` only):** the singular meta caps
+  now use **distinct** names — `edit_hedayati_teacher` / `read_hedayati_teacher` /
+  `delete_hedayati_teacher` — which `map_meta_cap()` resolves down to the collection
+  caps (`edit_posts` etc.), all of which require the single primitive
+  `hedayati_manage_teachers`. `hedayati_manage_teachers` stays a plain primitive and
+  is never object-scoped. **No DB schema, `CURRENT_DB_VERSION` (2.2.0),
+  `ROLES_VERSION` (2.1.0) or managed-capability-count (22) change** — this is a CPT
+  mapping fix, not a role migration. The distinct meta-cap names are **not** added to
+  any role.
+- **Regression guard added:** `verify-phase2b.js` §9b and `test-phase2b.php` §9 parse
+  the actual `capabilities` map, assert the three meta caps never reuse the primitive
+  or a collection-cap name, and port WP's `_post_type_meta_capabilities()` +
+  `map_meta_cap()` collision logic — including a negative control that the exact
+  `1.5.1` config trips the guard. The former assertion (a bare
+  `contains("=> 'hedayati_manage_teachers'")` string check) stayed green through the
+  bug and has been removed.
+- **T1 remains `NOT RUN` / awaiting staging retest** until `1.5.2` is deployed to
+  `mystik.ir` and the checks in section C below are executed.
+
+---
+
 ## What was verified in the repository (REPOSITORY VERIFIED — not on staging)
 
 Independently re-executed on PHP 8.4 on 2026-09-03 against the current Session-3 HEAD. These
 figures **replace** the older pre-fix/pre-cleanup counts (56 PHP files, Phase 2A 77/78, Phase 2B
 112/113, audit-log suite "awaiting re-run").
 
+**Updated 2026-09-03 for plugin `1.5.2`** (Teacher CPT meta-cap fix). Node suites re-run by
+Claude at `1.5.2`; the `php` figures are the last independent PHP 8.4 run at `1.5.1` and are
+**pending an independent re-run at `1.5.2`** (`test-phase2b.php` gained the §9 Teacher-cap guard;
+Claude has no PHP binary).
+
 | Check | Tool | Result |
 |---|---|---|
-| Node — Phase 2B static + logic + behavioural port | `node …/verify-phase2b.js` | **171 / 0** (2026-09-03) |
+| Node — Phase 2B static + logic + behavioural port (incl. §9b Teacher meta-cap guard) | `node …/verify-phase2b.js` | **199 / 0** (2026-09-03, `1.5.2`) |
 | Node — audit log | `node …/verify-audit-log.js` | **98 / 0** (2026-09-03) |
 | Node — Shamsi/Jalali (incl. multi-decade round-trip fuzz) | `node …/verify-jalali.js` | **53 / 0** (2026-09-03) |
 | Node — Phase 2C address slice | `node …/verify-phase2c.js` | **25 / 0** |
 | Node — Phase 2A regression | `node …/verify-phase2a.js` | **74 / 0** — no regression |
-| **Node total** | | **421 / 0** |
-| `php -l` — all **48** tracked PHP files | independent inspection, PHP 8.4, 2026-09-03 | **48 / 48 PASS, 0 syntax errors** (syntax/parse only — not WordPress runtime). 56→48 because `package-plugin/` was removed (D27) |
-| `php test-phase2a.php` | independent, PHP 8.4 | **79 / 0** (stale `CURRENT_DB_VERSION==='2.0.0'` assertion fixed) |
-| `php test-phase2b.php` | independent, PHP 8.4 | **115 / 0** (stale exact-`2.1.0` assertion fixed) |
-| `php test-audit-log.php` | independent, PHP 8.4 | **69 / 0** (earlier harness defects fixed; suite re-executed clean) |
-| `php test-jalali.php` | independent, PHP 8.4 | **39 / 0** |
-| **Independent PHP total** | | **302 / 0** |
-| **Combined repository total** | Node + PHP | **723 / 0** |
+| **Node total** | | **449 / 0** (`1.5.2`) |
+| `php -l` — all **48** tracked PHP files | independent inspection, PHP 8.4, 2026-09-03 (`1.5.1`) | **48 / 48 PASS, 0 syntax errors** (syntax/parse only — not WordPress runtime). 56→48 because `package-plugin/` was removed (D27) |
+| `php test-phase2a.php` | independent, PHP 8.4 (`1.5.1`) | **79 / 0** |
+| `php test-phase2b.php` | independent, PHP 8.4 (`1.5.1`); **pending re-run at `1.5.2`** (added §9 Teacher-cap guard) | **115 / 0** at `1.5.1` |
+| `php test-audit-log.php` | independent, PHP 8.4 (`1.5.1`) | **69 / 0** |
+| `php test-jalali.php` | independent, PHP 8.4 (`1.5.1`) | **39 / 0** |
+| **Independent PHP total (`1.5.1`)** | | **302 / 0** — re-run expected to rise with the new §9 guard |
 | Claude re-execution of any `php` command | Claude dev env | **NOT POSSIBLE** — no PHP binary here; Claude re-confirmed the Node suites only |
-| Package recreation | independent, 2026-09-03 | `hedayati-core.zip` **43 entries**, entry `hedayati-core/hedayati-core.php`, header + `HEDAYATI_CORE_VERSION` **1.5.1**; `hedayati.zip` **29 entries**, entry `hedayati/style.css` — layout/version confirmed, **not** a runtime check |
+| Package recreation | Claude, 2026-09-03 (`1.5.2`) | `hedayati-core.zip` **43 entries**, entry `hedayati-core/hedayati-core.php`, header + `HEDAYATI_CORE_VERSION` **1.5.2**; `hedayati.zip` **29 entries**, entry `hedayati/style.css` — layout/version confirmed, **not** a runtime check |
 
 The Node suite covers: business-state allowlists, date/datetime/integer parsing,
 Persian-digit normalization, migration 2.1.0 wiring (DDL, UNIQUE keys, dynamic
@@ -82,7 +127,7 @@ deletion-cleanup hooks. Every row in the staging matrix below remains **NOT RUN*
 
 | # | Test | Expected |
 |---|---|---|
-| T1 | `teacher` post type visible to manager/admin only; not to reception/teacher/student/TA | cap map to `hedayati_manage_teachers` |
+| T1 | `teacher` post type visible to manager/admin only; not to reception/teacher/student/TA | cap map to `hedayati_manage_teachers`. **FAILED on 1.5.1 (meta-cap collision — see the 2026-09-03 note above); fixed in 1.5.2; awaiting staging retest.** Retest after deploy: as `administrator` and as `hedayati_manager` → `wp eval 'wp_set_current_user(1); var_export( current_user_can("hedayati_manage_teachers") );'` = `true`; «اساتید» menu present; `edit.php?post_type=teacher` loads; `wp eval 'var_export( current_user_can("edit_post", <teacher_id>) );'` = `true`. As `reception` / `teacher` / `teacher_assistant` / `student` → all four `false` and the direct URL denied |
 | T2 | Linking a WP user to a Teacher profile; linking the same user to a 2nd profile is refused | 1:1 enforced in save |
 | T3 | Deleting the linked WP user unlinks (does not delete) the Teacher profile | `on_user_deleted` |
 | T4 | Teacher CPT not reachable on the front end (`publicly_queryable => false`) | public directory is Phase 2D |

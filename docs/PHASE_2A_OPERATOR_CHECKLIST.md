@@ -357,7 +357,7 @@ None of these are in the checklist above; do not perform them as part of Phase 2
 | Delete a **real** user to test cleanup (T4.6) | Data loss — already covered safely by D1 on a disposable user. |
 | Any `wp-config.php` change — `WP_DEBUG`, prefix (T4.7) | A syntax slip downs the whole site; prefix changes are destructive. |
 | Redeploy / upgrade the theme or plugin (T4.8) | Changes the artefact under test. |
-| **Deploying the Phase 2B branch** (plugin 1.5.1 / DB 2.2.0 / roles 2.1.0) | Separate gated step — only after this Phase 2A acceptance closes **and** `docs/PHASE_2B_ACCEPTANCE.md` is planned. Deploying it runs migrations 2.1.0 + 2.2.0 and the roles 2.1.0 sync on staging. |
+| **Deploying the Phase 2B branch** (plugin 1.5.2 / DB 2.2.0 / roles 2.1.0) | Separate gated step — only after this Phase 2A acceptance closes **and** `docs/PHASE_2B_ACCEPTANCE.md` is planned. Deploying it runs migrations 2.1.0 + 2.2.0 and the roles 2.1.0 sync on staging. |
 | Forced migration re-runs, table drops, deleting roles/capabilities, editing option markers by hand | Migration-safety rules in `docs/DEPLOYMENT.md`. |
 
 If any Category 4 test becomes necessary (e.g. T1.3 finds code drift, or a defect needs a

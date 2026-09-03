@@ -268,10 +268,92 @@ for (const f of [
 }
 
 const teacher = read('includes/class-teacher.php');
-assert("Teacher CPT maps caps to hedayati_manage_teachers", teacher.includes("=> 'hedayati_manage_teachers'"));
 assert("Teacher CPT is not publicly queryable yet", teacher.includes("'publicly_queryable'  => false"));
 assert("Teacher CPT is NOT show_in_rest (published posts would leak via /wp-json)", /'show_in_rest'\s*=>\s*false/.test(teacher));
 assert("Teacher unlinks (not deletes) on user deletion", teacher.includes('on_user_deleted') && teacher.includes('META_USER_ID, 0'));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9b. Teacher CPT capability model — regression guard for the 1.5.1 meta-cap
+//     collision (staging T1: the «اساتید» menu vanished and edit.php?post_type=
+//     teacher returned "you need a higher level of permission" because
+//     `hedayati_manage_teachers` had been assigned as the value of the
+//     `edit_post`/`read_post`/`delete_post` meta caps, so WordPress's
+//     _post_type_meta_capabilities() turned the primitive itself into an
+//     object-scoped meta cap and `current_user_can('hedayati_manage_teachers')`
+//     — with no post ID — started returning false).
+//
+//     The old assertion (`teacher.includes("=> 'hedayati_manage_teachers'")`)
+//     stayed green through that bug. This block parses the actual capability map
+//     and ports the relevant slice of WP core's cap-resolution logic.
+// ─────────────────────────────────────────────────────────────────────────────
+
+console.log('\n9b. Teacher CPT capability model (meta-cap collision guard):');
+
+const PRIMITIVE = 'hedayati_manage_teachers';
+const META_KEYS = ['edit_post', 'read_post', 'delete_post'];
+const COLLECTION_KEYS = [
+	'edit_posts', 'edit_others_posts', 'delete_posts', 'delete_others_posts',
+	'publish_posts', 'read_private_posts', 'create_posts',
+];
+
+assert("Teacher CPT declares map_meta_cap => true", /'map_meta_cap'\s*=>\s*true/.test(teacher));
+
+const capBlock = teacher.match(/'capabilities'\s*=>\s*\[([\s\S]*?)\]\s*,\s*\n\s*\]\s*\)\s*;/);
+assert("Teacher CPT 'capabilities' array is parseable", !!capBlock);
+
+/** @type {Record<string,string>} */
+const caps = {};
+if (capBlock) {
+	const re = /'([a-z_]+)'\s*=>\s*'([a-z_]+)'/g;
+	let m;
+	while ((m = re.exec(capBlock[1])) !== null) caps[m[1]] = m[2];
+}
+
+// All meta + collection keys must be present and mapped.
+for (const k of [...META_KEYS, ...COLLECTION_KEYS]) {
+	assert(`  capability '${k}' is mapped`, typeof caps[k] === 'string' && caps[k].length > 0);
+}
+
+// Every collection/status cap must ultimately require the single primitive.
+for (const k of COLLECTION_KEYS) {
+	assert(`  collection cap '${k}' requires ${PRIMITIVE}`, caps[k] === PRIMITIVE);
+}
+
+// The three per-object meta caps must use DISTINCT names — never the primitive,
+// never a collection cap name, and distinct from each other.
+const metaValues = META_KEYS.map((k) => caps[k]);
+for (const k of META_KEYS) {
+	assert(`  meta cap '${k}' does NOT reuse the primitive '${PRIMITIVE}' (the 1.5.1 collision)`,
+		caps[k] !== PRIMITIVE);
+	assert(`  meta cap '${k}' is not a bare collection cap name`,
+		!COLLECTION_KEYS.includes(caps[k]) && !caps[k].endsWith('_posts'));
+}
+assert("  the three meta caps have three distinct names",
+	new Set(metaValues).size === 3);
+
+// Behavioural port of WP core: _post_type_meta_capabilities() copies the *values*
+// of edit_post/read_post/delete_post into the global $post_type_meta_caps map,
+// and map_meta_cap() rewrites any incoming cap that appears as a KEY of that map
+// into an object-scoped check. So: a cap that lands in that map can NEVER be
+// tested bare with current_user_can($cap) — it needs an object ID.
+function buildPostTypeMetaCaps(capMap) {
+	const out = {};
+	for (const core of META_KEYS) {
+		if (capMap[core]) out[capMap[core]] = core;
+	}
+	return out;
+}
+const metaCapMap = buildPostTypeMetaCaps(caps);
+assert(`  '${PRIMITIVE}' stays a bare primitive (not a key in $post_type_meta_caps)`,
+	!(PRIMITIVE in metaCapMap));
+assert("  each distinct meta-cap name IS object-scoped (resolves via map_meta_cap)",
+	META_KEYS.every((k) => caps[k] in metaCapMap));
+
+// Negative control: the exact 1.5.1 config must be flagged by this same logic,
+// proving the guard actually catches the regression rather than always passing.
+const buggyCaps = { edit_post: PRIMITIVE, read_post: PRIMITIVE, delete_post: PRIMITIVE };
+assert("  negative control: the 1.5.1 config WOULD trip this guard",
+	PRIMITIVE in buildPostTypeMetaCaps(buggyCaps));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 10. Behavioural port — the service invariants, re-implemented against an

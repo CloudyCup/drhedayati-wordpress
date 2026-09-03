@@ -11,14 +11,26 @@ uniqueness/verification lifecycle/deletion cleanup, full per-role capability mat
 and PASSED (2026-09-03)** on disposable QA users. Only the Category-4 destructive tests remain
 **NOT RUN / DEFERRED — NOT REQUIRED for the current staging gate**. Phase 2B (below) is
 implemented on branch `feature/phase-2b-academic-operations` and is **REPOSITORY VERIFIED** —
-Node static suites run by Claude (421/0) plus an independent `php -l` + PHP-suite run on PHP 8.4
-(302/0) against the current Session-3 HEAD, and an independent package recreation (see the Tests
-and Repository-artifacts sections). Its **STAGING / WORDPRESS-RUNTIME** acceptance
-(`docs/PHASE_2B_ACCEPTANCE.md`) is still **NOT RUN** — dbDelta execution, WordPress hooks,
-capability mapping, admin-UI behaviour, migrations on `mystik.ir`, and authentication behaviour
-are **not** verified by the repository tests.
+Node static suites run by Claude (449/0 at plugin `1.5.2`) plus an independent `php -l` +
+PHP-suite run on PHP 8.4 (302/0, at `1.5.1` — `test-phase2b.php` gained a Teacher-cap guard in
+`1.5.2`, pending re-run), and a package recreation (see the Tests and Repository-artifacts
+sections). Its **STAGING / WORDPRESS-RUNTIME** acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is still
+**NOT RUN** — dbDelta execution, WordPress hooks, capability mapping, admin-UI behaviour,
+migrations on `mystik.ir`, and authentication behaviour are **not** verified by the repository
+tests. A staging capability probe on 2026-09-03 **failed Teacher CPT acceptance test T1** on
+plugin `1.5.1` (WordPress meta-capability collision — «اساتید» menu missing); fixed in `1.5.2`
+(see the version note below); **T1 stays awaiting a staging retest** after `1.5.2` is redeployed.
 **Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
-`hedayati-core` **1.5.1** · DB schema **2.2.0** · roles schema **2.1.0**.
+`hedayati-core` **1.5.2** · DB schema **2.2.0** · roles schema **2.1.0**.
+**`1.5.2` (2026-09-03)** is a CPT-mapping bug fix only — `includes/class-teacher.php`: the Teacher
+CPT reused the primitive `hedayati_manage_teachers` as the value of the `edit_post`/`read_post`/
+`delete_post` meta caps, so WordPress's `_post_type_meta_capabilities()` + `map_meta_cap()` turned
+the primitive itself into an object-scoped check and `current_user_can('hedayati_manage_teachers')`
+(no post ID) returned false on staging — the «اساتید» menu vanished and `edit.php?post_type=teacher`
+was denied (Phase 2B acceptance **T1 FAILED on 1.5.1**). `1.5.2` gives the meta caps distinct names
+(`edit_hedayati_teacher` etc.) that map down to the primitive via the collection caps. **No DB
+schema / `CURRENT_DB_VERSION` / `ROLES_VERSION` / 22-capability-count change.** T1 stays **awaiting
+staging retest** until `1.5.2` is redeployed (`docs/PHASE_2B_ACCEPTANCE.md`).
 **`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (nothing from this branch is merged).
 
 > The repository is authoritative for "what is implemented". It contains **code only** — no
@@ -105,7 +117,12 @@ are **not** verified by the repository tests.
 
 - **`teacher` CPT** (`class-teacher.php`): admin-only (`public` / `publicly_queryable` / `show_in_rest`
   all false — D30/D34, classic editor),
-  `supports` title/editor/thumbnail/revisions, caps mapped to `hedayati_manage_teachers`. Meta:
+  `supports` title/editor/thumbnail/revisions. **Capability model (fixed in `1.5.2`):**
+  `map_meta_cap => true`; the singular meta caps are distinct names
+  (`edit_hedayati_teacher` / `read_hedayati_teacher` / `delete_hedayati_teacher`) that
+  `map_meta_cap()` resolves to the collection caps (`edit_posts` etc.), all of which require the
+  single primitive `hedayati_manage_teachers` (held by `hedayati_manager` + `administrator`). The
+  distinct meta-cap names are never added to a role. Meta:
   `_hedayati_teacher_user_id` (optional 1:1 WP-user link, uniqueness enforced in the save handler),
   `_hedayati_teacher_headline`. Side meta box (nonce + `edit_post` + autosave guards). `deleted_user`
   → **unlinks** (never deletes) the profile. Query helpers `exists()`, `get_user_id()`,
@@ -172,24 +189,28 @@ are **not** verified by the repository tests.
   `current_user_can_view()`. **No update/delete method** — append-only at the API. Minimal
   read-only viewer: «عملیات آموزشی → گزارش رویدادها» (`hedayati_view_audit_logs`, GET-only,
   filters validated against the vocabularies, paginated).
-- **Tests — REPOSITORY VERIFIED, CLAUDE-EXECUTED (Node):** `verify-phase2a.js` **74/74** ·
-  `verify-phase2b.js` **171/171** · `verify-phase2c.js` **25/25** · `verify-audit-log.js` **98/98**
-  · `verify-jalali.js` **53/53** — **421 assertions, 0 failed**. The Claude dev environment has
-  **no PHP** — it cannot run `php` or `php -l`.
+- **Tests — REPOSITORY VERIFIED, CLAUDE-EXECUTED (Node), plugin `1.5.2`:** `verify-phase2a.js`
+  **74/74** · `verify-phase2b.js` **199/199** (was 171; +28 for the §9b Teacher meta-cap collision
+  guard) · `verify-phase2c.js` **25/25** · `verify-audit-log.js` **98/98** · `verify-jalali.js`
+  **53/53** — **449 assertions, 0 failed**. The Claude dev environment has **no PHP** — it cannot
+  run `php` or `php -l`.
 - **Tests — REPOSITORY VERIFIED, INDEPENDENTLY EXECUTED (external inspection, PHP 8.4,
-  2026-09-03, against the current Session-3 HEAD):**
+  2026-09-03, against `1.5.1`; `test-phase2b.php` gained a §9 Teacher-cap guard in `1.5.2` and is
+  pending an independent re-run):**
   - `php -l` on **all 48 tracked PHP files → 48/48 pass, 0 syntax errors** (syntax/parse only —
     *not* WordPress runtime verification). The count dropped from 56 to 48 because the stale
     `package-plugin/` source was removed (D27).
   - `php test-phase2a.php` → **79 / 0** (the stale `CURRENT_DB_VERSION === '2.0.0'` assertion was
     fixed to `version_compare(>=, '2.0.0')`).
-  - `php test-phase2b.php` → **115 / 0** (the stale exact-`2.1.0` assertion was fixed to
-    `version_compare(>=, '2.1.0')`; migrate_2_1_0 + Phase-2A-preservation still asserted).
+  - `php test-phase2b.php` → **115 / 0** at `1.5.1`. **Pending an independent re-run at `1.5.2`** —
+    a §9 section was added that parses the Teacher CPT `capabilities` map and ports WordPress's
+    `_post_type_meta_capabilities()` / `map_meta_cap()` collision logic (with a negative control).
   - `php test-audit-log.php` → **69 / 0** (the earlier harness defects — no `ext-mbstring`,
     mis-scoped DDL assertions — were fixed; suite now re-executed clean on a PHP 8.4 host).
   - `php test-jalali.php` → **39 / 0** (repository-level PHP verification of the Shamsi layer).
-  - **Total independent PHP: 302 assertions, 0 failed.** Combined repository total (Node + PHP):
-    **723 passed, 0 failed.**
+  - **Total independent PHP (at `1.5.1`): 302 assertions, 0 failed.** Combined repository total at
+    `1.5.1` was Node 421 + PHP 302 = **723 passed, 0 failed**; at `1.5.2` the Node total is **449**
+    and the PHP re-run is pending.
   - These numbers **replace** the older pre-fix/pre-cleanup figures (56 PHP files, Phase 2A 77/78,
     Phase 2B 112/113, audit-log suite "awaiting re-run").
   - **Still true:** `php` / `php -l` cannot be run by Claude here — the PHP results above are
@@ -388,10 +409,11 @@ redeploy tests.
   (deferred, not required for the gate).
 - **The CCNA example course** and any other content — database content, not in the repo; not
   inspected.
-- **PHP test suites** — independently re-executed on PHP 8.4 (2026-09-03): test-phase2a 79/0,
-  test-phase2b 115/0, test-audit-log 69/0, test-jalali 39/0 (302/0 total). Claude cannot run PHP
-  here, so only the Node suites (421/0) were re-confirmed in this environment. All of this is
-  **repository verified**, not WordPress/staging verified.
+- **PHP test suites** — independently re-executed on PHP 8.4 (2026-09-03, at `1.5.1`): test-phase2a
+  79/0, test-phase2b 115/0, test-audit-log 69/0, test-jalali 39/0 (302/0 total). `test-phase2b.php`
+  gained a §9 Teacher-cap guard in `1.5.2` and is **pending an independent re-run**. Claude cannot
+  run PHP here, so only the Node suites (**449/0** at `1.5.2`) were re-confirmed in this
+  environment. All of this is **repository verified**, not WordPress/staging verified.
 - ~~**Exact role → capability matrix + least-privilege negatives** on staging~~ — **closed
   2026-09-03** by the WP-CLI per-role capability audit (T3.5/T3.6/T2.7 now PASS). Covers the 21
   Phase-2A caps; the 22-cap Phase-2B roles `2.1.0` matrix still needs re-checking after the Phase 2B
@@ -412,12 +434,12 @@ redeploy tests.
   `plugin/hedayati-core/` + `theme/hedayati/`, into `staging-export/hedayati-core.zip` /
   `staging-export/hedayati.zip`. The script verifies archive layout and that the version inside the
   plugin ZIP matches canonical source. ZIPs stay gitignored (`.gitignore` `*.zip`).
-- **Package verification — REPOSITORY VERIFIED (independent, 2026-09-03):** a fresh package
-  recreation from the two canonical inputs produced `hedayati-core.zip` (**43 entries**, top-level
-  entry `hedayati-core/hedayati-core.php`, plugin header `Version: 1.5.1`, `HEDAYATI_CORE_VERSION`
-  `1.5.1`) and `hedayati.zip` (**29 entries**, top-level entry `hedayati/style.css`). This
-  confirms the package source / layout / version assumptions only — it does **not** prove
-  WordPress runtime behaviour and nothing has been deployed.
+- **Package verification — REPOSITORY VERIFIED (2026-09-03, plugin `1.5.2`):** a fresh
+  `scripts/build-packages.ps1` run from the two canonical inputs produced `hedayati-core.zip`
+  (**43 entries**, top-level entry `hedayati-core/hedayati-core.php`, plugin header
+  `Version: 1.5.2`, `HEDAYATI_CORE_VERSION` `1.5.2`) and `hedayati.zip` (**29 entries**, top-level
+  entry `hedayati/style.css`). This confirms the package source / layout / version assumptions
+  only — it does **not** prove WordPress runtime behaviour and nothing has been deployed.
 - `.gitignore` also excludes `node_modules/`, `vendor/`, `.env*`, build dirs, uploads, logs.
 - `reference-react/` — design prototype, visual reference only (never wired into production).
 

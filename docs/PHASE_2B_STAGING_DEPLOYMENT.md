@@ -14,8 +14,8 @@ are **not** performed here. This document is the exact operator runbook to deplo
 | Item | Value |
 |---|---|
 | Branch | `feature/phase-2b-academic-operations` |
-| Commit | `4c55468` (HEAD at plan time — confirm with `git rev-parse HEAD` before building) |
-| Plugin version (branch) | Hedayati Core **1.5.1** |
+| Commit | the `1.5.2` Teacher-CPT meta-cap fix commit — confirm with `git rev-parse HEAD` before building (was `4c55468` at first draft; `1.5.2` adds the `class-teacher.php` fix + test guards) |
+| Plugin version (branch) | Hedayati Core **1.5.2** (`1.5.1` had a Teacher CPT meta-capability collision — Phase 2B acceptance **T1 failed on staging 1.5.1**; `1.5.2` fixes `includes/class-teacher.php` only, no schema/roles change. Retest T1 after this deploy) |
 | Theme version (branch) | Hedayati **1.0.0** — **unchanged vs `main`** (`git diff --stat main -- theme/hedayati/` = empty) |
 | `CURRENT_DB_VERSION` | **2.2.0** |
 | `ROLES_VERSION` | **2.1.0** |
@@ -77,7 +77,7 @@ pwsh ./scripts/build-packages.ps1
 
 - The script packages **only** `plugin/hedayati-core/` and `theme/hedayati/` with `tar -a`.
 - It fails on wrong layout or a plugin version mismatch. A clean run prints
-  `OK  …/hedayati-core.zip  version: 1.5.1` and `OK  …/hedayati.zip`.
+  `OK  …/hedayati-core.zip  version: 1.5.2` and `OK  …/hedayati.zip`.
 - **Do not** use `Compress-Archive`, any `package-plugin/` output, or any pre-existing ZIP.
 - Delete any older ZIPs first if unsure: `Remove-Item staging-export/*.zip` then rebuild.
 
@@ -99,7 +99,7 @@ Inspect the built archives:
 tar -tf staging-export/hedayati-core.zip | head        # first entry: hedayati-core/hedayati-core.php
 tar -tf staging-export/hedayati-core.zip | wc -l       # ~43 entries
 tar -xO -f staging-export/hedayati-core.zip hedayati-core/hedayati-core.php | grep -E "Version:|HEDAYATI_CORE_VERSION"
-#   expect  Version:  1.5.1   AND   define( 'HEDAYATI_CORE_VERSION', '1.5.1' )
+#   expect  Version:  1.5.2   AND   define( 'HEDAYATI_CORE_VERSION', '1.5.2' )
 tar -tf staging-export/hedayati.zip | head             # first entry: hedayati/style.css
 ```
 
@@ -192,8 +192,8 @@ WHERE option_name IN (
 | `hedayati_core_managed_capabilities` | serialized array, **22** entries (`a:22:{…}`), includes `hedayati_manage_teachers` |
 | `hedayati_db_migration_lock` | **absent / empty** |
 
-Also confirm the plugin header now reports **1.5.1** (Plugins screen) and
-`HEDAYATI_CORE_VERSION` `1.5.1` (Site Health → Info, or `wp plugin get hedayati-core --field=version`).
+Also confirm the plugin header now reports **1.5.2** (Plugins screen) and
+`HEDAYATI_CORE_VERSION` `1.5.2` (Site Health → Info, or `wp plugin get hedayati-core --field=version`).
 
 ### 9. Exact expected six Phase 2B / 2.2.0 tables
 
