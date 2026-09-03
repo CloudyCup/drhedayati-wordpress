@@ -24,8 +24,12 @@ production contact; take a fresh full backup before any state-changing test.
 | Node — Shamsi/Jalali (incl. 15k-day round-trip fuzz) | `node …/verify-jalali.js` | **36 passed, 0 failed** (2026-09-03) |
 | Node — Phase 2C address slice | `node …/verify-phase2c.js` | **25 passed, 0 failed** |
 | Node — Phase 2A regression | `node …/verify-phase2a.js` | **74 passed, 0 failed** — no regression |
-| PHP — `test-phase2b.php` / `test-audit-log.php` / `test-phase2a.php` | `php …` | **NOT RUN** — PHP unavailable in the dev environment (2A count assertion updated 21 → 22) |
-| `php -l` on changed files | — | **NOT RUN** — PHP unavailable |
+| `php -l` — all 56 PHP files | independent inspection, PHP 8.4, 2026-09-03 | **ALL PASS** (syntax/parse only — not WordPress runtime) |
+| `php test-phase2a.php` | independent, PHP 8.4 | **77/78** → stale `CURRENT_DB_VERSION==='2.0.0'` assertion fixed → expected 78/78 |
+| `php test-phase2b.php` | independent, PHP 8.4 | **112/113** → stale exact-`2.1.0` assertion fixed → expected 113/113 |
+| `php test-jalali.php` | independent, PHP 8.4 | **35/35** |
+| `php test-audit-log.php` | independent, PHP 8.4 | harness defects (no ext-mbstring; mis-scoped DDL asserts) → **fixed**; re-run pending on a PHP host |
+| Claude re-execution of any `php` command | Claude dev env | **NOT POSSIBLE** — no PHP binary here |
 
 The Node suite covers: business-state allowlists, date/datetime/integer parsing,
 Persian-digit normalization, migration 2.1.0 wiring (DDL, UNIQUE keys, dynamic
