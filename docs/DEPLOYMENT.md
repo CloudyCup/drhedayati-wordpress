@@ -63,7 +63,7 @@ The `tests/` folder is small and harmless to ship (no other dev-only files exist
 gitignored (`*.zip`).
 
 > ### ⚠️ Stale-artifact hazard — do NOT deploy these
-> As of 2026-09-03 the canonical plugin is **Hedayati Core 1.5.0**. The following were **removed**
+> As of 2026-09-03 the canonical plugin is **Hedayati Core 1.5.1**. The following were **removed**
 > from the repo this session (D27) because they held OLD code and are a deploy trap:
 > `package-plugin/hedayati-core/` (`1.0.0`), the root `drhedayati-wordpress` diff dump, and the
 > stale gitignored ZIPs `./hedayati-core.zip`, `plugin/hedayati-core.zip`, `staging-export/*.zip`
@@ -77,12 +77,13 @@ gitignored (`*.zip`).
 1. **Pre-flight**
    - `git status` clean; you are deploying a known commit. Note the commit hash.
    - Run checks: `node …/verify-phase2a.js` (74/74), `verify-phase2b.js` (171/171),
-     `verify-phase2c.js` (25/25), `verify-audit-log.js` (98/98), `verify-jalali.js` (36/36); where
-     PHP is available, `php …/test-phase2a.php` (cap-count assertion now 22), `php …/test-phase2b.php`,
-     `php …/test-audit-log.php`, `php …/test-jalali.php`, and `php -l` on every changed PHP file.
+     `verify-phase2c.js` (25/25), `verify-audit-log.js` (98/98), `verify-jalali.js` (53/53) —
+     421/0 total; where PHP is available, `php …/test-phase2a.php` (79/0), `php …/test-phase2b.php`
+     (115/0), `php …/test-audit-log.php` (69/0), `php …/test-jalali.php` (39/0) — 302/0 total, and
+     `php -l` on every PHP file (48/48, independently confirmed on PHP 8.4, 2026-09-03).
    - Confirm version headers bumped if behavior changed (`hedayati-core.php` / `style.css` /
      `HEDAYATI_CORE_VERSION` / `HEDAYATI_VERSION` / `CURRENT_DB_VERSION` / `ROLES_VERSION`).
-     Current branch: `HEDAYATI_CORE_VERSION` `1.5.0`, `CURRENT_DB_VERSION` `2.2.0`,
+     Current branch: `HEDAYATI_CORE_VERSION` `1.5.1`, `CURRENT_DB_VERSION` `2.2.0`,
      `ROLES_VERSION` `2.1.0`.
 2. **Backup first** — take a full cPanel backup (files + database) and download an independent copy
    before replacing anything.

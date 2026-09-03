@@ -15,21 +15,29 @@ production contact; take a fresh full backup before any state-changing test.
 
 ---
 
-## What was verified in the repository (not on staging)
+## What was verified in the repository (REPOSITORY VERIFIED — not on staging)
+
+Independently re-executed on PHP 8.4 on 2026-09-03 against the current Session-3 HEAD. These
+figures **replace** the older pre-fix/pre-cleanup counts (56 PHP files, Phase 2A 77/78, Phase 2B
+112/113, audit-log suite "awaiting re-run").
 
 | Check | Tool | Result |
 |---|---|---|
-| Node — Phase 2B static + logic + behavioural port | `node …/verify-phase2b.js` | **171 passed, 0 failed** (2026-09-03) |
-| Node — audit log | `node …/verify-audit-log.js` | **98 passed, 0 failed** (2026-09-03) |
-| Node — Shamsi/Jalali (incl. 15k-day round-trip fuzz) | `node …/verify-jalali.js` | **36 passed, 0 failed** (2026-09-03) |
-| Node — Phase 2C address slice | `node …/verify-phase2c.js` | **25 passed, 0 failed** |
-| Node — Phase 2A regression | `node …/verify-phase2a.js` | **74 passed, 0 failed** — no regression |
-| `php -l` — all 56 PHP files | independent inspection, PHP 8.4, 2026-09-03 | **ALL PASS** (syntax/parse only — not WordPress runtime) |
-| `php test-phase2a.php` | independent, PHP 8.4 | **77/78** → stale `CURRENT_DB_VERSION==='2.0.0'` assertion fixed → expected 78/78 |
-| `php test-phase2b.php` | independent, PHP 8.4 | **112/113** → stale exact-`2.1.0` assertion fixed → expected 113/113 |
-| `php test-jalali.php` | independent, PHP 8.4 | **35/35** |
-| `php test-audit-log.php` | independent, PHP 8.4 | harness defects (no ext-mbstring; mis-scoped DDL asserts) → **fixed**; re-run pending on a PHP host |
-| Claude re-execution of any `php` command | Claude dev env | **NOT POSSIBLE** — no PHP binary here |
+| Node — Phase 2B static + logic + behavioural port | `node …/verify-phase2b.js` | **171 / 0** (2026-09-03) |
+| Node — audit log | `node …/verify-audit-log.js` | **98 / 0** (2026-09-03) |
+| Node — Shamsi/Jalali (incl. multi-decade round-trip fuzz) | `node …/verify-jalali.js` | **53 / 0** (2026-09-03) |
+| Node — Phase 2C address slice | `node …/verify-phase2c.js` | **25 / 0** |
+| Node — Phase 2A regression | `node …/verify-phase2a.js` | **74 / 0** — no regression |
+| **Node total** | | **421 / 0** |
+| `php -l` — all **48** tracked PHP files | independent inspection, PHP 8.4, 2026-09-03 | **48 / 48 PASS, 0 syntax errors** (syntax/parse only — not WordPress runtime). 56→48 because `package-plugin/` was removed (D27) |
+| `php test-phase2a.php` | independent, PHP 8.4 | **79 / 0** (stale `CURRENT_DB_VERSION==='2.0.0'` assertion fixed) |
+| `php test-phase2b.php` | independent, PHP 8.4 | **115 / 0** (stale exact-`2.1.0` assertion fixed) |
+| `php test-audit-log.php` | independent, PHP 8.4 | **69 / 0** (earlier harness defects fixed; suite re-executed clean) |
+| `php test-jalali.php` | independent, PHP 8.4 | **39 / 0** |
+| **Independent PHP total** | | **302 / 0** |
+| **Combined repository total** | Node + PHP | **723 / 0** |
+| Claude re-execution of any `php` command | Claude dev env | **NOT POSSIBLE** — no PHP binary here; Claude re-confirmed the Node suites only |
+| Package recreation | independent, 2026-09-03 | `hedayati-core.zip` **43 entries**, entry `hedayati-core/hedayati-core.php`, header + `HEDAYATI_CORE_VERSION` **1.5.1**; `hedayati.zip` **29 entries**, entry `hedayati/style.css` — layout/version confirmed, **not** a runtime check |
 
 The Node suite covers: business-state allowlists, date/datetime/integer parsing,
 Persian-digit normalization, migration 2.1.0 wiring (DDL, UNIQUE keys, dynamic
@@ -37,9 +45,13 @@ prefix, no `wp_` literal, no ENUM), roles schema 2.1.0 (`hedayati_manage_teacher
 count = 22), plugin bootstrap wiring, and security-shape checks (nonces,
 capability checks, `$wpdb->prepare`, per-run scope).
 
-It does **not** and cannot prove: real INSERT/UPDATE/DELETE behaviour, UNIQUE
-constraint enforcement, cascade deletes, capacity enforcement, per-run scope
-against a live user, or the deletion-cleanup hooks.
+It does **not** and cannot prove (NOT STAGING / WORDPRESS-RUNTIME VERIFIED — do
+not mark these as verified merely because the repository tests pass): `dbDelta`
+execution and the migrations on `mystik.ir`, WordPress hook firing, capability
+mapping in a live role structure, admin-UI behaviour, authentication behaviour,
+real INSERT/UPDATE/DELETE behaviour, UNIQUE constraint enforcement, cascade
+deletes, capacity enforcement, per-run scope against a live user, and the
+deletion-cleanup hooks. Every row in the staging matrix below remains **NOT RUN**.
 
 ---
 

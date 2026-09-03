@@ -45,13 +45,14 @@ several items still need institute decisions (marked ❓, see the bottom of this
    canonical datetimes); staff assignments (primary/additional instructor, TA — D11 asymmetry);
    Enrollments (`UNIQUE(run_id, user_id)`, capacity check); attendance (`UNIQUE(session_id,
    enrollment_id)`, same-run guard). Migration `2.1.0`, five services, `hedayati_manage_teachers`
-   capability, per-run ownership-scope enforcement in the «عملیات آموزشی» admin UI, Node static
-   tests (170/170).
+   capability, per-run ownership-scope enforcement in the «عملیات آموزشی» admin UI. Repository
+   verified: Node static suites 421/0 + an independent PHP 8.4 run 302/0 (2026-09-03).
    **Remaining before merge:** (a) staging behavioural acceptance — `docs/PHASE_2B_ACCEPTANCE.md`
-   (NOT RUN); (b) run PHP suites + `php -l` where PHP is available; (c) theme-side fallback wiring
+   (NOT RUN — dbDelta, hooks, capability mapping, admin UI, auth on `mystik.ir` all unverified);
+   (b) theme-side fallback wiring
    so the public course page reads run data for `_course_teacher` / `_course_next_start_date` /
    `_course_price` / `_course_registration_state` (currently the meta is still the only display
-   source — no dual *entry*, but no fallback *read* yet); (d) close Phase 2A behavioural acceptance
+   source — no dual *entry*, but no fallback *read* yet); (c) close Phase 2A behavioural acceptance
    first.
 2. **Phase 2C — student identity & security.** 🟡 **Foundation slice done** on
    `feature/phase-2b-academic-operations`: address/city/postal-code profile fields in usermeta

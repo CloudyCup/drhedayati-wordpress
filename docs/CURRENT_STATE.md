@@ -5,10 +5,14 @@
 Phase 2B + the Phase 2C address slice were implemented 2026-09-02/03 on
 `feature/phase-2b-academic-operations`.
 Phase 2A staging acceptance (`docs/PHASE_2A_ACCEPTANCE.md`): the static + read-only-DB layer on
-`mystik.ir` is verified; runtime behaviour is **not** yet tested. Phase 2B (below) is implemented
-on branch `feature/phase-2b-academic-operations` — repository + Node static tests (Claude) + an
-independent `php -l` / PHP-suite run on PHP 8.4 (see the Tests section); its **staging/runtime**
-acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is still NOT RUN.
+`mystik.ir` is verified; runtime **behaviour** is **not** yet tested. Phase 2B (below) is
+implemented on branch `feature/phase-2b-academic-operations` and is **REPOSITORY VERIFIED** —
+Node static suites run by Claude (421/0) plus an independent `php -l` + PHP-suite run on PHP 8.4
+(302/0) against the current Session-3 HEAD, and an independent package recreation (see the Tests
+and Repository-artifacts sections). Its **STAGING / WORDPRESS-RUNTIME** acceptance
+(`docs/PHASE_2B_ACCEPTANCE.md`) is still **NOT RUN** — dbDelta execution, WordPress hooks,
+capability mapping, admin-UI behaviour, migrations on `mystik.ir`, and authentication behaviour
+are **not** verified by the repository tests.
 **Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
 `hedayati-core` **1.5.1** · DB schema **2.2.0** · roles schema **2.1.0**.
 **`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (nothing from this branch is merged).
@@ -164,22 +168,29 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is still NOT RUN.
   `current_user_can_view()`. **No update/delete method** — append-only at the API. Minimal
   read-only viewer: «عملیات آموزشی → گزارش رویدادها» (`hedayati_view_audit_logs`, GET-only,
   filters validated against the vocabularies, paginated).
-- **Tests — CLAUDE-EXECUTED (Node):** `verify-phase2a.js` **74/74** · `verify-phase2b.js` **171/171**
-  · `verify-phase2c.js` **25/25** · `verify-audit-log.js` **98/98** · `verify-jalali.js` **53/53**
-  (404 assertions, 0 failed). The Claude dev environment has **no PHP** — it cannot run `php` or
-  `php -l`.
-- **Tests — INDEPENDENTLY EXECUTED (external inspection, PHP 8.4, 2026-09-03):**
-  - `php -l` on **all 56 PHP files in the repo → all pass** (syntax/parse only — *not* WordPress
-    runtime verification).
-  - `php test-phase2a.php` → **77/78**, sole failure the stale `CURRENT_DB_VERSION === '2.0.0'`
-    assertion; **fixed** this session (now `version_compare(>=, '2.0.0')`).
-  - `php test-phase2b.php` → **112/113**, sole failure the stale exact-`2.1.0` assertion; **fixed**
-    (now `version_compare(>=, '2.1.0')`, migrate_2_1_0 + Phase-2A-preservation still asserted).
-  - `php test-jalali.php` → **35/35** (repository-level PHP verification of the Shamsi layer).
-  - `php test-audit-log.php` → **harness defects** (no `ext-mbstring`; DDL assertions scanned the
-    whole schema file); **fixed** this session — UTF-8 mb_* test shim + the no-ip/ua/updated_at
-    checks now isolate the `migrate_2_2_0` CREATE TABLE only. Re-run pending on a PHP host.
-  - **`php -l` and all four PHP suites remain NOT re-executed by Claude** — no PHP here.
+- **Tests — REPOSITORY VERIFIED, CLAUDE-EXECUTED (Node):** `verify-phase2a.js` **74/74** ·
+  `verify-phase2b.js` **171/171** · `verify-phase2c.js` **25/25** · `verify-audit-log.js` **98/98**
+  · `verify-jalali.js` **53/53** — **421 assertions, 0 failed**. The Claude dev environment has
+  **no PHP** — it cannot run `php` or `php -l`.
+- **Tests — REPOSITORY VERIFIED, INDEPENDENTLY EXECUTED (external inspection, PHP 8.4,
+  2026-09-03, against the current Session-3 HEAD):**
+  - `php -l` on **all 48 tracked PHP files → 48/48 pass, 0 syntax errors** (syntax/parse only —
+    *not* WordPress runtime verification). The count dropped from 56 to 48 because the stale
+    `package-plugin/` source was removed (D27).
+  - `php test-phase2a.php` → **79 / 0** (the stale `CURRENT_DB_VERSION === '2.0.0'` assertion was
+    fixed to `version_compare(>=, '2.0.0')`).
+  - `php test-phase2b.php` → **115 / 0** (the stale exact-`2.1.0` assertion was fixed to
+    `version_compare(>=, '2.1.0')`; migrate_2_1_0 + Phase-2A-preservation still asserted).
+  - `php test-audit-log.php` → **69 / 0** (the earlier harness defects — no `ext-mbstring`,
+    mis-scoped DDL assertions — were fixed; suite now re-executed clean on a PHP 8.4 host).
+  - `php test-jalali.php` → **39 / 0** (repository-level PHP verification of the Shamsi layer).
+  - **Total independent PHP: 302 assertions, 0 failed.** Combined repository total (Node + PHP):
+    **723 passed, 0 failed.**
+  - These numbers **replace** the older pre-fix/pre-cleanup figures (56 PHP files, Phase 2A 77/78,
+    Phase 2B 112/113, audit-log suite "awaiting re-run").
+  - **Still true:** `php` / `php -l` cannot be run by Claude here — the PHP results above are
+    REPOSITORY VERIFIED only (syntax + isolated logic with a mocked WP shim), **not** WordPress
+    runtime, and **not** staging.
 
 ### Plugin — student profile (Phase 2C foundation — address only) — same branch
 
@@ -206,8 +217,8 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is still NOT RUN.
 - `tests/test-phase2a.php` — pure-PHP logic suite with a mocked WP environment (phone
   normalization, rejection cases, heuristics, display formats, rate-limiter canonicalization/
   thresholds/clearing, role-capability mapping, least-privilege assertions, migration constants).
-  Handoff reports **78 passed, 0 failed**; **not re-run here** (PHP not available in this
-  environment).
+  Independently re-executed on PHP 8.4 (2026-09-03): **79 passed, 0 failed**. **Not re-run by
+  Claude** (no PHP in this environment). Repository verified, not WordPress runtime.
 
 ### Theme — public site
 
@@ -337,8 +348,10 @@ and user-deletion cleanup. These require the Category 2–4 state-changing tests
 - **Phase 2A runtime behaviour** — see "Still not verified on staging" above.
 - **The CCNA example course** and any other content — database content, not in the repo; not
   inspected.
-- **PHP test suite result (78/78)** — reported by the handoff; PHP is unavailable in this
-  environment, so only the Node suite (74/74) was re-confirmed.
+- **PHP test suites** — independently re-executed on PHP 8.4 (2026-09-03): test-phase2a 79/0,
+  test-phase2b 115/0, test-audit-log 69/0, test-jalali 39/0 (302/0 total). Claude cannot run PHP
+  here, so only the Node suites (421/0) were re-confirmed in this environment. All of this is
+  **repository verified**, not WordPress/staging verified.
 - **Exact role → capability matrix + least-privilege negatives** on staging (T3.5 NEEDS REVIEW —
   pending `wp cap list` per role, or the T2.7 wp-admin negative checks).
 - **LiteSpeed *page* cache behavior** after deploys (no persistent *object* cache is active).
@@ -357,6 +370,12 @@ and user-deletion cleanup. These require the Category 2–4 state-changing tests
   `plugin/hedayati-core/` + `theme/hedayati/`, into `staging-export/hedayati-core.zip` /
   `staging-export/hedayati.zip`. The script verifies archive layout and that the version inside the
   plugin ZIP matches canonical source. ZIPs stay gitignored (`.gitignore` `*.zip`).
+- **Package verification — REPOSITORY VERIFIED (independent, 2026-09-03):** a fresh package
+  recreation from the two canonical inputs produced `hedayati-core.zip` (**43 entries**, top-level
+  entry `hedayati-core/hedayati-core.php`, plugin header `Version: 1.5.1`, `HEDAYATI_CORE_VERSION`
+  `1.5.1`) and `hedayati.zip` (**29 entries**, top-level entry `hedayati/style.css`). This
+  confirms the package source / layout / version assumptions only — it does **not** prove
+  WordPress runtime behaviour and nothing has been deployed.
 - `.gitignore` also excludes `node_modules/`, `vendor/`, `.env*`, build dirs, uploads, logs.
 - `reference-react/` — design prototype, visual reference only (never wired into production).
 
