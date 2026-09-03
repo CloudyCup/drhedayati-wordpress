@@ -267,8 +267,8 @@ class Hedayati_Academic_Admin {
 		self::text_row( 'label', __( 'عنوان', 'hedayati-core' ), $run['label'] );
 		self::select_row( 'run_status', __( 'وضعیت اجرا', 'hedayati-core' ), self::run_status_choices(), $run['run_status'] );
 		self::select_row( 'registration_status', __( 'وضعیت ثبت‌نام', 'hedayati-core' ), self::registration_status_choices(), $run['registration_status'] );
-		self::text_row( 'start_date', __( 'تاریخ شروع (میلادی YYYY-MM-DD)', 'hedayati-core' ), $run['start_date'] ?? '', 'ltr', self::shamsi_hint( $run['start_date'] ?? '' ) );
-		self::text_row( 'end_date', __( 'تاریخ پایان (میلادی YYYY-MM-DD)', 'hedayati-core' ), $run['end_date'] ?? '', 'ltr', self::shamsi_hint( $run['end_date'] ?? '' ) );
+		self::text_row( 'start_date', __( 'تاریخ شروع — میلادی (YYYY-MM-DD) یا شمسی (YYYY/MM/DD)', 'hedayati-core' ), $run['start_date'] ?? '', 'ltr', self::shamsi_hint( $run['start_date'] ?? '' ) );
+		self::text_row( 'end_date', __( 'تاریخ پایان — میلادی (YYYY-MM-DD) یا شمسی (YYYY/MM/DD)', 'hedayati-core' ), $run['end_date'] ?? '', 'ltr', self::shamsi_hint( $run['end_date'] ?? '' ) );
 		self::text_row( 'schedule_text', __( 'برنامهٔ زمانی', 'hedayati-core' ), $run['schedule_text'] );
 		self::text_row( 'capacity', __( 'ظرفیت (خالی = نامشخص)', 'hedayati-core' ), null === $run['capacity'] ? '' : (string) $run['capacity'], 'ltr' );
 		self::text_row( 'tuition_rial', __( 'شهریه به ریال (خالی = نامشخص)', 'hedayati-core' ), null === $run['tuition_rial'] ? '' : (string) $run['tuition_rial'], 'ltr' );

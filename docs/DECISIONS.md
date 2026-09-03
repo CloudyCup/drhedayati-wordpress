@@ -90,7 +90,15 @@ integration.
 per Q9), and `parse_input()` (Shamsi typed by a user → canonical Gregorian `Y-m-d`, round-trip
 guarded). `Hedayati_Text::digits_to_persian()` is the display-only ASCII→Persian digit map. Wired
 into the «عملیات آموزشی» admin displays (Gregorian retained, Shamsi added in parentheses). No
-storage-format change. Shamsi *input* fields and public-site Shamsi rendering are follow-on work.
+storage-format change.
+**Shamsi input (2026-09-03):** `Course Run` `start_date` / `end_date` now accept **either**
+Gregorian ISO (`YYYY-MM-DD`) **or** Shamsi (`YYYY/MM/DD`, `-`/`.` also, Persian digits ok) —
+`Hedayati_Course_Run_Service::parse_run_date()` tries ISO first, then `Hedayati_Jalali::parse_input()`.
+Only canonical Gregorian `Y-m-d` is stored; invalid dates in either calendar stay rejected.
+`parse_input()` bounds the Jalali year to ~1200–1700 so a mistyped Gregorian date (`2026-02-31`)
+cannot be silently reinterpreted as a Jalali year. A Shamsi date written with `-` (e.g.
+`1404-01-01`) is still read as Gregorian per the ISO-first rule — staff are steered to `/` for
+Shamsi by the field label and the live Shamsi hint. Public-site Shamsi rendering is still to come.
 
 ## D10 — Custom roles with least privilege; no custom `super_admin`
 

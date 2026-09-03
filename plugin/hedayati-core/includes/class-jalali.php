@@ -209,7 +209,10 @@ class Hedayati_Jalali {
 		$jm = (int) $m[2];
 		$jd = (int) $m[3];
 
-		if ( $jy < 1 || $jm < 1 || $jm > 12 || $jd < 1 || $jd > 31 ) {
+		// Sane Jalali year window (~1821–2321 AD). This also stops a mistyped
+		// Gregorian date like `2026-02-31` from being silently reinterpreted as
+		// Jalali year 2026 when it is used as a fallback after ISO parsing fails.
+		if ( $jy < 1200 || $jy > 1700 || $jm < 1 || $jm > 12 || $jd < 1 || $jd > 31 ) {
 			return null;
 		}
 

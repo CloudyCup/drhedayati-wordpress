@@ -290,9 +290,9 @@ class Hedayati_Course_Run_Service {
 			if ( '' === $raw ) {
 				$out['start_date'] = null;
 			} else {
-				$parsed = Hedayati_Academic_Validation::parse_iso_date( $raw );
+				$parsed = self::parse_run_date( $raw );
 				if ( null === $parsed ) {
-					return new WP_Error( 'invalid_start_date', esc_html__( 'تاریخ شروع نامعتبر است (فرمت میلادی YYYY-MM-DD).', 'hedayati-core' ) );
+					return new WP_Error( 'invalid_start_date', esc_html__( 'تاریخ شروع نامعتبر است. فرمت میلادی YYYY-MM-DD یا شمسی YYYY/MM/DD.', 'hedayati-core' ) );
 				}
 				$out['start_date'] = $parsed;
 			}
@@ -303,9 +303,9 @@ class Hedayati_Course_Run_Service {
 			if ( '' === $raw ) {
 				$out['end_date'] = null;
 			} else {
-				$parsed = Hedayati_Academic_Validation::parse_iso_date( $raw );
+				$parsed = self::parse_run_date( $raw );
 				if ( null === $parsed ) {
-					return new WP_Error( 'invalid_end_date', esc_html__( 'تاریخ پایان نامعتبر است (فرمت میلادی YYYY-MM-DD).', 'hedayati-core' ) );
+					return new WP_Error( 'invalid_end_date', esc_html__( 'تاریخ پایان نامعتبر است. فرمت میلادی YYYY-MM-DD یا شمسی YYYY/MM/DD.', 'hedayati-core' ) );
 				}
 				$out['end_date'] = $parsed;
 			}
@@ -349,6 +349,22 @@ class Hedayati_Course_Run_Service {
 		}
 
 		return $out;
+	}
+
+	/**
+	 * Accept a run start/end date as either canonical Gregorian ISO (`YYYY-MM-DD`)
+	 * or a Shamsi/Jalali date (`YYYY/MM/DD`, `-` or `.` separators, Persian digits
+	 * ok). Always returns canonical Gregorian `Y-m-d` for storage, or null when
+	 * neither parse succeeds.
+	 *
+	 * ISO is tried first (rule: existing valid ISO behaviour is unchanged). A
+	 * Shamsi date written with `/` never collides with ISO (which requires `-`);
+	 * staff are steered to `/` for Shamsi by the field label + the live Shamsi
+	 * hint, which shows exactly what was stored.
+	 */
+	private static function parse_run_date( string $raw ): ?string {
+		return Hedayati_Academic_Validation::parse_iso_date( $raw )
+			?? Hedayati_Jalali::parse_input( $raw );
 	}
 
 	/**

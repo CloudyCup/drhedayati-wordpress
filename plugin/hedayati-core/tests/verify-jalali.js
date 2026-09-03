@@ -167,6 +167,59 @@ assert('run list / session / attendance / enrollment / audit rows use date_cell(
 assert('run form date fields carry a معادل شمسی hint', admin.includes('shamsi_hint') && admin.includes('معادل شمسی'));
 assert('date_cell falls back to plain Gregorian if Jalali::format returns \'\'', /date_cell[\s\S]*'' === \$shamsi[\s\S]*\$greg/.test(admin));
 
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('\n8. Course Run start/end date — accepts Gregorian ISO OR Shamsi (parse_run_date):');
+
+const DMAP = { '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9', '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
+const toAscii2 = (s) => String(s).replace(/[۰-۹٠-٩]/g, (c) => DMAP[c] || c);
+
+function jalaliParseInput(value) {
+	value = toAscii2(value).trim();
+	if (value === '') return null;
+	const m = value.match(/^(\d{3,4})[/\-.](\d{1,2})[/\-.](\d{1,2})$/);
+	if (!m) return null;
+	const jy = +m[1], jm = +m[2], jd = +m[3];
+	if (jy < 1200 || jy > 1700 || jm < 1 || jm > 12 || jd < 1 || jd > 31) return null;
+	const [gy, gm, gd] = toGregorian(jy, jm, jd);
+	const [ry, rm, rd] = fromGregorian(gy, gm, gd);
+	if (ry !== jy || rm !== jm || rd !== jd) return null;
+	return `${String(gy).padStart(4, '0')}-${String(gm).padStart(2, '0')}-${String(gd).padStart(2, '0')}`;
+}
+
+// mirrors Hedayati_Academic_Validation::parse_iso_date()
+function parseIsoDateStrict(v) {
+	v = toAscii2(v).trim();
+	if (v === '') return null;
+	const m = v.match(/^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/);
+	if (!m) return null;
+	const [y, mo, d] = [+m[1], +m[2], +m[3]];
+	const dt = new Date(Date.UTC(y, mo - 1, d));
+	return (dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d) ? v : null;
+}
+
+// mirrors Hedayati_Course_Run_Service::parse_run_date() — ISO first, Shamsi fallback
+const parseRunDate = (raw) => parseIsoDateStrict(raw) ?? jalaliParseInput(raw);
+
+assert('Gregorian ISO accepted unchanged (existing behaviour)', parseRunDate('2026-03-21') === '2026-03-21');
+assert('Gregorian ISO with Persian digits still works', parseRunDate('۲۰۲۶-۰۳-۲۱') === '2026-03-21');
+assert('Shamsi with slashes accepted and converted (1404/12/29 -> 2026-03-20)', parseRunDate('1404/12/29') === '2026-03-20');
+assert('Shamsi Nowruz 1405/01/01 -> 2026-03-21', parseRunDate('1405/01/01') === '2026-03-21');
+assert('mistyped Gregorian 2026-02-31 is NOT reinterpreted as Jalali year 2026', parseRunDate('2026-02-31') === null);
+assert('a real Gregorian year (2026-...) is never taken as Jalali', jalaliParseInput('2026/03/21') === null);
+assert('Persian-digit Shamsi accepted', parseRunDate('۱۴۰۵/۰۱/۰۱') === '2026-03-21');
+assert('Shamsi with dot separators accepted', parseRunDate('1403.01.01') === '2024-03-20');
+assert('invalid Jalali (1404/12/30 — not a leap year) rejected', parseRunDate('1404/12/30') === null);
+assert('invalid Jalali month (1404/13/01) rejected', parseRunDate('1404/13/01') === null);
+assert('invalid Gregorian (2026-02-31) still rejected', parseRunDate('2026-02-31') === null);
+assert('garbage rejected', parseRunDate('next tuesday') === null);
+assert('leap-day Shamsi 1403/12/30 accepted (1403 is leap) -> 2025-03-20', parseRunDate('1403/12/30') === '2025-03-20');
+assert('output is always canonical Gregorian Y-m-d (storage unchanged)', /^\d{4}-\d{2}-\d{2}$/.test(parseRunDate('1404/07/15')));
+
+const runSrc2 = read('includes/class-course-run-service.php');
+assert('parse_run_date(): ISO first, then Hedayati_Jalali::parse_input()', /parse_run_date[\s\S]*parse_iso_date\( \$raw \)\s*\?\?\s*Hedayati_Jalali::parse_input\( \$raw \)/.test(runSrc2));
+assert('both start_date and end_date use parse_run_date()', (runSrc2.match(/self::parse_run_date\(/g) || []).length === 2);
+assert('run form label says میلادی یا شمسی', admin.includes('میلادی (YYYY-MM-DD) یا شمسی'));
+
 console.log(`\n========================================`);
 console.log(`SHAMSI/JALALI VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED`);
 console.log(`========================================`);

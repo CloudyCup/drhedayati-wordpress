@@ -84,6 +84,11 @@ check( "'1403/13/01' rejected (month)", null === Hedayati_Jalali::parse_input( '
 check( "'1403/07/31' rejected (Mehr has 30)", null === Hedayati_Jalali::parse_input( '1403/07/31' ) );
 check( "'' -> null", null === Hedayati_Jalali::parse_input( '' ) );
 check( "'not a date' -> null", null === Hedayati_Jalali::parse_input( 'not a date' ) );
+// Year window: a mistyped Gregorian date must not be taken as a Jalali year.
+check( "'2026-02-31' -> null (year out of Jalali window)", null === Hedayati_Jalali::parse_input( '2026-02-31' ) );
+check( "'2026/03/21' -> null (Gregorian year, not Jalali)", null === Hedayati_Jalali::parse_input( '2026/03/21' ) );
+check( "'1199/01/01' -> null (below window)", null === Hedayati_Jalali::parse_input( '1199/01/01' ) );
+check( "'1650/06/15' accepted (inside window)", null !== Hedayati_Jalali::parse_input( '1650/06/15' ) );
 
 echo "\n6. parse_input() . format() round-trips through storage:\n";
 foreach ( [ '1400/01/01', '1403/12/30', '1404/07/15', '1410/09/22' ] as $shamsi ) {

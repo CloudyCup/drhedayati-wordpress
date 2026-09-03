@@ -10,7 +10,7 @@ on branch `feature/phase-2b-academic-operations` — repository + Node static te
 independent `php -l` / PHP-suite run on PHP 8.4 (see the Tests section); its **staging/runtime**
 acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is still NOT RUN.
 **Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
-`hedayati-core` **1.5.0** · DB schema **2.2.0** · roles schema **2.1.0**.
+`hedayati-core` **1.5.1** · DB schema **2.2.0** · roles schema **2.1.0**.
 **`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (nothing from this branch is merged).
 
 > The repository is authoritative for "what is implemented". It contains **code only** — no
@@ -112,10 +112,16 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is still NOT RUN.
 - **`Hedayati_Jalali`** (`class-jalali.php`): Shamsi UI layer over Gregorian storage (D9) —
   `from_gregorian()` / `to_gregorian()` (standard integer algorithm), `is_leap_year()`,
   `format()` / `format_long()` (stored ISO → Shamsi label; Persian digits optional; **time part
-  copied verbatim**, Q9), `parse_input()` (Shamsi text → canonical `Y-m-d`, round-trip guarded).
-  **No storage-format change.** Wired into the «عملیات آموزشی» screens — every date/datetime shows
-  the Gregorian value **plus** the Shamsi equivalent (parentheses / field hint); machine-readable
-  Gregorian retained; graceful fallback for an unparseable value.
+  copied verbatim**, Q9), `parse_input()` (Shamsi text → canonical `Y-m-d`, round-trip guarded,
+  Jalali year bounded ~1200–1700). **No storage-format change.** Wired into the «عملیات آموزشی»
+  screens — every date/datetime shows the Gregorian value **plus** the Shamsi equivalent
+  (parentheses / field hint); machine-readable Gregorian retained; graceful fallback for an
+  unparseable value.
+- **Course Run date input** (`Hedayati_Course_Run_Service::parse_run_date()`): `start_date` /
+  `end_date` accept **either** Gregorian ISO (`YYYY-MM-DD`) **or** Shamsi (`YYYY/MM/DD`, Persian
+  digits ok) — ISO tried first, then `Hedayati_Jalali::parse_input()`; only canonical Gregorian
+  `Y-m-d` is stored; invalid dates in either calendar stay rejected. Field label says «میلادی یا
+  شمسی»; the live Shamsi hint shows what was stored.
 - **`Hedayati_Academic_Validation`** (`class-academic-validation.php`): the approved business-state
   vocabularies as `const` arrays (validated strings, no ENUM), safe-fallback sanitizers, strict
   `parse_iso_date()` / `parse_datetime()` (canonical `Y-m-d H:i:s`, `checkdate()`), and
@@ -159,7 +165,7 @@ acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is still NOT RUN.
   read-only viewer: «عملیات آموزشی → گزارش رویدادها» (`hedayati_view_audit_logs`, GET-only,
   filters validated against the vocabularies, paginated).
 - **Tests — CLAUDE-EXECUTED (Node):** `verify-phase2a.js` **74/74** · `verify-phase2b.js` **171/171**
-  · `verify-phase2c.js` **25/25** · `verify-audit-log.js` **98/98** · `verify-jalali.js` **36/36**
+  · `verify-phase2c.js` **25/25** · `verify-audit-log.js` **98/98** · `verify-jalali.js` **53/53**
   (404 assertions, 0 failed). The Claude dev environment has **no PHP** — it cannot run `php` or
   `php -l`.
 - **Tests — INDEPENDENTLY EXECUTED (external inspection, PHP 8.4, 2026-09-03):**

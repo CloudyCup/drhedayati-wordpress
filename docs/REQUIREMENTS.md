@@ -146,7 +146,7 @@ acceptance on staging (`docs/PHASE_2B_ACCEPTANCE.md`) is a **pre-merge gate** an
 | # | Requirement | Status |
 |---|---|---|
 | 11.1 | Canonical stored dates/datetimes are Gregorian, machine-sortable | ✅ (course dates) |
-| 11.2 | Shamsi/Jalali is an input/display layer only, never storage | 🟡 (`Hedayati_Jalali` conversion helper + Shamsi shown alongside Gregorian in the Phase 2B admin; storage unchanged. Shamsi input fields + public-site rendering still to come) |
+| 11.2 | Shamsi/Jalali is an input/display layer only, never storage | 🟡 (`Hedayati_Jalali` helper; Shamsi shown alongside Gregorian in the Phase 2B admin; Course Run `start_date`/`end_date` accept ISO **or** Shamsi input and store Gregorian; storage unchanged. Remaining: Shamsi input on other date fields + public-site rendering) |
 | 11.3 | Persian (`۰-۹`) and Arabic-Indic (`٠-٩`) digits normalized to ASCII wherever a field is canonical/searchable; backend normalization is authoritative | 🟡 (phone; Phase 2B run/session numeric + date fields; Phase 2C postal code — all via `Hedayati_Text`. National ID pending Q10) |
 | 11.4 | Field-specific normalization — no blind site-wide digit conversion of prose | ✅ (principle honored) |
 | 11.5 | Mixed Persian/English technical strings get deliberate bidi treatment | ✅ |

@@ -213,9 +213,11 @@ seconds (default 900).
 - 🟡 Shamsi/Jalali is an input/display layer only — never a stored value.
   `Hedayati_Jalali` (`class-jalali.php`): `format()` / `format_long()` render a stored Gregorian
   ISO value as a Shamsi label (Persian digits optional; **time part copied verbatim**, Q9);
-  `parse_input()` converts a user-typed Shamsi date back to canonical `Y-m-d` (round-trip guarded)
-  before storage. The Phase 2B admin shows Gregorian + Shamsi side by side; Shamsi input fields and
-  public-site rendering are follow-on work (ROADMAP P1.6).
+  `parse_input()` converts a user-typed Shamsi date back to canonical `Y-m-d` (round-trip guarded,
+  Jalali year bounded ~1200–1700). `Course Run` `start_date`/`end_date` accept ISO **or** Shamsi
+  via `Hedayati_Course_Run_Service::parse_run_date()` (ISO first, Shamsi fallback) and store
+  Gregorian only. The Phase 2B admin shows Gregorian + Shamsi side by side. Remaining: Shamsi input
+  on other date fields + public-site rendering (ROADMAP P1.6).
 
 ### Rate-limit identifier canonicalization (`Hedayati_Rate_Limiter`) ✅
 
