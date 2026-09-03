@@ -7,6 +7,12 @@
 **Do NOT run any Category 4 test here.** See the exclusion list at the bottom.
 **Do NOT deploy the Phase 2B branch** as part of this.
 
+> **2026-09-03 — DONE.** All rounds (A–D) were executed and PASSED on disposable users `qa_phase2a`
+> (ID 2) / `qa_phase2a_b` (ID 3); results reconciled into `docs/PHASE_2A_ACCEPTANCE.md`
+> ("Behavioural execution log (2026-09-03)") and `docs/CURRENT_STATE.md`. Only T2.4 (unknown
+> non-phone username wording) was not exercised — non-gating. This checklist is retained as the
+> execution record.
+
 Staging today runs plugin **1.1.0**, DB & roles schema **2.0.0** — the Phase 2A build. That is
 the artefact under test; do not upgrade it during this checklist.
 

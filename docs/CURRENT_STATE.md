@@ -5,7 +5,11 @@
 Phase 2B + the Phase 2C address slice were implemented 2026-09-02/03 on
 `feature/phase-2b-academic-operations`.
 Phase 2A staging acceptance (`docs/PHASE_2A_ACCEPTANCE.md`): the static + read-only-DB layer on
-`mystik.ir` is verified; runtime **behaviour** is **not** yet tested. Phase 2B (below) is
+`mystik.ir` is verified **and** the non-destructive behavioural acceptance (Categories 2–3 — auth
+flows, rate-limit thresholds/reset/no-double-count, phone provisioning/format matrix/privacy/
+uniqueness/verification lifecycle/deletion cleanup, full per-role capability matrix) is **COMPLETE
+and PASSED (2026-09-03)** on disposable QA users. Only the Category-4 destructive tests remain
+**NOT RUN / DEFERRED — NOT REQUIRED for the current staging gate**. Phase 2B (below) is
 implemented on branch `feature/phase-2b-academic-operations` and is **REPOSITORY VERIFIED** —
 Node static suites run by Claude (421/0) plus an independent `php -l` + PHP-suite run on PHP 8.4
 (302/0) against the current Session-3 HEAD, and an independent package recreation (see the Tests
@@ -272,8 +276,8 @@ are **not** verified by the repository tests.
 
 | Area | What exists | What is missing |
 |---|---|---|
-| **Username-or-phone login** | Full backend adapter, normalization, rate limiting, roles — extends the standard `wp-login.php` pipeline; deployed code + DB schema + roles/caps **verified on staging 2026-09-02** | No custom/branded login form or account UI; **runtime behaviour not yet acceptance-tested** (Category 2–4 of `docs/PHASE_2A_ACCEPTANCE.md`) |
-| **Roles & capabilities** | 5 roles + **22** caps registered; least-privilege verified in unit tests. Phase 2B consumes `hedayati_manage_course_runs`, `hedayati_manage_teachers`, `hedayati_assign_staff`, `hedayati_create_enrollments`, `hedayati_manage_enrollments`, `hedayati_record_attendance` | `hedayati_verify_students`, `hedayati_view_private_documents`, `hedayati_view_audit_logs`, `hedayati_initiate_verification`, `hedayati_view_own_*`, teacher/TA `view_assigned_*` still unused (Phase 2C/2D) |
+| **Username-or-phone login** | Full backend adapter, normalization, rate limiting, roles — extends the standard `wp-login.php` pipeline; deployed code + DB schema + roles/caps **verified on staging 2026-09-02**; **non-destructive runtime behaviour acceptance-tested and PASSED 2026-09-03** (username auth, rate-limit no-double-count/lockout/reset, phone 10-format login matrix, privacy-safe errors, uniqueness, verification lifecycle, deletion cleanup) | No custom/branded login form or account UI; only the Category-4 destructive tests of `docs/PHASE_2A_ACCEPTANCE.md` remain (deferred, not required for the gate); T2.4 (native unknown-username wording) not exercised |
+| **Roles & capabilities** | 5 roles + **22** caps registered; least-privilege verified in unit tests **and by an exact per-role WP-CLI capability audit on staging 2026-09-03** (21-cap Phase-2A set; matches Appendix A; negatives hold). Phase 2B consumes `hedayati_manage_course_runs`, `hedayati_manage_teachers`, `hedayati_assign_staff`, `hedayati_create_enrollments`, `hedayati_manage_enrollments`, `hedayati_record_attendance` | The 22nd cap (`hedayati_manage_teachers`) + Phase 2B roles `2.1.0` are **not yet on staging** (staging still runs roles `2.0.0`). `hedayati_verify_students`, `hedayati_view_private_documents`, `hedayati_view_audit_logs`, `hedayati_initiate_verification`, `hedayati_view_own_*`, teacher/TA `view_assigned_*` still unused (Phase 2C/2D) |
 | **Student accounts** | WordPress user + `student` role + phone-identity table + address profile fields (usermeta) + enrollments (Phase 2B) | No portal UI, no verification state, no national ID, no document upload (all blocked — Q10–Q13) |
 | **Homepage impact/value section** | Dark editorial band with 4 institutional bullet points and copy | Stat numbers (years, graduates, …) intentionally omitted pending verified data + an input mechanism (Customizer or plugin settings) — **neither mechanism is coded** |
 | **Contact / consultation** | Phone/address settings, footer + CTA rendering, links to `/consult/` | The `/consult/`, `/contact/`, `/about/` pages do not exist; no consultation form or submission handler |
@@ -336,24 +340,62 @@ longer "handoff-only":
   DB-visible (relevant to the not-yet-run behavioural tests).
 - **Active theme** confirmed `hedayati` from the DB side; `hedayati-core` plugin active.
 
-**Still not verified on staging:** any runtime *behaviour* — real username/phone login, phone
-normalization end-to-end, uniqueness enforcement under a real insert, rate-limit thresholds /
-reset / no-double-count, role least-privilege in use, phone assign/change/verify/delete lifecycle,
-and user-deletion cleanup. These require the Category 2–4 state-changing tests.
+## ✅ Verified on staging (`mystik.ir`) — 2026-09-03 (non-destructive behavioural acceptance)
+
+From `docs/PHASE_2A_ACCEPTANCE.md` "Behavioural execution log (2026-09-03)". Executed against the
+current Phase 2A build (plugin `1.1.0`, DB & roles `2.0.0`) with disposable `student` users
+`qa_phase2a` (ID 2) / `qa_phase2a_b` (ID 3) and synthetic data; both deleted at teardown. WP-CLI
+available via the hosting WordPress Toolkit.
+
+- **Full per-role capability matrix (T3.5/T3.6/T2.7 — now PASS).** Exact WP-CLI audit: student 4 /
+  teacher_assistant 2 / teacher 4 / reception 5 / hedayati_manager 13 Hedayati caps (+ `read`
+  each); administrator holds all native caps + all 21 Phase-2A `hedayati_*`. Matches Appendix A;
+  least-privilege negatives hold (reception/manager no `manage_options`; TA no
+  `hedayati_record_attendance`).
+- **Username auth + rate limiter (T2.2, T2.3, T2.5, T2.6, T3.7, T3.8, T3.9).** Correct login
+  succeeds; one wrong-password failure = identifier +1 and IP +1 (no double-count); identifier
+  lockout triggers and holds a correct password while hot; success clears the identifier bucket,
+  not the shared IP bucket; clearing only `hd_rl_*` transients restores access.
+- **Phone provisioning + login (T3.10, T3.11, T3.14).** `assign_phone()` stored canonical
+  `+989123456789` (unverified, `verified_at` NULL); all 10 accepted representations authenticated
+  as the one account.
+- **Phone privacy / invalid input (T3.12).** Wrong password, unassigned valid-format number,
+  malformed, non-Iranian, too-short and separator/injection inputs all failed with the identical
+  privacy-safe generic error; no account-existence disclosure; no cross-account login.
+- **Uniqueness + verification lifecycle (T3.13, T3.15).** Duplicate normalized number rejected
+  (user 3 kept 0 rows); `verify_phone()` set the flags; changing the number reset
+  `is_verified`/`verified_at`; same normalized number = no-op; no duplicate row.
+- **Deletion cleanup + teardown (T2.8, T2.9, T3.16).** User deletion removed the phone row via the
+  lifecycle hook; QA phone-row count back to baseline 0; transients cleared; administrator access
+  intact.
+- **Environment (closes M3).** `wp-content/object-cache.php` absent — rate-limit transients are
+  DB-backed, as assumed.
+
+**Not exercised (non-gating):** T2.4 (native `invalid_username` wording for an unknown non-phone
+identifier).
+
+**Still not run — Category 4 (destructive), DEFERRED, NOT REQUIRED for the current gate:** forced
+migration re-run/reset, DROP/recreate of the phone table, concurrent migration-lock tests, plugin
+deactivate/reactivate, driving the full 30/IP lock, deleting a real user, `wp-config.php` changes,
+redeploy tests.
 
 ---
 
 ## ❓ Uncertain — requires verification against a running environment or the institute
 
-- **Phase 2A runtime behaviour** — see "Still not verified on staging" above.
+- **Phase 2A runtime behaviour** — non-destructive behavioural acceptance is **complete/PASSED
+  2026-09-03** (see the 2026-09-03 staging section above). Only Category-4 destructive tests remain
+  (deferred, not required for the gate).
 - **The CCNA example course** and any other content — database content, not in the repo; not
   inspected.
 - **PHP test suites** — independently re-executed on PHP 8.4 (2026-09-03): test-phase2a 79/0,
   test-phase2b 115/0, test-audit-log 69/0, test-jalali 39/0 (302/0 total). Claude cannot run PHP
   here, so only the Node suites (421/0) were re-confirmed in this environment. All of this is
   **repository verified**, not WordPress/staging verified.
-- **Exact role → capability matrix + least-privilege negatives** on staging (T3.5 NEEDS REVIEW —
-  pending `wp cap list` per role, or the T2.7 wp-admin negative checks).
+- ~~**Exact role → capability matrix + least-privilege negatives** on staging~~ — **closed
+  2026-09-03** by the WP-CLI per-role capability audit (T3.5/T3.6/T2.7 now PASS). Covers the 21
+  Phase-2A caps; the 22-cap Phase-2B roles `2.1.0` matrix still needs re-checking after the Phase 2B
+  deploy (`docs/PHASE_2B_ACCEPTANCE.md` R5).
 - **LiteSpeed *page* cache behavior** after deploys (no persistent *object* cache is active).
 - **Custom logo** — whether a real logo image has been uploaded in WP (theme supports it; SVG "H"
   is the fallback).

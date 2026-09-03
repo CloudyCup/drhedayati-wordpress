@@ -10,6 +10,18 @@
 > Phase 2B additionally changes the schema (`2.1.0`) and roles (`2.1.0`, +`hedayati_manage_teachers`),
 > so once Phase 2B reaches staging the T3.5 role-matrix review must cover 22 capabilities, not 21.
 
+> **2026-09-03 — Non-destructive behavioural acceptance COMPLETE.** The operator executed
+> Categories 2–3 (auth flows, rate-limit thresholds / no-double-count / reset, phone provisioning /
+> format matrix / privacy / uniqueness / verification lifecycle / deletion cleanup) against the
+> **current Phase 2A staging build** (plugin `1.1.0`, DB & roles `2.0.0`) on `mystik.ir`, using only
+> two disposable `student` users (`qa_phase2a` = ID 2, `qa_phase2a_b` = ID 3) and synthetic data,
+> both deleted during teardown. All executed checks **PASS** — see "Behavioural execution log
+> (2026-09-03)" below. The only non-destructive item not exercised is **T2.4** (native
+> `invalid_username` wording for an unknown non-phone identifier) — cosmetic, not gating.
+> **Category 4 (destructive) remains NOT RUN / DEFERRED — NOT REQUIRED for the current staging
+> gate** (`docs/DEPLOYMENT.md` migration-safety rules; run only with a fresh backup, a maintenance
+> window and per-test written approval if a defect ever forces one).
+
 **Goal:** establish a *verified* Phase 2A baseline before any Phase 2B work.
 **Scope:** the `hedayati-core` plugin identity foundation + `hedayati` theme, as deployed to staging.
 **Constraints:** no Phase 2B, no automatic deploy, no destructive DB change, no production
@@ -39,26 +51,50 @@ operator's authenticated browser*.
 | T3.2b | Phone table data baseline | 3 read-only | ✅ PASS | 2026-09-02 | `D1`–`D4`: 0 rows, 0 duplicates, 0 orphans, 0 multi-phone users, 0 integrity violations |
 | T3.3 | Phone table schema & constraints | 3 read-only | ✅ PASS | 2026-09-02 | `B2` (7 columns exact) + `B3` (PK `id`, UNIQUE `uq_user_id`, UNIQUE `uq_phone_e164`, KEY `idx_is_verified`) match `class-db-schema.php::migrate_2_0_0` |
 | T3.4 | No `wp_` assumption (code + runtime) | 1 + 3 read-only | ✅ PASS | 2026-09-02 | repo grep: only `wp_login*` hook names; table name = `$wpdb->prefix . 'hedayati_user_phones'`. Runtime `B1b`: no `wp_hedayati_user_phones` |
-| T3.5 | Full role → capability audit | 3 read-only | 🟡 NEEDS REVIEW | 2026-09-02 | `C1` (5616 B ≈ 4× stock ⇒ sync ran), `C2` (all 5 slugs + admin), `C3` (all 21 caps present), `hedayati_token_count` = 50 = expected; M1 confirms roles are registered & selectable. **Exact per-role matrix + least-privilege negatives** (reception/manager lack `manage_options`, TA lacks attendance) still need `wp cap list` or T2.7 |
-| T3.6 | Administrator retains access + all Hedayati caps | 3 read-only | ✅ PASS | 2026-09-02 | M2 — admin functionally reaches Settings / Plugins / Users (⇒ `manage_options`, `activate_plugins`, `edit_users` intact); `C2` confirms `manage_options` + `activate_plugins` in the option; `C3` + token arithmetic (28 + 1 + 21 = 50) consistent with admin holding all 21. Residual (non-blocking): a positional `wp cap list administrator \| grep -c hedayati_` = 21 |
-| E1 obs | Rate-limiter transient baseline | 3 read-only | ℹ️ OBSERVED | 2026-09-02 | 19 active `hd_rl_*` counters (19 value + 19 timeout option rows), DB-backed (no object cache). Benign — limiter is recording real `wp-login.php` failures. **Must be cleared / IP bucket confirmed clean before T2.5, T2.6, T3.7, T3.8** |
-| E2/E3/F1 | Cache & environment context | 3 read-only | ✅ PASS | 2026-09-02 | 41 total DB transient rows (transients are DB-backed); no caching plugin active; `template`/`stylesheet` both `hedayati` (DB-side cross-check of T1.2) |
-| T2.1–T2.9 | Disposable test user | 2 | ⬜ blocked | — | needs operator go-ahead (N3) |
-| T3.7, T3.8 | Rate-limit counter behaviour | 3 state-changing | ⬜ blocked | — | needs disposable user + clean IP bucket (see E1 obs) |
-| T3.9–T3.16 | Phone provisioning / lifecycle / uniqueness | 3 state-changing | ⬜ blocked | — | needs WP-CLI or harness (N5) |
-| T4.1–T4.8 | Potentially destructive | 4 | ⛔ hold | — | explicit per-test approval required |
+| T3.5 | Full role → capability audit | 3 read-only | ✅ PASS | 2026-09-03 | Closed by the operator's exact per-role WP-CLI capability audit (2026-09-03): student 4 caps, teacher_assistant 2, teacher 4, reception 5, hedayati_manager 13 + `read` each; `administrator` holds all 21 `hedayati_*` plus every native cap. Least-privilege negatives confirmed by absence — reception/manager have no `manage_options`; teacher_assistant has no `hedayati_record_attendance`/`hedayati_manage_assigned_sessions`. Matches Appendix A |
+| T3.6 | Administrator retains access + all Hedayati caps | 3 read-only | ✅ PASS | 2026-09-03 | M2 (2026-09-02) + the 2026-09-03 capability audit: `administrator` retained all native WordPress caps AND all 21 Phase-2A `hedayati_*` caps; no permission errors, no PHP fatals |
+| E1 obs | Rate-limiter transient baseline | 3 read-only | ℹ️ OBSERVED | 2026-09-02 | 19 active `hd_rl_*` counters (19 value + 19 timeout option rows), DB-backed (no object cache). Benign — limiter is recording real `wp-login.php` failures. Cleared / IP bucket confirmed clean before the 2026-09-03 rate-limit behavioural tests |
+| E2/E3/F1 | Cache & environment context | 3 read-only | ✅ PASS | 2026-09-02 | 41 total DB transient rows (transients are DB-backed); no caching plugin active; `template`/`stylesheet` both `hedayati` (DB-side cross-check of T1.2). Corroborated 2026-09-03: `wp-content/object-cache.php` absent (closes M3) |
+| T2.1 | Create disposable test user(s) | 2 | ✅ PASS | 2026-09-03 | `qa_phase2a` (ID 2) and `qa_phase2a_b` (ID 3) created as `student`; both deleted at teardown |
+| T2.2 | Username + password login (test user) | 2 | ✅ PASS | 2026-09-03 | `qa_phase2a` correct username/password login succeeds |
+| T2.3 | Wrong password → error + failure recorded | 2 | ✅ PASS | 2026-09-03 | one wrong-password failure increments the identifier bucket by exactly 1 and the IP bucket by exactly 1 |
+| T2.4 | Unknown non-phone username behaviour | 2 | ⬜ NOT RUN | — | Not exercised. Cosmetic (native `invalid_username` wording) — not gating |
+| T2.5 | Identifier lockout at the 5th failure | 2 | ✅ PASS | 2026-09-03 | repeated wrong-password attempts triggered the configured identifier lockout; the correct password stayed blocked while the identifier lockout was active |
+| T2.6 | Successful login clears the identifier bucket | 2 | ✅ PASS | 2026-09-03 | successful login cleared the identifier-specific bucket as designed (precise confirmation T3.8) |
+| T2.7 | Role/capability least-privilege check | 2/3 | ✅ PASS | 2026-09-03 | Closed via the exact WP-CLI per-role capability audit (see T3.5) rather than UI negative-page visits — the audit proves the same least-privilege negatives positionally |
+| T2.8 | Delete the test user (UI) — lifecycle, UI half | 2 | ✅ PASS | 2026-09-03 | `qa_phase2a` / `qa_phase2a_b` deleted via wp-admin; no PHP error; admin access intact |
+| T2.9 | Category 2 teardown | 2 | ✅ PASS | 2026-09-03 | both disposable users deleted; final Hedayati rate-limit transient cleanup completed; administrator login intact |
+| T3.7 | Failure counter increments by exactly 1 (no double count) | 3 | ✅ PASS | 2026-09-03 | one wrong-password failure → identifier bucket +1 and IP bucket +1; no bucket jumped by 2 |
+| T3.8 | Successful login clears identifier bucket, not IP bucket | 3 | ✅ PASS | 2026-09-03 | successful login cleared the identifier-specific bucket; IP-bucket behaviour matched the documented design |
+| T3.9 | (utility) Clear rate-limit transients | 3 | ✅ USED | 2026-09-03 | clearing only the Hedayati rate-limit transients restored access immediately; final cleanup completed |
+| T3.10 | Provision & inspect a phone for the test user | 3 | ✅ PASS | 2026-09-03 | `assign_phone()` for user 2 with `09123456789` → stored canonical `+989123456789`; initial state unverified, `verified_at` NULL |
+| T3.11 | Phone-login: all accepted input formats | 3 | ✅ PASS | 2026-09-03 | all 10 supported representations (national, no-zero, `+98…`, `00989…`, `989…`, Persian digits, Arabic digits, spaced, hyphenated, parenthesized/dotted) authenticated as `qa_phase2a` |
+| T3.12 | Phone-login: rejection & generic-error behaviour | 3 | ✅ PASS | 2026-09-03 | assigned phone + wrong password, valid-format unassigned phone, malformed phone-like values, non-Iranian, too-short, separator/injection inputs all failed safely with the generic privacy-safe error; no account-existence disclosure, no cross-account login |
+| T3.13 | Phone uniqueness (service level + DB level) | 3 | ✅ PASS | 2026-09-03 | assigning user 2's normalized number to user 3 was rejected; user 3 retained zero phone rows; re-assigning the same normalized number was the documented no-op; no duplicate row created (`uq_phone_e164` enforced via the service's `phone_already_exists` path) |
+| T3.14 | Equivalent formats normalize identically | 3 | ✅ PASS | 2026-09-03 | every accepted representation resolved to the single `+989123456789` record / `qa_phase2a` (demonstrated through the T3.11 login matrix) |
+| T3.15 | Phone lifecycle & verification-flag transitions | 3 | ✅ PASS | 2026-09-03 | `verify_phone(user 2)` set `is_verified`/`verified_at`; changing to a different number reset `is_verified`→false and `verified_at`→NULL with the new normalized value; same normalized number was a no-op; user deletion removed the phone row |
+| T3.16 | Category 3 teardown | 3 | ✅ PASS | 2026-09-03 | disposable users deleted; their phone rows removed by lifecycle cleanup; final QA phone-row count back to baseline (0); rate-limit transients cleared; administrator access intact |
+| T4.1–T4.8 | Potentially destructive (Category 4) | 4 | ⬜ NOT RUN / DEFERRED | — | **NOT REQUIRED for the current staging gate.** Run only with a fresh full backup, a maintenance window, no live traffic, and per-test written approval — and only if a defect ever forces one |
 
-**Baseline status: STATIC + READ-ONLY LAYER FULLY VERIFIED.**
-Confirmed: version identity (T1.1–T1.2), code-match (T1.3), custom roles present & selectable
-(T1.4), admin access unbroken by the auth filter chain (T1.5), verification-flag design (T1.6),
-migration state & options (T3.1), phone-table existence / prefix / schema / constraints / empty
-baseline (T3.2, T3.2b, T3.3), no `wp_` assumption (T3.4), administrator retains full access + the
-21 caps installed (T3.6).
-Provisional: exact per-role capability matrix + least-privilege negatives (T3.5 — NEEDS REVIEW;
-structure is consistent with the design but not positionally enumerated).
-Outstanding: **all** runtime behaviour — authentication flows, rate-limit thresholds / reset /
-no-double-count, phone provisioning / normalization end-to-end / uniqueness under real insert /
-lifecycle / deletion cleanup (Categories 2–4), and every destructive test.
+**Baseline status: STATIC + READ-ONLY LAYER FULLY VERIFIED · NON-DESTRUCTIVE BEHAVIOURAL
+ACCEPTANCE COMPLETE (2026-09-03).**
+Confirmed (static/read-only): version identity (T1.1–T1.2), code-match (T1.3), custom roles present
+& selectable (T1.4), admin access unbroken by the auth filter chain (T1.5), verification-flag
+design (T1.6), migration state & options (T3.1), phone-table existence / prefix / schema /
+constraints / empty baseline (T3.2, T3.2b, T3.3), no `wp_` assumption (T3.4).
+Confirmed (behavioural, 2026-09-03): the full per-role capability matrix + least-privilege
+negatives (T3.5, T3.6, T2.7), username auth + wrong-password handling (T2.2, T2.3), rate-limit
+no-double-count / identifier lockout / success-reset / IP-bucket design (T2.5, T2.6, T3.7, T3.8,
+T3.9), phone provisioning + canonical storage (T3.10), the 10-format login matrix (T3.11, T3.14),
+privacy-safe generic errors for bad / unassigned / malformed / non-Iranian phone input (T3.12),
+phone uniqueness (T3.13), the verification lifecycle incl. change-resets-verification (T3.15), and
+user-deletion phone-row cleanup + teardown to baseline (T2.8, T2.9, T3.16).
+Not exercised (non-gating): T2.4 (native `invalid_username` wording for an unknown non-phone
+identifier).
+Outstanding: **Category 4 destructive tests only** — forced migration re-run/reset, DROP/recreate
+of the phone table, concurrent migration-lock tests, plugin deactivate/reactivate, deliberately
+driving the full 30/IP lock, deleting a real user, `wp-config.php` changes, redeploy tests. These
+are **NOT RUN / DEFERRED** and **NOT REQUIRED** to close the current staging gate.
 
 ---
 
@@ -111,6 +147,77 @@ option rows — `_transient_<k>` (value) and `_transient_timeout_<k>` (unix expi
   current `hd_rl_ip_*` bucket is absent, or (b) clear the `_transient_hd_rl_*` / `_transient_timeout_hd_rl_*`
   rows (a **write** — deferred, needs approval as part of the T3.9 utility step), or (c) run the
   tests from an IP with no recent failures.
+
+---
+
+## Behavioural execution log (2026-09-03)
+
+Operator executed the non-destructive behavioural rounds on the current Phase 2A staging build
+(plugin `1.1.0`, DB & roles `2.0.0`) per `docs/PHASE_2A_OPERATOR_CHECKLIST.md`. WP-CLI was
+available through the hosting WordPress Toolkit. Subjects: `qa_phase2a` (user ID 2), `qa_phase2a_b`
+(user ID 3), both role `student`, both deleted at teardown. Synthetic phone `09123456789` →
+canonical `+989123456789`. No real accounts or real data were touched.
+
+### Roles / capabilities (M1, T3.5, T3.6, T2.7)
+- **M1 — PASS.** All five custom roles (`student`, `teacher_assistant`, `teacher`, `reception`,
+  `hedayati_manager`) visible in Users → Add New.
+- **M2 — PASS.** Existing administrator retained Dashboard, Settings → General, Plugins, Users,
+  Settings → Hedayati; no permission errors, no PHP fatals.
+- **Exact capability audit — PASS.** `student` = read + view_own_portal, edit_own_profile,
+  view_own_enrollments, upload_own_documents. `teacher_assistant` = read + view_assigned_runs,
+  view_assigned_roster. `teacher` = read + view_assigned_runs, view_assigned_roster,
+  manage_assigned_sessions, record_attendance. `reception` = read + lookup_students,
+  create_enrollments, edit_enrollments_basic, view_student_profiles_basic, initiate_verification.
+  `hedayati_manager` = read + the 5 reception caps + manage_courses, manage_course_runs,
+  assign_staff, verify_students, view_private_documents, view_audit_logs, manage_enrollments,
+  manage_settings. `administrator` = all native WP caps + all 21 Phase-2A `hedayati_*` caps.
+  Matches Appendix A exactly; least-privilege negatives hold by absence.
+
+### Username auth / rate limit (T2.2, T2.3, T2.5, T2.6, T3.7, T3.8, T3.9)
+- Correct `qa_phase2a` username/password login succeeds.
+- One wrong-password failure increments the identifier bucket by exactly 1 and the IP bucket by
+  exactly 1 — no double-count.
+- Repeated wrong-password attempts triggered the configured identifier lockout; the correct
+  password stayed blocked while that lockout was active.
+- Clearing only the Hedayati rate-limit transients restored access immediately.
+- A successful login cleared the identifier-specific bucket; IP-bucket behaviour matched the
+  documented design.
+- During one manual inspection the identifier/IP counters reached 7 because extra deliberate
+  attempts were made past the threshold — operator testing, not unexpected application behaviour.
+- Final rate-limit cleanup completed.
+
+### Phone provisioning / login (T3.10, T3.11, T3.14)
+- `assign_phone()` for user 2 succeeded; the record stored canonical `+989123456789`; initial
+  verification state unverified; `verified_at` NULL.
+- All 10 supported login representations authenticated as `qa_phase2a`: `09123456789`,
+  `9123456789`, `+989123456789`, `00989123456789`, `989123456789`, Persian digits, Arabic digits,
+  spaced form, hyphenated form, parenthesized/dotted form.
+
+### Phone privacy / invalid input (T3.12)
+- Assigned phone + wrong password, valid-format unassigned phone, malformed phone-like values,
+  non-Iranian values, too-short values, and separator/injection-style malformed inputs all failed
+  safely. No input logged into another account, revealed whether the phone was assigned, or
+  produced account-existence disclosure. The phone-path error behaviour was generic / privacy-safe
+  as designed.
+
+### Phone uniqueness / verification lifecycle (T3.13, T3.15)
+- Assigning user 2's normalized phone to user 3 was rejected; user 3 retained zero phone rows.
+- Verifying user 2 set `is_verified` / `verified_at` correctly.
+- Changing user 2 to a different phone reset `is_verified` → false and `verified_at` → NULL and
+  changed the normalized value; re-assigning the same normalized number was the documented no-op;
+  no duplicate phone row was created.
+
+### Deletion / teardown (T2.8, T2.9, T3.16)
+- `qa_phase2a` and `qa_phase2a_b` deleted; their phone rows removed by lifecycle cleanup; final QA
+  phone-row count returned to baseline (0); final Hedayati rate-limit transient cleanup completed;
+  administrator access remained intact. No real user accounts were used or deleted.
+
+### Not executed — Category 4 (destructive), by design
+Forced migration re-run/reset, DROP/recreate of the phone table, concurrent migration-lock tests,
+plugin deactivate/reactivate, intentionally driving the full 30/IP lock, deleting a real user,
+`wp-config.php` changes, redeployment tests. **NOT RUN / DEFERRED — NOT REQUIRED for the ordinary
+Phase 2A behavioural acceptance gate** unless a defect ever forces one (then: fresh backup +
+maintenance window + per-test approval).
 
 ---
 
@@ -577,8 +684,10 @@ Risk levels: **None / Very low / Low / Medium / High.**
 
 ## CATEGORY 4 — POTENTIALLY DESTRUCTIVE — DO NOT RUN WITHOUT EXPLICIT APPROVAL
 
-Each requires: fresh full backup (N9), a maintenance window, no live traffic (N8), and written
-per-test approval (N10).
+**Status (2026-09-03): NOT RUN / DEFERRED — NOT REQUIRED for the current Phase 2A staging gate.**
+The non-destructive behavioural acceptance (Categories 2–3) is complete and closes the gate.
+Each test below still requires: fresh full backup (N9), a maintenance window, no live traffic (N8),
+and written per-test approval (N10) — to be arranged only if a defect ever forces one.
 
 | Test | What | Risk | Why deferred / cleanup |
 |---|---|---|---|

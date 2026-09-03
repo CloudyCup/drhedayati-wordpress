@@ -12,9 +12,14 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ## P0 — blockers
 
-1. **Phase 2A staging integration acceptance.** Isolated/static tests pass; real WordPress
-   behavior is unproven. On `mystik.ir`, with a disposable `student` account (never test
-   destructive cases against an admin account), verify:
+1. **Phase 2A staging integration acceptance.** 🟢 **Non-destructive behavioural acceptance
+   COMPLETE / PASSED 2026-09-03** on `mystik.ir` (disposable `student` users `qa_phase2a` ID 2 /
+   `qa_phase2a_b` ID 3, synthetic data, deleted at teardown; WP-CLI via the hosting toolkit). All
+   the checks listed below passed — see `docs/PHASE_2A_ACCEPTANCE.md` "Behavioural execution log
+   (2026-09-03)". Not exercised: T2.4 (native unknown-username wording — non-gating).
+   **Category-4 destructive tests remain NOT RUN / DEFERRED — NOT REQUIRED for this gate.**
+   For the record, what was verified on `mystik.ir`, with a disposable `student` account (never
+   destructive cases against an admin account):
    - normal username/password login; phone + password login;
    - `0914…`, `+98914…`, `0098914…`, `989…`, Persian-digit, Arabic-digit forms all resolve to the
      one account;
@@ -52,8 +57,9 @@ several items still need institute decisions (marked ❓, see the bottom of this
    (b) theme-side fallback wiring
    so the public course page reads run data for `_course_teacher` / `_course_next_start_date` /
    `_course_price` / `_course_registration_state` (currently the meta is still the only display
-   source — no dual *entry*, but no fallback *read* yet); (c) close Phase 2A behavioural acceptance
-   first.
+   source — no dual *entry*, but no fallback *read* yet); (c) ~~close Phase 2A behavioural
+   acceptance first~~ — **done 2026-09-03** (non-destructive gate; Category 4 deferred, not
+   required).
 2. **Phase 2C — student identity & security.** 🟡 **Foundation slice done** on
    `feature/phase-2b-academic-operations`: address/city/postal-code profile fields in usermeta
    with an extensible registry + server-side normalization (`Hedayati_Student_Profile`).
