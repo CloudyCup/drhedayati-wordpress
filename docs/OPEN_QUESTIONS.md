@@ -135,67 +135,47 @@ revisit only if online/multi-timezone delivery becomes a requirement.
 
 ---
 
-## Phase 2C — what is blocked and why
+## Phase 2C — resolved (owner decisions, 2026-09-05) — see D36–D40
 
-Only the **mailing-address** slice of the student profile was built
-(`class-student-profile.php` — `hedayati_address` / `hedayati_city` /
-`hedayati_postal_code` usermeta, per `docs/ROADMAP.md` P1.2). Everything below is a
-deliberate non-implementation.
+Q10–Q13 below are now **resolved by explicit owner decision** and implemented on
+`feature/phase-2c-student-portal`. This section is kept as a historical record of what was
+blocked and why; `docs/DECISIONS.md` D36–D40 record the actual decisions, and
+`docs/DATA_MODEL.md` / `docs/SECURITY.md` document the resulting implementation.
 
-## Q10 — National ID storage (BLOCKS implementation)
+## Q10 — National ID storage — RESOLVED (D36)
 
-**Needs an institute + infrastructure decision.** Per `docs/DECISIONS.md` D15 a
-reversible national-ID field requires a dedicated `HEDAYATI_DATA_ENCRYPTION_KEY`
-(and a separate keyed-HMAC secret for duplicate detection) placed in
-`wp-config.php` / server config — **outside Git** — with key versioning. None of
-that exists and it cannot be created from this repo.
-**Do not** add a national-ID field, encrypted or not, until: (a) the key + HMAC
-secret are provisioned on staging and production, (b) the key-versioning scheme is
-agreed, (c) the institute confirms national ID is actually required and what it
-unlocks. **This is a stop-and-ask item (sensitive data + encryption guarantees).**
+**Decided:** national ID is required for verified student profiles, encrypted at rest
+(AES-256-GCM) with a dedicated `HEDAYATI_DATA_ENCRYPTION_KEY` (strict base64/32-byte format,
+outside Git), plus a separate keyed-HMAC (`HEDAYATI_DATA_HMAC_KEY`) fingerprint for DB-level
+duplicate detection — same `UNIQUE`-constraint pattern as `hedayati_user_phones` (D7). Both keys
+fail closed if missing or malformed — no plaintext fallback. Only staff holding
+`hedayati_verify_students` may decrypt a stored value, through one narrow, audited, POST-only
+reveal action — never the student themselves, never any other role. See D36.
 
-## Q11 — Verification workflow semantics (BLOCKS implementation)
+## Q11 — Verification workflow semantics — RESOLVED (D37)
 
-The conceptual states (`unverified` / `pending` / `verified` / `rejected`) are
-approved, but three things are undecided and each changes the data model:
-1. **Reset rules** — does editing the profile / phone / documents drop a
-   `verified` record back to `pending`? Which field changes trigger it?
-2. **Benefit linkage** — `docs/REQUIREMENTS.md` 8.6: "No approved policy that
-   verification unlocks certificates/exams/benefits." Until there is one, a
-   verification system has nothing to gate and its urgency is unclear.
-3. **Reviewer workflow** — who moves `pending → verified/rejected`, what evidence
-   is required, is a rejection reason mandatory/visible to the student?
-**Safe interim:** none built. `reception` already has `hedayati_initiate_verification`
-and `hedayati_manager` has `hedayati_verify_students` (defined, unused). When
-unblocked, store the record as usermeta `{status, reviewed_by, reviewed_at,
-reason}` and add the reset rule as an explicit, documented policy — not a guess.
+**Decided:** `unverified` / `pending` / `verified` / `rejected` with an **enforced** transition
+table (not free value-to-value movement): `unverified|rejected → pending` (initiate),
+`pending → verified|rejected` (approve/reject), and `verified` exits only through
+`reset_for_identity_change()` — never a direct API call. Reset triggers on a legal
+first/last-name change; phone, address, and email changes do **not** reset verification (phone
+verification stays independent, per the owner's explicit instruction not to conflate the two).
+Rejection is reversible via a later `initiate()`. No manager/administrator override of the state
+machine exists — that would be a distinct, future, explicit decision. See D37.
 
-## Q12 — Private document storage (BLOCKS implementation)
+## Q12 — Private document storage — RESOLVED (D38)
 
-Per `docs/DECISIONS.md` D14 + `docs/SECURITY.md`: bytes outside `public_html`,
-application-controlled streaming after capability + ownership checks, abstract
-`storage_backend` + `storage_key`, MIME allowlist, generated names,
-archive/deleted lifecycle. Undecided: the actual storage location on ParsPack
-(can PHP write outside the web root there?), the MIME/size allowlist, the
-mandatory-document list, the retention period, and the ~48-hour offsite-transfer
-protocol (acknowledge/retry/delete/restore). **Do not store any real student
-document this session.** A schema-only foundation is possible later but adds risk
-with no user today; defer until the storage location and retention are confirmed.
+**Decided:** bytes stored via `Hedayati_Document_Storage`, environment-gated: a configured
+`HEDAYATI_PRIVATE_UPLOADS_DIR` outside the web root is **required** on staging/production (fails
+closed without it); the protected `wp-content/uploads/hedayati-private/` fallback is
+**local/Docker-CI only**. Real content-sniffing (`finfo` + PDF magic header + structural image
+validation, not extension/declared-MIME trust) against a PDF/JPEG/PNG allowlist. Canonical,
+containment-checked storage-key resolution on every read/delete (rejects traversal, absolute
+keys, symlink escape). Manual archive confirmation + a computed 7-day purge-eligibility window,
+purged only by an explicit staff action — never a cron job. See D38.
 
-## Q13 — Audit log retention (metadata log BUILT; IP/UA still BLOCKED)
+## Q13 — Audit log IP/UA — RESOLVED (D39, permanently)
 
-**Partially resolved.** The metadata-only, append-only log is implemented
-(`hedayati_audit_log`, migration `2.2.0`, `Hedayati_Audit_Log`, D33) and records
-*only* `{actor_id, action, object_type, object_id, note, created_at}` — **no IP,
-no user-agent, no `updated_at`, no serialized context.** It is wired into every
-Phase 2B mutation and has a read-only viewer.
-
-**Still undecided (does not block anything built):**
-1. **IP / user-agent capture** — required by REQUIREMENTS 12.10 wording but with an
-   unresolved retention/privacy policy. Not added; adding it later is an additive
-   migration (`2.3.0`) plus a decision on how long those rows keep the IP/UA.
-2. **Retention of the metadata rows themselves** — the log grows unbounded. No
-   purge/rotation is implemented (append-only). If the institute wants a retention
-   window (e.g. "keep 3 years"), that is a separate policy + a scheduled prune that
-   must itself be audited. Low urgency at current volume.
-3. **Does anything consume the log operationally** (alerts, reports) — Phase 2D.
+**Decided:** the metadata-only, append-only log stays exactly as built in Phase 2B — no IP
+address, no user-agent, ever. This is not a deferred decision awaiting a retention policy; the
+owner explicitly chose not to collect this data. See D39.

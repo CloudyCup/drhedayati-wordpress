@@ -1,6 +1,12 @@
 # CURRENT_STATE.md
 
-**Last documentation update:** 2026-09-04
+**Last documentation update:** 2026-09-05 — Phase 2C (student identity, verification, private
+documents) implemented on `feature/phase-2c-student-portal`, branched from `main` after Phase 2B's
+merge. See the new "Plugin — student identity, verification, private documents (Phase 2C)"
+section below and `docs/agent/STATUS.md` for the current merge-gate status. Everything below this
+line before that update describes the pre-Phase-2C state and is superseded where it conflicts.
+
+**Previous update:** 2026-09-04.
 **Method:** direct inspection of the repository, reconciled against `docs/HANDOFF_LEGACY.md`.
 Phase 2B + the Phase 2C address slice were implemented 2026-09-02/03 on
 `feature/phase-2b-academic-operations`.
@@ -256,10 +262,7 @@ re-tested.
     REPOSITORY VERIFIED only (syntax + isolated logic with a mocked WP shim), **not** WordPress
     runtime, and **not** staging.
 
-### Plugin — student profile (Phase 2C foundation — address only) — same branch
-
-> Repository + Node-suite verified only. The rest of Phase 2C is **blocked on institute policy** —
-> see `docs/OPEN_QUESTIONS.md` Q10–Q13.
+### Plugin — student profile (Phase 2C address slice) — branch `feature/phase-2c-student-portal`
 
 - **`Hedayati_Student_Profile`** (`class-student-profile.php`): `hedayati_address`,
   `hedayati_city`, `hedayati_postal_code` in `wp_usermeta` (no table, no migration). Fields come
@@ -268,11 +271,77 @@ re-tested.
   (`user_profile_update_errors` blocks the save otherwise). Admin fields render on the WordPress
   user-edit screen; self-edit needs `hedayati_edit_own_profile`, other-user access needs
   `hedayati_view_student_profiles_basic` + core `edit_user`. Read API
-  `Hedayati_Student_Profile::get( $user_id )`. `HEDAYATI_CORE_VERSION` → `1.3.0`.
-- **Deliberately not built:** national ID (needs the D15 encryption key), verification state
-  machine (reset rules undecided), private documents (storage/retention undecided), audit log
-  (IP/UA retention undecided). Each is documented as a block, not a TODO.
-- **Tests:** `tests/verify-phase2c.js` — **25 passed, 0 failed**.
+  `Hedayati_Student_Profile::get( $user_id )`. Unchanged by Phase 2C's identity/document work —
+  national ID lives in its own table, not this class (see below).
+
+### Plugin — student identity, verification, private documents (Phase 2C) — branch `feature/phase-2c-student-portal`
+
+> Repository + Node-suite verified (564/0 across all static suites). Real-WordPress-runtime
+> verification is the extended `docker/wp-tests/test-phase-2c.php` suite via the `Acceptance
+> (Docker WordPress)` GitHub Actions workflow — see `docs/agent/STATUS.md` for whether that run is
+> green yet. Staging (`mystik.ir`) acceptance (`docs/PHASE_2C_ACCEPTANCE.md`) and any deploy are
+> separate, not-yet-executed, owner-approved steps. Not merged to `main`.
+
+- **`Hedayati_Crypto`** (`class-crypto.php`): AES-256-GCM encryption + a separate keyed-HMAC
+  fingerprint, both keys required as base64 strings decoding to exactly 32 raw bytes
+  (`HEDAYATI_DATA_ENCRYPTION_KEY` / `HEDAYATI_DATA_HMAC_KEY`, outside Git). Fails closed — no
+  plaintext or weak-cipher fallback — if either key is missing or malformed. Version-tagged blob
+  format supports future key rotation without a schema change (D36).
+- **Migration `2.3.0`** (`class-db-schema.php::migrate_2_3_0`): creates
+  `hedayati_student_verification` (encrypted national ID + HMAC fingerprint with a DB-level
+  `UNIQUE` constraint, same pattern as `hedayati_user_phones` — D7; verification review state in
+  the same row) and `hedayati_documents` (metadata only — bytes never touch this table).
+  `CURRENT_DB_VERSION` → `2.3.0`.
+- **`Hedayati_Verification_Service`** (`class-verification-service.php`): `set_national_id()`
+  (checksum-validated Iranian national ID, HMAC duplicate detection, fails closed without a
+  configured key, resets a `verified` record if the value actually changes);
+  `get_national_id_decrypted()` — the **one** method in the plugin that checks
+  `hedayati_verify_students` inside the service itself as well as relying on the caller (D36,
+  deliberate exception to the capability-agnostic-service convention elsewhere); an **enforced**
+  verification transition table (`unverified|rejected → pending → verified|rejected`, `verified`
+  exits only via an identity-change reset) — unlike Phase 2B's value-validated-only statuses
+  (D37). Legal first/last-name changes (`profile_update` hook) reset a `verified` record; phone/
+  address/email changes do not. `deleted_user` cleanup.
+- **`Hedayati_Document_Storage`** (`class-document-storage.php`) + **`Hedayati_Document_Service`**
+  (`class-document-service.php`): environment-gated storage root (an outside-webroot
+  `HEDAYATI_PRIVATE_UPLOADS_DIR` is required on anything but a local/Docker-CI environment); real
+  content-sniffing (`finfo` + PDF magic header + `getimagesize()` structural check, not
+  extension/declared-MIME trust) against a PDF/JPEG/PNG allowlist; canonical,
+  containment-checked storage-key resolution on every read/delete (rejects traversal, absolute
+  keys, symlink escape); randomized storage keys; bytes-then-metadata upload ordering with
+  orphan-file cleanup on a failed DB insert; explicit `purge_failed` /
+  `purge_partially_failed` semantics so a row can never falsely claim purged bytes; manual archive
+  confirmation + a computed 7-day purge-eligibility window; purging is always a staff action, never
+  a cron job (D38).
+- **`Hedayati_Student_Admin`** (`class-student-admin.php`): new staff-only top-level wp-admin
+  screen "دانشجویان و احراز هویت", following `class-academic-admin.php`'s
+  nonce+capability+`admin-post.php` pattern. The privileged national-ID "نمایش شناسه ملی" reveal
+  action is the **only** plaintext-rendering path in the plugin: POST-only, nonced,
+  `hedayati_verify_students`-gated at the controller (redundant with the service's own check),
+  no-store/no-cache response headers, never persists the value to a transient/notice, audits
+  `identity.viewed` without the value. **No student-facing UI exists in Phase 2C** — every action
+  is staff-only; the service authorization contracts are written ready for a Phase 2D portal
+  caller but nothing calls them that way yet.
+- **New capability `hedayati_upload_student_documents`** (D40): staff-assisted national-ID intake
+  and document upload, assigned only to `reception` + `hedayati_manager` (+ `administrator` via
+  the existing sync) — deliberately **not** `edit_user`/`hedayati_view_student_profiles_basic`,
+  which would have implied WordPress user-management power reception does not hold. Plus a
+  target-must-hold-`student`-role scope check on every staff-assisted action. `ROLES_VERSION` →
+  `2.2.0`; managed capability count 22 → 23.
+- **Audit log vocabulary extension** (no schema change): `identity.set`, `identity.viewed`,
+  `verification.initiated|approved|rejected|reset`, `user.identity_purged`,
+  `document.uploaded|download_started|archived|purged|purged_for_user`. Still no `ip`/`user_agent`
+  column — permanently decided against (D39), not a deferred policy.
+- **Tests:** `tests/verify-phase2c.js` — **131 passed, 0 failed** (extended from the 25-assertion
+  foundation-slice suite). `tests/test-phase2c.php` — new PHP CLI suite (repository-verified only,
+  no PHP in this Claude Code environment). `docker/wp-tests/test-phase-2c.php` — new ~90-assertion
+  real-WordPress-runtime suite (migration/schema, crypto round-trip, plaintext-never-in-DB,
+  malformed-key fail-closed, checksum/duplicate-detection, the full transition table, the
+  privileged-reveal authorization matrix + service-level denial, the staff-upload capability
+  matrix, real MIME-spoofing rejection, storage-key traversal rejection, orphan-file cleanup,
+  archive/purge lifecycle, `deleted_user` cleanup, audit accuracy) — see `docs/agent/STATUS.md`
+  for its actual GitHub Actions result.
+- `HEDAYATI_CORE_VERSION` → `1.6.0`.
 
 ### Plugin — tests
 
@@ -358,8 +427,8 @@ re-tested.
 | Area | What exists | What is missing |
 |---|---|---|
 | **Username-or-phone login** | Full backend adapter, normalization, rate limiting, roles — extends the standard `wp-login.php` pipeline; deployed code + DB schema + roles/caps **verified on staging 2026-09-02**; **non-destructive runtime behaviour acceptance-tested and PASSED 2026-09-03** (username auth, rate-limit no-double-count/lockout/reset, phone 10-format login matrix, privacy-safe errors, uniqueness, verification lifecycle; automatic deletion cleanup unverified, HD-002) | No custom/branded login form or account UI; only the Category-4 destructive tests of `docs/PHASE_2A_ACCEPTANCE.md` remain (deferred, not required for the gate); T2.4 (native unknown-username wording) not exercised |
-| **Roles & capabilities** | 5 roles + **22** caps registered; least-privilege verified in unit tests **and by an exact per-role WP-CLI capability audit on staging 2026-09-03** (21-cap Phase-2A set; matches Appendix A; negatives hold). Phase 2B consumes `hedayati_manage_course_runs`, `hedayati_manage_teachers`, `hedayati_assign_staff`, `hedayati_create_enrollments`, `hedayati_manage_enrollments`, `hedayati_record_attendance` | The owner reports roles `2.1.0` and plugin `1.5.2` on staging; broader role-matrix acceptance remains open. `hedayati_verify_students`, `hedayati_view_private_documents`, `hedayati_view_audit_logs`, `hedayati_initiate_verification`, `hedayati_view_own_*`, teacher/TA `view_assigned_*` still unused (Phase 2C/2D) |
-| **Student accounts** | WordPress user + `student` role + phone-identity table + address profile fields (usermeta) + enrollments (Phase 2B) | No portal UI, no verification state, no national ID, no document upload (all blocked — Q10–Q13) |
+| **Roles & capabilities** | 5 roles + **23** caps registered; least-privilege verified in unit tests **and by an exact per-role WP-CLI capability audit on staging 2026-09-03** (21-cap Phase-2A set; matches Appendix A; negatives hold — the audit predates Phase 2B/2C's 2 additional caps). Phase 2B consumes `hedayati_manage_course_runs`, `hedayati_manage_teachers`, `hedayati_assign_staff`, `hedayati_create_enrollments`, `hedayati_manage_enrollments`, `hedayati_record_attendance`; Phase 2C consumes `hedayati_verify_students`, `hedayati_view_private_documents`, `hedayati_initiate_verification`, and the new `hedayati_upload_student_documents` | Broader role-matrix acceptance on staging (including the 2 new Phase 2B/2C caps) remains open — see `docs/PHASE_2C_ACCEPTANCE.md` A3/A4. `hedayati_view_own_*`, teacher/TA `view_assigned_*`, `hedayati_upload_own_documents` remain unused (no caller — Phase 2D portals) |
+| **Student accounts** | WordPress user + `student` role + phone-identity table + address profile fields (usermeta) + enrollments (Phase 2B) + national ID (encrypted, Phase 2C) + verification workflow (Phase 2C) + private documents (Phase 2C, staff-uploaded) | No student-facing portal UI yet (self-service upload/view is Phase 2D — the Phase 2C services are ready for it, but no caller exists); staging runtime acceptance of the new identity/document features not yet executed (`docs/PHASE_2C_ACCEPTANCE.md`) |
 | **Homepage impact/value section** | Dark editorial band with 4 institutional bullet points and copy | Stat numbers (years, graduates, …) intentionally omitted pending verified data + an input mechanism (Customizer or plugin settings) — **neither mechanism is coded** |
 | **Contact / consultation** | Phone/address settings, footer + CTA rendering, links to `/consult/` | The `/consult/`, `/contact/`, `/about/` pages do not exist; no consultation form or submission handler |
 | **Course commerce fields** | `_course_price` as a display string; state as `open`/`closed`/`soon`. Phase 2B adds `Course Run` with integer-rial `tuition_rial` (nullable) | No payment; the theme does not yet read run tuition / dates as fallbacks (Phase 2D) |
@@ -369,8 +438,9 @@ re-tested.
 ## ⬜ Planned / not implemented (no code in the repository)
 
 - Custom login / registration / password-reset UI.
-- Student profile storage (address, national ID, extensible fields), verification workflow and
-  states, private-document upload/storage/streaming, document lifecycle.
+- A student-facing self-service portal (view own verification status/documents, upload own
+  documents) — the Phase 2C services are authorization-ready for this (`hedayati_upload_own_documents`
+  / `hedayati_view_own_portal` contracts already exist) but no caller/UI exists; this is Phase 2D.
 - Public teacher directory/profiles (the `teacher` CPT exists but is not publicly routed — D30).
 - Theme-side consumption of Course Run data (run tuition/dates/registration as fallbacks for the
   `_course_*` meta on the public course page).

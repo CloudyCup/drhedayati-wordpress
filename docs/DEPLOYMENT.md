@@ -72,20 +72,48 @@ gitignored (`*.zip`).
 
 ---
 
+## Required `wp-config.php` constants — Phase 2C (D36/D38)
+
+**Pre-deploy checklist item, staging and production alike, before this branch's plugin version is
+deployed anywhere it is expected to actually work.** None of these are in Git — provision them
+directly in `wp-config.php` or equivalent server config.
+
+| Constant | Required format | Required on | Behavior if missing/malformed |
+|---|---|---|---|
+| `HEDAYATI_DATA_ENCRYPTION_KEY` | base64 string decoding to exactly 32 raw bytes | Any environment where national ID will be stored | The feature fails closed — `set_national_id()`/`get_national_id_decrypted()` return an error; no plaintext fallback exists |
+| `HEDAYATI_DATA_HMAC_KEY` | base64 string decoding to exactly 32 raw bytes, **independent** of the encryption key | Same as above | Same fail-closed behavior |
+| `HEDAYATI_PRIVATE_UPLOADS_DIR` | absolute filesystem path, outside the web root, writable by PHP | **Required** on any environment except local/Docker-CI (`wp_get_environment_type() !== 'local'`) | Document upload fails closed — nothing is written to disk |
+
+Generate a key with, e.g., `openssl rand -base64 32` (run on a machine you trust, paste the output
+directly into `wp-config.php`, never into a chat/ticket/log). Never derive either key from
+`SECURE_AUTH_KEY` or any other WordPress salt — rotating those must never make national-ID records
+unreadable (D15/D36). `docker/docker-compose.yml` defines throwaway, committed, test-only versions
+of the first two for the disposable Docker-CI containers only — **never** reuse those values
+anywhere real.
+
+Verify before relying on the feature: `wp eval 'var_export( Hedayati_Crypto::is_configured() );'`
+(WP-CLI) should print `true`. On ParsPack specifically, confirm with hosting support whether PHP
+can write outside `public_html`; if not, the protected in-webroot fallback pattern from D14 would
+need to be revisited as a deliberate, documented exception before production use — do not assume.
+
+---
+
 ## Deploy workflow (staging)
 
 1. **Pre-flight**
    - `git status` clean; you are deploying a known commit. Note the commit hash.
-   - Run checks: `node …/verify-phase2a.js` (74/74), `verify-phase2b.js` (171/171),
-     `verify-phase2c.js` (25/25), `verify-audit-log.js` (98/98), `verify-jalali.js` (53/53) —
-     421/0 total; where PHP is available, `php …/test-phase2a.php` (79/0), `php …/test-phase2b.php`
-     (115/0), `php …/test-audit-log.php` (69/0), `php …/test-jalali.php` (39/0) — 302/0 total, and
-     `php -l` on every PHP file (48/48, independently confirmed on PHP 8.4, 2026-09-03).
+   - Run checks: `node …/verify-phase2a.js` (74/74), `verify-phase2b.js` (208/208),
+     `verify-phase2c.js` (131/131), `verify-audit-log.js` (98/98), `verify-jalali.js` (53/53) —
+     564/0 total; where PHP is available, `php …/test-phase2a.php`, `test-phase2b.php`,
+     `test-phase2c.php`, `test-audit-log.php`, `test-jalali.php`, and `php -l` on every PHP file.
+   - The `Acceptance (Docker WordPress)` GitHub Actions workflow must be **green** on the branch
+     being deployed — Phase 2C is not considered complete on static/mocked tests alone.
    - Confirm version headers bumped if behavior changed (`hedayati-core.php` / `style.css` /
      `HEDAYATI_CORE_VERSION` / `HEDAYATI_VERSION` / `CURRENT_DB_VERSION` / `ROLES_VERSION`).
-     Current branch: `HEDAYATI_CORE_VERSION` `1.5.3`, `CURRENT_DB_VERSION` `2.2.0`,
-     `ROLES_VERSION` `2.1.0`. `1.5.3` is a Teacher-CPT capability-map fix only (HD-006) — no
-     schema/roles change from `1.5.2`.
+     `feature/phase-2c-student-portal`: `HEDAYATI_CORE_VERSION` `1.6.0`, `CURRENT_DB_VERSION`
+     `2.3.0`, `ROLES_VERSION` `2.2.0`.
+   - Confirm the three `wp-config.php` constants above are provisioned on the target environment
+     **before** deploying, if this deploy is expected to expose the identity/document features.
 2. **Backup first** — take a full cPanel backup (files + database) and download an independent copy
    before replacing anything.
 3. **Upload** — replace **only** the exact `wp-content/themes/hedayati/` and/or
@@ -95,15 +123,20 @@ gitignored (`*.zip`).
    `Hedayati_DB_Schema::maybe_migrate()` and `Hedayati_Roles::maybe_sync_roles()` run on
    `admin_init`, so **log in to `wp-admin` and load the Dashboard / Plugins page** to trigger them.
 5. **Verify migration & options** (as admin):
-   - `{prefix}hedayati_user_phones` exists; after this branch's deploy, also
-     `{prefix}hedayati_course_runs` / `_run_staff` / `_sessions` / `_enrollments` / `_attendance`
-     / `_audit_log`.
-   - Options present: `hedayati_core_db_version` = `2.2.0`, `hedayati_core_roles_version` =
-     `2.1.0`, `hedayati_core_managed_capabilities` = 22 entries (incl. `hedayati_manage_teachers`).
+   - `{prefix}hedayati_user_phones` exists; also `{prefix}hedayati_course_runs` / `_run_staff` /
+     `_sessions` / `_enrollments` / `_attendance` / `_audit_log`; after this branch's deploy, also
+     `{prefix}hedayati_student_verification` / `_documents`.
+   - Options present: `hedayati_core_db_version` = `2.3.0`, `hedayati_core_roles_version` =
+     `2.2.0`, `hedayati_core_managed_capabilities` = 23 entries (incl. `hedayati_manage_teachers`
+     and `hedayati_upload_student_documents`).
    - Roles `student` / `teacher` / `teacher_assistant` / `reception` / `hedayati_manager` exist;
-     `hedayati_manager` + `administrator` have `hedayati_manage_teachers`.
-   - Full staging behavioural acceptance: `docs/PHASE_2A_ACCEPTANCE.md` **and**
-     `docs/PHASE_2B_ACCEPTANCE.md` (both currently NOT RUN — a pre-merge gate).
+     `hedayati_manager` + `administrator` have `hedayati_manage_teachers`; `reception` +
+     `hedayati_manager` + `administrator` have `hedayati_upload_student_documents`.
+   - `wp eval 'var_export( Hedayati_Crypto::is_configured() );'` prints `true` (confirms the two
+     crypto constants above are actually live on this environment).
+   - Full staging behavioural acceptance: `docs/PHASE_2A_ACCEPTANCE.md`, `docs/PHASE_2B_ACCEPTANCE.md`
+     **and** `docs/PHASE_2C_ACCEPTANCE.md` (all a pre-merge/pre-deploy gate; see each file's own
+     status line for what has actually been executed).
 6. **Flush rewrite rules** if permalinks/rewrites changed — Settings → Permalinks → Save (or
    deactivate/reactivate the plugin on a maintenance window). A permalink 404 after deploy is
    almost always stale rewrite rules.
@@ -115,11 +148,14 @@ gitignored (`*.zip`).
 
 ### Rollback
 
-Redeploy the previous artifact / restore the pre-deploy backup. The `2.0.0`, `2.1.0` and `2.2.0`
-migrations only **add** tables, roles and one capability — they do not transform existing data —
-so a code rollback is low risk; do **not** drop any `hedayati_*` table or delete
-roles/capabilities as part of a routine rollback. Rolling the plugin back leaves the newer tables
-in place but dormant (harmless); re-deploying re-attaches to them.
+Redeploy the previous artifact / restore the pre-deploy backup. The `2.0.0`–`2.3.0` migrations only
+**add** tables, roles and capabilities — they do not transform existing data — so a code rollback
+is low risk; do **not** drop any `hedayati_*` table or delete roles/capabilities as part of a
+routine rollback. Rolling the plugin back leaves the newer tables in place but dormant (harmless);
+re-deploying re-attaches to them. If national-ID/document data has already been written and the
+plugin is rolled back, the encrypted/HMAC values and stored files remain valid and readable once
+the newer plugin version (and its crypto keys) are redeployed — nothing about a rollback changes or
+invalidates existing encrypted data, provided the same keys stay configured.
 
 ---
 
