@@ -112,6 +112,24 @@ class Hedayati_Teacher {
 			// They are NEVER added to any role: `map_meta_cap()` maps them back down
 			// to the collection caps below, all of which require the single primitive
 			// `hedayati_manage_teachers`.
+			//
+			// 1.5.3 fix (object-level edit/delete still false after 1.5.2): with
+			// `map_meta_cap => true`, WordPress's `get_post_type_capabilities()`
+			// auto-fills any OMITTED status-conditional primitive
+			// (`edit_published_posts`, `edit_private_posts`,
+			// `delete_published_posts`, `delete_private_posts`) from
+			// `capability_type` — here `edit_published_hedayati_teachers` etc.,
+			// capabilities nobody was ever granted. `map_meta_cap('edit_post', ...)`
+			// requires `edit_others_posts` **and**, for a `publish`/`future` post,
+			// ALSO `edit_published_posts` (see `wp-includes/capabilities.php`); a
+			// Teacher profile is normally `publish` and not authored by the acting
+			// manager/admin (post_author 0), so the auto-filled, ungranted
+			// `edit_published_hedayati_teachers` silently vetoed the check even
+			// though `edit_others_posts` (`hedayati_manage_teachers`) passed.
+			// `delete_post` has the identical trap via `delete_published_posts` /
+			// `delete_private_posts`. Declaring all four explicitly — pointed at
+			// the same single primitive — closes it without inventing a second
+			// managed capability.
 			'capabilities'        => [
 				// Per-object meta caps — distinct names, resolved by map_meta_cap().
 				'edit_post'              => 'edit_hedayati_teacher',
@@ -121,8 +139,12 @@ class Hedayati_Teacher {
 				// Collection / status caps — all require the one primitive permission.
 				'edit_posts'             => 'hedayati_manage_teachers',
 				'edit_others_posts'      => 'hedayati_manage_teachers',
+				'edit_published_posts'   => 'hedayati_manage_teachers',
+				'edit_private_posts'     => 'hedayati_manage_teachers',
 				'delete_posts'           => 'hedayati_manage_teachers',
 				'delete_others_posts'    => 'hedayati_manage_teachers',
+				'delete_published_posts' => 'hedayati_manage_teachers',
+				'delete_private_posts'   => 'hedayati_manage_teachers',
 				'publish_posts'          => 'hedayati_manage_teachers',
 				'read_private_posts'     => 'hedayati_manage_teachers',
 				'create_posts'           => 'hedayati_manage_teachers',

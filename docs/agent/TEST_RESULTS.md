@@ -55,3 +55,20 @@ Commits 8400588 (HD-001), 06db2e2 (HD-002 coverage), 2af798d (HD-003 coverage), 
 - Added `.github/workflows/acceptance-docker-wordpress.yml` ("Acceptance (Docker WordPress)")
   so the runtime suite can actually execute on a Linux runner; it has not fired yet (nothing
   was pushed).
+
+## GitHub Actions run #1 and #2 (2026-09-04)
+
+- **Run #1:** failed before any assertion ran — `assert_disposable_environment()` correctly
+  refused with `WP_ENVIRONMENT_TYPE is "production", expected "local"`. CI/local-test
+  infrastructure defect, not a product failure. Root cause and fix: HD-005 (commit `afb5fbd`).
+- **Run #2** (first run with the environment correctly detected as `local`): **212 passed, 2
+  failed, 214 assertions total.** The only failures:
+  ```
+  [FAIL] manager: current_user_can("edit_post", <teacher>) [meta cap maps down]
+  [FAIL] administrator: current_user_can("edit_post", <teacher>)
+  ```
+  This is the suite's first genuine **product** finding — a real Teacher CPT authorization gap,
+  not a CI or harness problem. Root cause, fix (plugin `1.5.3`), and regression coverage: HD-006
+  in `docs/agent/DEFECTS.md`. **Do not mark Teacher CPT authorization (T1/T2) as PASS** until a
+  subsequent CI run is green — this file will be updated with that run's actual result, not an
+  assumed one.

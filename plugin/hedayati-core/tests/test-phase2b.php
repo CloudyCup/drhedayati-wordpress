@@ -202,6 +202,37 @@ foreach ( $meta_keys as $core ) {
 check( "hedayati_manage_teachers stays a bare primitive (not object-scoped)", ! array_key_exists( 'hedayati_manage_teachers', $ptmc ) );
 check( "negative control: the 1.5.1 config WOULD trip this guard", array_key_exists( 'hedayati_manage_teachers', [ 'hedayati_manage_teachers' => 'edit_post' ] ) );
 
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\n9b. Teacher CPT status-conditional caps (1.5.3 fix — map_meta_cap() completeness):\n";
+
+// With map_meta_cap => true, WordPress's get_post_type_capabilities() silently
+// auto-fills any OMITTED key among these four from capability_type (here:
+// 'edit_published_hedayati_teachers' etc.) — a capability nobody is ever
+// granted. map_meta_cap('edit_post'|'delete_post', ...) requires one of these
+// IN ADDITION TO edit_others_posts/delete_others_posts for a publish/private
+// post authored by someone else — the Teacher CPT's normal case (manager/
+// admin acting on a post_author=0 profile). Omitting them silently vetoed
+// current_user_can('edit_post'|'delete_post', $teacher_id) for
+// manager/administrator even after the 1.5.2 bare-primitive fix (verified on
+// staging: object-level edit_post/delete_post still resolved false).
+$status_conditional_keys = [ 'edit_published_posts', 'edit_private_posts', 'delete_published_posts', 'delete_private_posts' ];
+
+foreach ( $status_conditional_keys as $k ) {
+	check( "status-conditional cap '{$k}' is declared (not left to capability_type auto-fill)", isset( $t_caps[ $k ] ) );
+	check( "status-conditional cap '{$k}' requires hedayati_manage_teachers", ( $t_caps[ $k ] ?? null ) === 'hedayati_manage_teachers' );
+}
+
+// Negative control: the 1.5.2 config (these four keys absent) would trip this
+// guard — proves the check is meaningful, not tautological.
+$pre_1_5_3_caps = $t_caps;
+foreach ( $status_conditional_keys as $k ) {
+	unset( $pre_1_5_3_caps[ $k ] );
+}
+check(
+	"negative control: the 1.5.2 config (no status-conditional caps) WOULD trip this guard",
+	! isset( $pre_1_5_3_caps['edit_published_posts'] )
+);
+
 echo "\n=========================================\n";
 echo "PHASE 2B TEST RESULTS: {$passed} PASSED, {$failed} FAILED\n";
 echo "=========================================\n";

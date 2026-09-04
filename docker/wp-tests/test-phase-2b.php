@@ -105,19 +105,47 @@ function hdit_run_phase_2b(): void {
 	HDIT::ok( "meta cap edit_post != the bare primitive (was the 1.5.1 collision)", 'hedayati_manage_teachers' !== $cap->edit_post );
 	HDIT::eq( 'collection cap edit_posts requires hedayati_manage_teachers', 'hedayati_manage_teachers', $cap->edit_posts );
 
+	// 1.5.3 regression guard: map_meta_cap('edit_post'|'delete_post', ...) on a
+	// `publish`-status post not authored by the acting user ALSO requires
+	// edit_published_posts / delete_published_posts (WordPress core, not this
+	// plugin) — omitted keys auto-derive from capability_type into an
+	// ungranted `..._hedayati_teachers` capability nobody holds, which is
+	// exactly what made "manager/administrator: edit_post" false even after
+	// the 1.5.2 bare-primitive fix. $probe is `publish` (see make_teacher()),
+	// which is what exposed this.
+	HDIT::eq( 'status-conditional edit_published_posts requires hedayati_manage_teachers (1.5.3)', 'hedayati_manage_teachers', $cap->edit_published_posts );
+	HDIT::eq( 'status-conditional edit_private_posts requires hedayati_manage_teachers (1.5.3)', 'hedayati_manage_teachers', $cap->edit_private_posts );
+	HDIT::eq( 'status-conditional delete_published_posts requires hedayati_manage_teachers (1.5.3)', 'hedayati_manage_teachers', $cap->delete_published_posts );
+	HDIT::eq( 'status-conditional delete_private_posts requires hedayati_manage_teachers (1.5.3)', 'hedayati_manage_teachers', $cap->delete_private_posts );
+
 	wp_set_current_user( $mgr );
 	HDIT::ok( 'manager: current_user_can("hedayati_manage_teachers") [bare, no object]', current_user_can( 'hedayati_manage_teachers' ) );
-	HDIT::ok( 'manager: current_user_can("edit_post", <teacher>) [meta cap maps down]', current_user_can( 'edit_post', $probe ) );
+	HDIT::ok( 'manager: current_user_can("edit_post", <published teacher>) [meta cap maps down]', current_user_can( 'edit_post', $probe ) );
+	HDIT::ok( 'manager: current_user_can("delete_post", <published teacher>) (1.5.3)', current_user_can( 'delete_post', $probe ) );
 	HDIT::ok( 'manager: current_user_can(edit_posts collection cap)', current_user_can( $cap->edit_posts ) );
 
 	wp_set_current_user( 1 );
 	HDIT::ok( 'administrator: current_user_can("hedayati_manage_teachers")', current_user_can( 'hedayati_manage_teachers' ) );
-	HDIT::ok( 'administrator: current_user_can("edit_post", <teacher>)', current_user_can( 'edit_post', $probe ) );
+	HDIT::ok( 'administrator: current_user_can("edit_post", <published teacher>)', current_user_can( 'edit_post', $probe ) );
+	HDIT::ok( 'administrator: current_user_can("delete_post", <published teacher>) (1.5.3)', current_user_can( 'delete_post', $probe ) );
+
+	// Same checks against a `private`-status profile — exercises
+	// edit_private_posts / delete_private_posts specifically (a `publish`
+	// post never reaches that branch of map_meta_cap()).
+	wp_set_current_user( $mgr );
+	$private_probe = HDIT_Env::make_teacher( 'Private probe teacher' );
+	wp_update_post( [ 'ID' => $private_probe, 'post_status' => 'private' ] );
+	HDIT::ok( 'manager: current_user_can("edit_post", <private teacher>) (1.5.3)', current_user_can( 'edit_post', $private_probe ) );
+	HDIT::ok( 'manager: current_user_can("delete_post", <private teacher>) (1.5.3)', current_user_can( 'delete_post', $private_probe ) );
+	wp_set_current_user( 1 );
+	HDIT::ok( 'administrator: current_user_can("edit_post", <private teacher>) (1.5.3)', current_user_can( 'edit_post', $private_probe ) );
+	HDIT::ok( 'administrator: current_user_can("delete_post", <private teacher>) (1.5.3)', current_user_can( 'delete_post', $private_probe ) );
 
 	foreach ( [ 'reception' => $rcpt, 'teacher' => $tchr, 'teacher_assistant' => $ta, 'student' => $stu ] as $label => $uid ) {
 		wp_set_current_user( $uid );
 		HDIT::ok( "{$label}: CANNOT hedayati_manage_teachers", ! current_user_can( 'hedayati_manage_teachers' ) );
-		HDIT::ok( "{$label}: CANNOT edit_post on a teacher profile", ! current_user_can( 'edit_post', $probe ) );
+		HDIT::ok( "{$label}: CANNOT edit_post on a published teacher profile", ! current_user_can( 'edit_post', $probe ) );
+		HDIT::ok( "{$label}: CANNOT delete_post on a published teacher profile (1.5.3)", ! current_user_can( 'delete_post', $probe ) );
 	}
 	wp_set_current_user( 0 );
 

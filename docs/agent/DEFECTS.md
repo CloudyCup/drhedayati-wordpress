@@ -1,9 +1,11 @@
 # Defects and acceptance gaps — 2026-09-04 (updated same day, post-fix)
 
 Reviewed at 345e368; fixes/coverage below applied at commits 8400588 / 06db2e2 / 2af798d /
-1b16a6d. These are harness defects and evidence gaps, not newly proven product vulnerabilities.
-**No product code changed** — every change below is to `docker/wp-tests/*`, `scripts/lib.*`, or
-`docker/.env.example`.
+1b16a6d. HD-001–HD-005 are harness/CI defects and evidence gaps, not product vulnerabilities —
+**no product code changed** for those; every change was to `docker/wp-tests/*`, `scripts/lib.*`,
+`docker/.env.example`, or `docker/docker-compose.yml`. **HD-006 is a real product defect**,
+found by GitHub Actions run #2 of "Acceptance (Docker WordPress)" once HD-005 let the suite
+actually execute against a real WordPress — see below.
 
 ## HD-001 — FIXED & VERIFIED — Bash bootstrap fails on default configuration
 
@@ -109,3 +111,68 @@ entirely. `scripts/run-acceptance.{sh,ps1}` gained a preflight step that prints
 `wp_get_environment_type()` as seen inside the `wpcli` container before the suite runs, so any
 future drift is visible in the first few lines of CI output instead of requiring a second run to
 diagnose. `HDIT_Env::assert_disposable_environment()` (the guard itself) was not touched.
+
+## HD-006 — FIXED (product code; plugin 1.5.3) — object-level edit_post/delete_post still false for manager/administrator on a real Teacher profile
+
+GitHub Actions run #2 (first run with the environment correctly detected as `local`, HD-005) ran
+the real acceptance suite against a live WordPress and got **212 passed, 2 failed**:
+
+```
+[FAIL] manager: current_user_can("edit_post", <teacher>) [meta cap maps down]
+[FAIL] administrator: current_user_can("edit_post", <teacher>)
+```
+
+This is the first genuine **product** authorization defect this suite has caught (not a harness or
+CI problem) — confirmed against real WordPress `map_meta_cap()` behaviour, not guessed from static
+string matching.
+
+**Root cause:** the Teacher CPT's `register_post_type()` sets `map_meta_cap => true` and an
+explicit `capabilities` array, but that array never set `edit_published_posts`,
+`edit_private_posts`, `delete_published_posts`, or `delete_private_posts`. With
+`map_meta_cap => true`, WordPress's `get_post_type_capabilities()` auto-fills any *omitted* key
+among those four from `capability_type` (`'hedayati_teacher'`) — e.g.
+`edit_published_hedayati_teachers` — a capability string that was never granted to any role,
+including `administrator` (WordPress's native admin role has no wildcard; it only holds the
+explicit list from `populate_roles()`, which does not include arbitrary custom-CPT-derived names).
+WordPress core's `map_meta_cap('edit_post', $user_id, $post_id)`, for a post the acting user did
+not author (a Teacher profile's `post_author` is `0`) with status `publish` — the Teacher CPT's
+normal status — requires **both** `edit_others_posts` (correctly wired to `hedayati_manage_teachers`
+since 1.5.2) **and** `edit_published_posts` (silently the ungranted auto-filled name). Both must
+resolve true; the second never could, so `current_user_can('edit_post', $teacher_id)` was false for
+every role including administrator, regardless of the 1.5.2 fix. `delete_post` has the identical
+trap via `delete_published_posts` (any status) / `delete_private_posts` (private status) — untested
+until now, so it carried the same latent bug with no prior failing assertion to reveal it.
+
+This is a **different bug from 1.5.1's** T1 collision (which was about the three *meta-cap key
+names* — `edit_post`/`read_post`/`delete_post` — colliding with the primitive). 1.5.2's fix was
+correct and necessary for what it targeted; it could not have caught this, because this is about
+four *different*, previously-omitted capability keys that `map_meta_cap()` also consults.
+
+**Fix (plugin `1.5.3`, `includes/class-teacher.php` only):** declare all four status-conditional
+capabilities explicitly, pointed at the same single primitive:
+
+```php
+'edit_published_posts'   => 'hedayati_manage_teachers',
+'edit_private_posts'     => 'hedayati_manage_teachers',
+'delete_published_posts' => 'hedayati_manage_teachers',
+'delete_private_posts'   => 'hedayati_manage_teachers',
+```
+
+No new managed capability, no role change, no DB change: `hedayati_manage_teachers` remains the
+one primitive; `Hedayati_Roles::ROLES_VERSION` stays `2.1.0`, the managed-capability count stays
+`22`, and `Hedayati_DB_Schema::CURRENT_DB_VERSION` stays `2.2.0` — this is purely a
+`register_post_type()` capability-map completeness fix, exactly like 1.5.2 was.
+
+**Regression coverage added:**
+- `docker/wp-tests/test-phase-2b.php` — asserts the four new cap-map values directly, then
+  `current_user_can('edit_post'|'delete_post', ...)` for manager **and** administrator against
+  both a `publish`-status and a `private`-status Teacher profile, plus `delete_post` added to the
+  existing denial checks for reception/teacher/TA/student.
+- `plugin/hedayati-core/tests/test-phase2b.php` (§9b) and
+  `plugin/hedayati-core/tests/verify-phase2b.js` (§9c) — static regex-based checks (no WordPress
+  boot required) that the four keys are declared and point at the primitive, with a negative
+  control proving the 1.5.2-era config (keys absent) would trip the guard.
+
+**Status: FIXED IN CODE, NOT YET RE-VERIFIED.** Do not mark Teacher CPT authorization (T1/T2) as
+PASS until GitHub Actions run #3 (or later) is green end-to-end. The next CI run is the actual
+proof; this entry describes the fix, not a confirmed result.

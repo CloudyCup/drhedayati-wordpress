@@ -356,6 +356,40 @@ assert("  negative control: the 1.5.1 config WOULD trip this guard",
 	PRIMITIVE in buildPostTypeMetaCaps(buggyCaps));
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 9c. Status-conditional caps (1.5.3 fix): with map_meta_cap => true, WordPress's
+//     get_post_type_capabilities() auto-fills any OMITTED key among these four
+//     from capability_type (e.g. 'edit_published_hedayati_teachers') — a
+//     capability nobody is ever granted. map_meta_cap('edit_post'|'delete_post',
+//     ...) requires one of these IN ADDITION TO edit_others_posts/
+//     delete_others_posts for a publish/private post authored by someone else —
+//     the Teacher CPT's normal case (manager/admin acting on a post_author=0
+//     profile). Omitting them silently vetoed
+//     current_user_can('edit_post'|'delete_post', $teacher_id) for
+//     manager/administrator even after the 1.5.2 bare-primitive fix (confirmed
+//     by the GitHub Actions Docker runtime suite: object-level edit_post/
+//     delete_post still resolved false against a real WordPress).
+// ─────────────────────────────────────────────────────────────────────────────
+
+console.log('\n9c. Teacher CPT status-conditional caps (1.5.3 fix — map_meta_cap() completeness):');
+
+const STATUS_CONDITIONAL_KEYS = [
+	'edit_published_posts', 'edit_private_posts', 'delete_published_posts', 'delete_private_posts',
+];
+
+for (const k of STATUS_CONDITIONAL_KEYS) {
+	assert(`  status-conditional cap '${k}' is declared (not left to capability_type auto-fill)`,
+		typeof caps[k] === 'string' && caps[k].length > 0);
+	assert(`  status-conditional cap '${k}' requires ${PRIMITIVE}`, caps[k] === PRIMITIVE);
+}
+
+// Negative control: the 1.5.2 config (these four keys absent) would trip this
+// guard — proves the check is meaningful, not tautological.
+const pre153Caps = { ...caps };
+for (const k of STATUS_CONDITIONAL_KEYS) delete pre153Caps[k];
+assert("  negative control: the 1.5.2 config (no status-conditional caps) WOULD trip this guard",
+	typeof pre153Caps.edit_published_posts === 'undefined');
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 10. Behavioural port — the service invariants, re-implemented against an
 //     in-memory store and exercised. Mirrors the PHP logic in class-*-service.php
 //     (the same technique verify-phase2a.js uses for phone normalization). This

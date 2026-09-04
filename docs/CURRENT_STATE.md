@@ -14,15 +14,28 @@ phone-row deletion is UNVERIFIED: one orphan was manually removed (HD-002). Cate
 remains deferred/not required. Local Node suites pass 449/0; WordPress runtime NOT RUN.
 
 **Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
-`hedayati-core` **1.5.2** · DB schema **2.2.0** · roles schema **2.1.0**.
+`hedayati-core` **1.5.3** · DB schema **2.2.0** · roles schema **2.1.0**.
 **`1.5.2` (2026-09-03)** is a CPT-mapping bug fix only — `includes/class-teacher.php`: the Teacher
 CPT reused the primitive `hedayati_manage_teachers` as the value of the `edit_post`/`read_post`/
 `delete_post` meta caps, so WordPress's `_post_type_meta_capabilities()` + `map_meta_cap()` turned
 the primitive itself into an object-scoped check and `current_user_can('hedayati_manage_teachers')`
 (no post ID) returned false on staging — the «اساتید» menu vanished and `edit.php?post_type=teacher`
 was denied (Phase 2B acceptance **T1 FAILED on 1.5.1**). `1.5.2` gives the meta caps distinct names
-(`edit_hedayati_teacher` etc.) that map down to the primitive via the collection caps. **No DB
-schema / `CURRENT_DB_VERSION` / `ROLES_VERSION` / 22-capability-count change.** Owner reports the administrator staging retest passed; the full role matrix remains open.
+(`edit_hedayati_teacher` etc.) that map down to the primitive via the collection caps. Owner reports
+the administrator staging retest passed for the bare-primitive check, menu visibility and profile
+*creation*; the full role matrix remained open.
+**`1.5.3` (2026-09-04)** is a second, distinct CPT-mapping fix found by the GitHub Actions Docker
+runtime suite (not staging, not static analysis): `current_user_can('edit_post'|'delete_post',
+$teacher_id)` on an *existing* Teacher profile still resolved **false** for manager AND
+administrator under 1.5.2. `map_meta_cap => true` also requires `edit_published_posts` /
+`edit_private_posts` / `delete_published_posts` / `delete_private_posts` for a published/private
+post authored by someone else (a Teacher profile's `post_author` is `0`); those four keys were
+never declared in the CPT's `capabilities` array, so WordPress auto-derived an ungranted
+`..._hedayati_teachers` capability from `capability_type` instead. `1.5.3` declares all four,
+pointed at `hedayati_manage_teachers`. See `docs/agent/DEFECTS.md` HD-006. **Not yet re-verified —
+do not mark Teacher CPT edit/delete authorization as PASS until the next CI run is green.**
+**No DB schema / `CURRENT_DB_VERSION` / `ROLES_VERSION` / 22-capability-count change in either
+`1.5.2` or `1.5.3`.**
 **`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (nothing from this branch is merged).
 
 > The repository is authoritative for "what is implemented". It contains **code only** — no
@@ -109,12 +122,20 @@ schema / `CURRENT_DB_VERSION` / `ROLES_VERSION` / 22-capability-count change.** 
 
 - **`teacher` CPT** (`class-teacher.php`): admin-only (`public` / `publicly_queryable` / `show_in_rest`
   all false — D30/D34, classic editor),
-  `supports` title/editor/thumbnail/revisions. **Capability model (fixed in `1.5.2`):**
+  `supports` title/editor/thumbnail/revisions. **Capability model (`1.5.2` + `1.5.3` fixes):**
   `map_meta_cap => true`; the singular meta caps are distinct names
   (`edit_hedayati_teacher` / `read_hedayati_teacher` / `delete_hedayati_teacher`) that
   `map_meta_cap()` resolves to the collection caps (`edit_posts` etc.), all of which require the
   single primitive `hedayati_manage_teachers` (held by `hedayati_manager` + `administrator`). The
-  distinct meta-cap names are never added to a role. Meta:
+  distinct meta-cap names are never added to a role. **`1.5.3`** additionally declares
+  `edit_published_posts` / `edit_private_posts` / `delete_published_posts` /
+  `delete_private_posts` (also → `hedayati_manage_teachers`) — `map_meta_cap => true` consults
+  these for a published/private post authored by someone else (every Teacher profile, since
+  `post_author` is `0`), and an omitted key auto-derives an ungranted `..._hedayati_teachers`
+  capability from `capability_type` instead of falling back to nothing. Without this,
+  `current_user_can('edit_post'|'delete_post', $teacher_id)` was false for manager **and**
+  administrator on an existing profile even though the bare `hedayati_manage_teachers` check and
+  `create_posts` passed — see `docs/agent/DEFECTS.md` HD-006. **Not yet CI-verified.** Meta:
   `_hedayati_teacher_user_id` (optional 1:1 WP-user link, uniqueness enforced in the save handler),
   `_hedayati_teacher_headline`. Side meta box (nonce + `edit_post` + autosave guards). `deleted_user`
   → **unlinks** (never deletes) the profile. Query helpers `exists()`, `get_user_id()`,
