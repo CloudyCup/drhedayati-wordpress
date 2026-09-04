@@ -43,23 +43,32 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ## P1 — required for launch
 
-1. **Phase 2B — academic operations.** 🟡 **Repository implementation complete** on branch
-   `feature/phase-2b-academic-operations` (not merged): Teacher CPT (+ optional 1:1 WP-user link);
+1. **Phase 2B — academic operations.** 🟢 **Merge gate satisfied — READY TO MERGE, not yet merged**
+   on branch `feature/phase-2b-academic-operations`: Teacher CPT (+ optional 1:1 WP-user link);
    Course Runs (nullable capacity/tuition, integer-rial tuition, separate `run_status` /
    `registration_status` as validated strings); Sessions (`UNIQUE(run_id, session_number)`,
    canonical datetimes); staff assignments (primary/additional instructor, TA — D11 asymmetry);
    Enrollments (`UNIQUE(run_id, user_id)`, capacity check); attendance (`UNIQUE(session_id,
-   enrollment_id)`, same-run guard). Migration `2.1.0`, five services, `hedayati_manage_teachers`
-   capability, per-run ownership-scope enforcement in the «عملیات آموزشی» admin UI. Repository
-   verified: Node static suites 421/0 + an independent PHP 8.4 run 302/0 (2026-09-03).
-   **Remaining before merge:** (a) staging behavioural acceptance — `docs/PHASE_2B_ACCEPTANCE.md`
-   (NOT RUN — dbDelta, hooks, capability mapping, admin UI, auth on `mystik.ir` all unverified);
-   (b) theme-side fallback wiring
-   so the public course page reads run data for `_course_teacher` / `_course_next_start_date` /
-   `_course_price` / `_course_registration_state` (currently the meta is still the only display
-   source — no dual *entry*, but no fallback *read* yet); (c) ~~close Phase 2A behavioural
-   acceptance first~~ — **done 2026-09-03** (non-destructive gate; Category 4 deferred, not
-   required).
+   enrollment_id)`, same-run guard); metadata-only append-only audit log (migration `2.2.0`).
+   Plugin `1.5.3`, `CURRENT_DB_VERSION` `2.2.0`, `ROLES_VERSION` `2.1.0`. Node static suites 458/0;
+   local Docker CI runtime suite 228/0 with verified cleanup (GitHub Actions run #3, commit
+   `cbcb4da`); a plugin-`1.5.3` staging smoke test PASSED on `mystik.ir` (2026-09-04) covering the
+   Teacher CPT object-level authorization fix (HD-006) and core admin flows. See
+   `docs/agent/STATUS.md`'s "Merge gate" note and `docs/PHASE_2B_ACCEPTANCE.md` for the exact
+   evidence and what remains explicitly deferred (not blocking, mirroring how Phase 2A's Category 4
+   was treated): HD-003's documented coverage gaps (full 22-cap × 6-role matrix, a second real
+   `dbDelta` pass, exhaustive mutation/actor-attribution assertions), the staging low-privilege
+   negative matrix, and the unexplained historical staging phone-row observation.
+   ~~(a) staging behavioural acceptance~~ — **the Teacher CPT scope this branch's own defect (HD-006)
+   touches is done and passed; the broader functional matrix's exhaustive per-role/mutation rows
+   remain open as documented, non-blocking evidence gaps, not known defects.**
+   **Explicitly NOT part of this item, deferred to Phase 2D** (corrected from an earlier draft of
+   this bullet): theme-side fallback wiring so the public course page reads Course Run data for
+   `_course_teacher` / `_course_next_start_date` / `_course_price` / `_course_registration_state` —
+   see `docs/CURRENT_STATE.md`'s "Planned / not implemented" list. `docs/PHASE_2B_ACCEPTANCE.md`'s
+   own matrix never tested the public theme; this was never part of Phase 2B's actual acceptance
+   scope. ~~(c) close Phase 2A behavioural acceptance first~~ — **done 2026-09-03** (non-destructive
+   gate; Category 4 deferred, not required).
 2. **Phase 2C — student identity & security.** 🟡 **Foundation slice done** on
    `feature/phase-2b-academic-operations`: address/city/postal-code profile fields in usermeta
    with an extensible registry + server-side normalization (`Hedayati_Student_Profile`).

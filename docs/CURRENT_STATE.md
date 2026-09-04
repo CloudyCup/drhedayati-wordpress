@@ -19,6 +19,15 @@ work correctly against a real WordPress + MySQL. Broader Phase 2B functional acc
 **staging** remains open (see `docs/PHASE_2B_ACCEPTANCE.md`), and the specific historical staging
 phone-row-cleanup observation (HD-002) is not independently re-tested by this run — see the
 caveat in `docs/agent/DEFECTS.md`. Category 4 remains deferred/not required.
+**Update (2026-09-04, staging smoke test):** plugin `1.5.3` was then manually smoke-tested on
+`mystik.ir` and **PASSED**: homepage/wp-admin load, `1.5.3` reported, «اساتید» menu opens,
+disposable Teacher create/edit/delete all work, `hedayati_manage_teachers` resolves correctly for
+`administrator`. This is a real staging confirmation of the HD-006 fix (not just local Docker
+CI) — **HD-006 is now CLOSED**. No production (`drhedayati.com`) contact occurred. **Phase 2B's
+canonical merge gate is now satisfied — READY TO MERGE, not yet merged** — see the "Merge gate"
+note in `docs/agent/STATUS.md` for the exact evidence and the explicitly-deferred residual items
+(HD-003's documented coverage gaps, the staging low-privilege negative matrix, and the unexplained
+historical phone-row observation).
 
 **Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
 `hedayati-core` **1.5.3** · DB schema **2.2.0** · roles schema **2.1.0**.
@@ -128,9 +137,12 @@ re-tested.
 
 ### Plugin — academic operations (Phase 2B) — branch `feature/phase-2b-academic-operations`
 
-> Repository verified; staging health and Teacher fix (1.5.2 scope) passed per owner handoff;
-> local Docker CI runtime suite green as of `1.5.3` (228/0, GitHub Actions run #3); broader
-> **staging** acceptance open — see `docs/PHASE_2B_ACCEPTANCE.md`. Not on `main`.
+> Repository verified; staging health and Teacher fix passed per owner handoff (1.5.2 scope), then
+> the `1.5.3` object-level fix passed BOTH local Docker CI (228/0, GitHub Actions run #3) AND a
+> manual staging smoke test on `mystik.ir` (2026-09-04) — see `docs/agent/DEFECTS.md` HD-006.
+> Canonical merge gate satisfied — **READY TO MERGE, not yet merged**. Residual, explicitly
+> deferred items (staging low-privilege negative matrix, HD-003's coverage gaps) — see
+> `docs/PHASE_2B_ACCEPTANCE.md` and `docs/agent/STATUS.md`. Not on `main`.
 
 - **`teacher` CPT** (`class-teacher.php`): admin-only (`public` / `publicly_queryable` / `show_in_rest`
   all false — D30/D34, classic editor),
@@ -148,7 +160,8 @@ re-tested.
   `current_user_can('edit_post'|'delete_post', $teacher_id)` was false for manager **and**
   administrator on an existing profile even though the bare `hedayati_manage_teachers` check and
   `create_posts` passed — see `docs/agent/DEFECTS.md` HD-006. **Runtime-verified in GitHub Actions
-  run #3 (228/0); not yet retested on staging.** Meta:
+  run #3 (228/0) AND staging-verified on `mystik.ir` (2026-09-04 smoke test: menu, create, edit,
+  delete, capability resolution for administrator all confirmed). HD-006 is CLOSED.** Meta:
   `_hedayati_teacher_user_id` (optional 1:1 WP-user link, uniqueness enforced in the save handler),
   `_hedayati_teacher_headline`. Side meta box (nonce + `edit_post` + autosave guards). `deleted_user`
   → **unlinks** (never deletes) the profile. Query helpers `exists()`, `get_user_id()`,

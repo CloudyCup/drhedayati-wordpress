@@ -78,4 +78,28 @@ Commits 8400588 (HD-001), 06db2e2 (HD-002 coverage), 2af798d (HD-003 coverage), 
   the same reason — the new §9c static regression block). This is the first fully green execution
   of the Docker runtime suite. Teacher CPT object-level authorization (`edit_post`/`delete_post`
   for manager and administrator, publish and private status) is now **runtime-verified in this
-  disposable environment**. It is **not** a staging (`mystik.ir`) retest — that remains open.
+  disposable environment**. It was **not**, at that point, a staging (`mystik.ir`) retest.
+
+## Staging smoke test — plugin 1.5.3 on mystik.ir (2026-09-04) — PASSED
+
+Manually verified on staging by the operator (not this reviewer's environment; reported, not
+independently re-run here — same evidentiary status as the other owner/operator-reported staging
+results in this file):
+
+- homepage loads
+- wp-admin loads
+- Hedayati Core reports `1.5.3`
+- «اساتید» menu appears and opens
+- disposable Teacher creation works
+- Teacher edit/save works
+- Teacher deletion works
+- `hedayati_manage_teachers` resolves correctly for `administrator`
+
+This is T1's retest scope (menu visibility + admin-list access + object-level create/edit/delete
+for `administrator`) executed on the real staging environment, directly confirming the HD-006 fix
+where it actually matters. Combined with GitHub Actions run #3 (228/0, above) and the static
+suites (458/0), **HD-006 is now CLOSED** (see `docs/agent/DEFECTS.md`). No production
+(`drhedayati.com`) contact occurred. This smoke test did **not** exercise the low-privilege
+negative matrix (reception/teacher/TA/student) on staging, nor the broader Phase 2B functional
+matrix (enrollment/attendance/sessions/audit rows) on staging specifically — those remain covered
+by the local Docker CI suite only, not independently re-run on `mystik.ir`.

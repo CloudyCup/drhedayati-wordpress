@@ -1,11 +1,12 @@
-# Defects and acceptance gaps — 2026-09-04 (updated same day, GitHub Actions run #3 GREEN)
+# Defects and acceptance gaps — 2026-09-04 (updated same day: GitHub Actions run #3 GREEN + staging 1.5.3 smoke test PASSED)
 
 Reviewed at 345e368; fixes/coverage below applied at commits 8400588 / 06db2e2 / 2af798d /
 1b16a6d / afb5fbd / cbcb4da. HD-001–HD-005 are harness/CI defects and evidence gaps, not product
 vulnerabilities — **no product code changed** for those; every change was to `docker/wp-tests/*`,
 `scripts/lib.*`, `docker/.env.example`, or `docker/docker-compose.yml`. **HD-006 is a real product
 defect**, found by GitHub Actions run #2 of "Acceptance (Docker WordPress)" once HD-005 let the
-suite actually execute against a real WordPress, and fixed in plugin `1.5.3`.
+suite actually execute against a real WordPress, fixed in plugin `1.5.3`, and now confirmed by a
+manual staging smoke test on `mystik.ir` — see HD-006 below. **HD-006 is CLOSED.**
 
 **GitHub Actions run #3** (commit `cbcb4da`, https://github.com/CloudyCup/drhedayati-wordpress/actions/runs/33910009101)
 is **GREEN**: job "Phase 2A + 2B runtime acceptance" concluded `success`, reported **228 passed, 0
@@ -198,14 +199,23 @@ one primitive; `Hedayati_Roles::ROLES_VERSION` stays `2.1.0`, the managed-capabi
   boot required) that the four keys are declared and point at the primitive, with a negative
   control proving the 1.5.2-era config (keys absent) would trip the guard.
 
-**Status: FIXED AND RUNTIME-VERIFIED.** GitHub Actions run #3 (commit `cbcb4da`,
-https://github.com/CloudyCup/drhedayati-wordpress/actions/runs/33910009101) ran the exact
-regression assertions added above — manager and administrator `edit_post`/`delete_post` on both a
-`publish`- and a `private`-status Teacher profile, plus the four denied roles' `delete_post`
+**Status: FIXED, RUNTIME-VERIFIED, AND STAGING-VERIFIED — CLOSED.** GitHub Actions run #3 (commit
+`cbcb4da`, https://github.com/CloudyCup/drhedayati-wordpress/actions/runs/33910009101) ran the
+exact regression assertions added above — manager and administrator `edit_post`/`delete_post` on
+both a `publish`- and a `private`-status Teacher profile, plus the four denied roles' `delete_post`
 checks — as part of its **228 passed, 0 failed** result (up from run #2's 214 total / 2 failed;
-+14 assertions matches the coverage added for this fix exactly). Teacher CPT object-level
-authorization (T1's `edit_post`/`delete_post` retest, and T2's underlying capability path) is now
-runtime-verified in this disposable environment. **Staging (`mystik.ir`) retest is still a separate,
-not-yet-run step** — this environment is not staging (see the differences table in
-`docs/LOCAL_TESTING.md`); do not mark the `docs/PHASE_2B_ACCEPTANCE.md` T1 row's staging column
-PASS from this alone.
++14 assertions matches the coverage added for this fix exactly).
+
+**Staging smoke test on `mystik.ir` (2026-09-04, plugin `1.5.3`) then independently confirmed the
+same fix on the actual staging site**, manually verified: homepage loads; wp-admin loads;
+Hedayati Core reports `1.5.3`; the «اساتید» menu appears and opens; disposable Teacher creation,
+edit/save, and deletion all work; `hedayati_manage_teachers` resolves correctly for
+`administrator`. This is precisely T1's retest scope (menu visibility, `edit.php?post_type=teacher`
+access, and now object-level edit/save/delete on an existing profile) executed on the real staging
+environment, not just this local suite.
+
+HD-006 is CLOSED: fixed in code, runtime-verified in local Docker CI, and staging-verified on
+`mystik.ir`. No production (`drhedayati.com`) contact occurred. `docs/PHASE_2B_ACCEPTANCE.md` T1's
+staging column may now be marked PASS for the scope actually exercised (menu/authorization/
+create/edit/delete for administrator); the full low-privilege negative matrix (reception/teacher/
+TA/student on staging specifically) was not part of this smoke test and stays open — see HD-003.
