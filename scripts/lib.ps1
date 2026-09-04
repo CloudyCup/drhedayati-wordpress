@@ -12,11 +12,19 @@ if (-not (Test-Path (Join-Path $script:DockerDir '.env'))) {
 }
 
 # Load docker/.env into a hashtable AND process env (compose reads it too).
+# Strip one matching pair of surrounding quotes (e.g. WP_TITLE="Hedayati Local
+# Test") the same way docker compose and scripts/lib.sh do, so a quoted value
+# with spaces reads identically in both loaders (HD-001).
 $script:Env = @{}
 Get-Content (Join-Path $script:DockerDir '.env') | ForEach-Object {
+  if ($_ -match '^\s*#' -or $_ -notmatch '=') { return }
   if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$') {
-    $script:Env[$Matches[1]] = $Matches[2]
-    Set-Item -Path "Env:$($Matches[1])" -Value $Matches[2]
+    $val = $Matches[2]
+    if ($val.Length -ge 2 -and ((($val.StartsWith('"')) -and ($val.EndsWith('"'))) -or (($val.StartsWith("'")) -and ($val.EndsWith("'"))))) {
+      $val = $val.Substring(1, $val.Length - 2)
+    }
+    $script:Env[$Matches[1]] = $val
+    Set-Item -Path "Env:$($Matches[1])" -Value $val
   }
 }
 function Cfg([string]$k, [string]$default) { if ($script:Env.ContainsKey($k) -and $script:Env[$k]) { $script:Env[$k] } else { $default } }

@@ -15,8 +15,37 @@ if [ ! -f .env ]; then
   echo "[lib] created docker/.env from docker/.env.example"
 fi
 
-# shellcheck disable=SC1091
-set -a; . "$DOCKER_DIR/.env"; set +a
+# Load docker/.env WITHOUT sourcing it (HD-001): a value containing spaces
+# (e.g. WP_TITLE=Hedayati Local Test) is valid Compose .env syntax but is NOT
+# valid shell — `source`/`.` parses it as a command line and Bash exits under
+# `set -e` ("Local: command not found"). Parse KEY=VALUE by hand instead, so
+# both quoted and unquoted values with spaces work the same in bash and
+# PowerShell (see scripts/lib.ps1) and the file is never executed.
+load_dotenv() {
+  local file="$1" line key val
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      ''|'#'*) continue ;;
+    esac
+    case "$line" in
+      *=*) ;;
+      *) continue ;;
+    esac
+    key="${line%%=*}"
+    val="${line#*=}"
+    key="$(printf '%s' "$key" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    case "$key" in
+      ''|*[!A-Za-z0-9_]*) continue ;;
+    esac
+    # Strip one matching pair of surrounding quotes, same as docker compose.
+    case "$val" in
+      \"*\") val="${val#\"}"; val="${val%\"}" ;;
+      \'*\') val="${val#\'}"; val="${val%\'}" ;;
+    esac
+    export "${key}=${val}"
+  done < "$file"
+}
+load_dotenv "$DOCKER_DIR/.env"
 
 : "${WP_URL:=http://localhost:8080}"
 : "${WP_TITLE:=Hedayati Local Test}"
