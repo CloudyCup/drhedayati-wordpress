@@ -65,7 +65,7 @@ function hdit_run_phase_2b(): void {
 		HDIT::eq( "GET {$route} -> 404", 404, $status );
 	}
 	$types = rest_do_request( new WP_REST_Request( 'GET', '/wp/v2/types' ) )->get_data();
-	HDIT::ok( 'teacher CPT is absent from /wp/v2/types', ! isset( $types['teacher'], $types['hedayati_teacher'] ) );
+	HDIT::ok( 'teacher CPT is absent from /wp/v2/types', ! isset( $types['teacher'] ) && ! isset( $types['hedayati_teacher'] ) );
 	HDIT::ok( 'teacher CPT is not publicly_queryable', false === get_post_type_object( Hedayati_Teacher::POST_TYPE )->publicly_queryable );
 
 	// ── T2/T3. Teacher <-> user 1:1 link + unlink on delete ──────────────
