@@ -22,7 +22,7 @@ class Hedayati_DB_Schema {
 	/**
 	 * Current target database schema version.
 	 */
-	public const CURRENT_DB_VERSION = '2.2.0';
+	public const CURRENT_DB_VERSION = '2.3.0';
 
 	/**
 	 * Option name for tracking the installed schema version.
@@ -46,6 +46,7 @@ class Hedayati_DB_Schema {
 		'2.0.0' => 'migrate_2_0_0',
 		'2.1.0' => 'migrate_2_1_0',
 		'2.2.0' => 'migrate_2_2_0',
+		'2.3.0' => 'migrate_2_3_0',
 	];
 
 	/**
@@ -101,6 +102,20 @@ class Hedayati_DB_Schema {
 	public static function get_table_audit_log(): string {
 		global $wpdb;
 		return $wpdb->prefix . 'hedayati_audit_log';
+	}
+
+	/**
+	 * Phase 2C — student identity/verification & private documents (migration 2.3.0).
+	 * Dynamic-prefixed.
+	 */
+	public static function get_table_student_verification(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'hedayati_student_verification';
+	}
+
+	public static function get_table_documents(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'hedayati_documents';
 	}
 
 	/**
@@ -409,5 +424,86 @@ class Hedayati_DB_Schema {
 		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_audit_log ) );
 
 		return ( $exists === $table_audit_log );
+	}
+
+	/**
+	 * Migration 2.3.0: Phase 2C — student identity/verification + private documents.
+	 *
+	 * `hedayati_student_verification`: one row per student, encrypted national ID
+	 * (`national_id_enc`, versioned blob) plus a keyed-HMAC fingerprint
+	 * (`national_id_hmac`) for DB-level duplicate detection — same UNIQUE-constraint
+	 * pattern as `hedayati_user_phones` (D7). Verification review state lives in the
+	 * same row (status/reviewer/reviewed_at/note) per the documented Phase 2C data
+	 * model. Business-state `status` is a validated varchar, never a MySQL ENUM type (D13).
+	 *
+	 * `hedayati_documents`: metadata only. Bytes never live in this table — an
+	 * abstract `storage_backend` + `storage_key` reference, never a public path
+	 * (D14). `archive_reference` / `archived_at` / `deleted_at` implement the manual
+	 * offsite-transfer-confirmation + retention lifecycle.
+	 *
+	 * Additive only — does not touch any existing table. Idempotent via `dbDelta`;
+	 * the stored version only advances once both tables are confirmed present.
+	 *
+	 * @return bool True only if both tables exist afterwards.
+	 */
+	private static function migrate_2_3_0(): bool {
+		global $wpdb;
+
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$table_verification = self::get_table_student_verification();
+		$table_documents     = self::get_table_documents();
+
+		$sql_verification = "CREATE TABLE {$table_verification} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			national_id_enc text DEFAULT NULL,
+			national_id_hmac char(64) DEFAULT NULL,
+			key_version tinyint(3) unsigned NOT NULL DEFAULT 1,
+			status varchar(20) NOT NULL DEFAULT 'unverified',
+			reviewer_id bigint(20) unsigned DEFAULT NULL,
+			reviewed_at datetime DEFAULT NULL,
+			note varchar(255) NOT NULL DEFAULT '',
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY uq_user_id (user_id),
+			UNIQUE KEY uq_national_id_hmac (national_id_hmac),
+			KEY idx_status (status)
+		) {$charset_collate};";
+
+		$sql_documents = "CREATE TABLE {$table_documents} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			doc_type varchar(30) NOT NULL DEFAULT 'other',
+			storage_backend varchar(20) NOT NULL DEFAULT 'local',
+			storage_key varchar(190) NOT NULL,
+			original_mime varchar(100) NOT NULL DEFAULT '',
+			size_bytes bigint(20) unsigned NOT NULL DEFAULT 0,
+			archive_reference varchar(190) DEFAULT NULL,
+			archived_at datetime DEFAULT NULL,
+			deleted_at datetime DEFAULT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY idx_user_id (user_id),
+			KEY idx_archived_at (archived_at)
+		) {$charset_collate};";
+
+		if ( ! function_exists( 'dbDelta' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		}
+
+		dbDelta( $sql_verification );
+		dbDelta( $sql_documents );
+
+		foreach ( [ $table_verification, $table_documents ] as $table ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+			if ( $exists !== $table ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 }

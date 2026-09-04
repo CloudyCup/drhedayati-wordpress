@@ -49,6 +49,8 @@ class Hedayati_Audit_Log {
 			'attendance',
 			'teacher',
 			'user',
+			'student_identity',
+			'document',
 		] );
 	}
 
@@ -79,6 +81,18 @@ class Hedayati_Audit_Log {
 			'attendance.recorded',
 			'attendance.updated',
 			'attendance.deleted',
+			'identity.set',
+			'identity.viewed',
+			'verification.initiated',
+			'verification.approved',
+			'verification.rejected',
+			'verification.reset',
+			'user.identity_purged',
+			'document.uploaded',
+			'document.download_started',
+			'document.archived',
+			'document.purged',
+			'document.purged_for_user',
 		] );
 	}
 
