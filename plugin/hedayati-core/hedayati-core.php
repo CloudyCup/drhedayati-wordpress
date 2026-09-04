@@ -3,7 +3,7 @@
  * Plugin Name:       Hedayati Core
  * Plugin URI:        https://mystik.ir
  * Description:       هسته عملکردی مجتمع آموزشی دکتر هدایتی — دوره‌ها، طبقه‌بندی‌ها، احراز هویت، متادیتا و توابع کمکی.
- * Version:           1.1.0
+ * Version:           1.5.3
  * Author:            مجتمع آموزشی دکتر هدایتی
  * Author URI:        https://mystik.ir
  * Text Domain:       hedayati-core
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_CORE_VERSION', '1.1.0' );
+define( 'HEDAYATI_CORE_VERSION', '1.5.3' );
 define( 'HEDAYATI_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HEDAYATI_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -43,6 +43,22 @@ require_once HEDAYATI_CORE_DIR . 'includes/class-roles.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-rate-limiter.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-auth.php';
 
+// Phase 2B Academic Operations
+require_once HEDAYATI_CORE_DIR . 'includes/class-text.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-jalali.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-academic-validation.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-audit-log.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-teacher.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-course-run-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-run-staff-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-session-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-enrollment-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-attendance-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-academic-admin.php';
+
+// Phase 2C (foundation) — student profile fields only
+require_once HEDAYATI_CORE_DIR . 'includes/class-student-profile.php';
+
 // ── Hook Registration ─────────────────────────────────────────────────────────
 
 add_action( 'init', [ Hedayati_Post_Types::class, 'register' ] );
@@ -61,6 +77,18 @@ Hedayati_DB_Schema::init();
 Hedayati_User_Phone_Service::init();
 Hedayati_Roles::init();
 Hedayati_Auth::init();
+
+// Phase 2B initialization
+Hedayati_Teacher::init();
+Hedayati_Course_Run_Service::init();
+Hedayati_Run_Staff_Service::init();
+Hedayati_Session_Service::init();
+Hedayati_Enrollment_Service::init();
+Hedayati_Attendance_Service::init();
+Hedayati_Academic_Admin::init();
+
+// Phase 2C (foundation)
+Hedayati_Student_Profile::init();
 
 // ── Shared helpers (callable from theme without knowing internals) ─────────────
 
@@ -124,6 +152,7 @@ function hedayati_core_admin_assets( string $hook ): void {
 register_activation_hook( __FILE__, function (): void {
 	Hedayati_Post_Types::register();
 	Hedayati_Taxonomies::register();
+	Hedayati_Teacher::register();
 	Hedayati_DB_Schema::migrate();
 	Hedayati_Roles::register_roles();
 	flush_rewrite_rules();

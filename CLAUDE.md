@@ -11,18 +11,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   (`node plugin/hedayati-core/tests/verify-phase2a.js`) does run; it is static/structural only.
 - **This is a theme + plugin, not a WordPress install.** Template hierarchy files resolve against a
   real WP runtime you don't have — reason about them from the code, don't try to execute them.
-- **Repo cruft to leave alone** (do not delete, do not build from): `package-plugin/` (stale
-  pre-Phase-2A plugin copy), root `hedayati-core.zip`, and the root file named `drhedayati-wordpress`
-  (an accidentally-committed diff dump). Flag them if asked, but they are out of scope.
+- **Local integration environment:** `docker/` + `scripts/*.{sh,ps1}` provide a disposable Docker
+  Compose WordPress backend (see `docs/LOCAL_TESTING.md`). `./scripts/run-acceptance.sh` runs the
+  Phase 2A/2B runtime suite in `docker/wp-tests/`. Requires Docker — **not available in this
+  Claude Code environment** (no WSL2). It is an *additional* layer; it does not replace the
+  Node/PHP static suites and does not change the `mystik.ir` staging gate.
+- **Removed 2026-09-03** (D27, owner-approved): `package-plugin/` (stale `1.0.0` copy) and the root
+  `drhedayati-wordpress` diff dump. Stale gitignored ZIPs (`./hedayati-core.zip`,
+  `plugin/hedayati-core.zip`, old `staging-export/*.zip`, all `1.1.0`) were deleted from the tree.
+  If any reappear, they are junk — never build from or deploy them.
 - **`reference-react/`** is the design prototype. The approved direction is `NavigatorHome` in
   `reference-react/src/components/Concepts.jsx`. Read it for visual intent only.
-- **Packaging** (only when asked): `cd theme && tar -a -c -f hedayati.zip hedayati` and
-  `cd plugin && tar -a -c -f hedayati-core.zip hedayati-core`. Use `tar -a`, never PowerShell
-  `Compress-Archive` (produced archives the host mis-extracts). See `docs/DEPLOYMENT.md`.
+- **Packaging** (only when asked): run `pwsh ./scripts/build-packages.ps1` — it packages **only**
+  `plugin/hedayati-core/` + `theme/hedayati/` with `tar -a` (never `Compress-Archive`) into
+  `staging-export/`, and fails on a wrong layout or a version mismatch. See `docs/DEPLOYMENT.md`.
 - **Persian UI strings** are expected throughout templates and admin — match the existing tone and
   keep `esc_html_e()` / text-domain usage (`hedayati` for the theme, `hedayati-core` for the plugin).
-- **Current priority** (per the handoff, unless the user redirects): Phase 2A *staging integration
-  acceptance* — not Phase 2B feature work. You cannot perform that acceptance from here; scope work
-  accordingly and surface what needs a real staging environment.
+- **Current priority:** local Phase 2A/2B acceptance review/execution per the canonical owner
+  handoff in `docs/agent/STATUS.md`. Read TEST_RESULTS.md and DEFECTS.md alongside it.
+  Phase 2B staging health and Teacher fix retest passed per the owner; broader functional
+  acceptance remains open. Check runtime availability rather than relying on old environment notes.
 - When you change code that a `docs/*` file describes, update that doc in the same change and bump
   the date in `docs/CURRENT_STATE.md`.

@@ -1,0 +1,13 @@
+# Keep LF on files consumed inside Linux containers / by POSIX shells, even when
+# the repo is checked out on Windows. Without this the *.sh scripts and the
+# Docker build context break with CRLF line endings.
+*.sh            text eol=lf
+*.bash          text eol=lf
+Dockerfile*     text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+docker/**       text eol=lf
+*.php           text eol=lf
+
+# PowerShell is fine either way; leave it to the platform default.
+*.ps1           text

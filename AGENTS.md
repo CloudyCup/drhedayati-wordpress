@@ -18,6 +18,12 @@ database in this repo:
 Staging runs at `mystik.ir`. Production (`drhedayati.com`) still runs the legacy ASP.NET/MSSQL site
 and must stay untouched until an approved cutover.
 
+## Persistent owner handoff
+
+Read `docs/agent/STATUS.md`, `docs/agent/TEST_RESULTS.md` and `docs/agent/DEFECTS.md` first.
+They preserve the 2026-09-04 canonical owner handoff and supersede older conflicting staging
+status claims. Maintain these files across future work; do not mark planned panels as built.
+
 ## Authoritative documentation
 
 Read these before non-trivial work. When code and docs disagree, **code wins for "what exists";

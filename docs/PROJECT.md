@@ -89,7 +89,12 @@ running throughout the rebuild.
   archives, data-driven single-course landing pages, branded 404, light/dark toggle, responsive
   RTL layout.
 - **Identity foundation (backend only)** — Iranian phone normalization, dual username-or-phone
-  login, unique phone-identity table, versioned DB migrations, five custom roles with 21 granular
+  login, unique phone-identity table, versioned DB migrations, five custom roles with 22 granular
   capabilities, authentication rate limiting.
+- **Academic operations (Phase 2B, backend + manager admin UI; on a feature branch, staging
+  acceptance pending)** — Teacher profiles, Course Runs, class sessions, staff assignment,
+  enrollments and attendance as prepared-SQL relational tables with capability + per-run
+  ownership-scope enforcement, plus a metadata-only append-only audit log (no IP / user-agent)
+  with a read-only viewer.
 
 See `docs/CURRENT_STATE.md` for exactly what is verified vs pending.

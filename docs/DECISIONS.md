@@ -84,12 +84,28 @@ admin/API/import paths can't bypass it. No blind site-wide digit conversion of p
 gets an explicit rule.
 **Why:** Preserves sorting, indexing, searching, validation, reminders, and third-party
 integration.
+**Implemented (2026-09-03):** `Hedayati_Jalali` (`class-jalali.php`) is the Shamsi UI layer —
+`from_gregorian()` / `to_gregorian()` (standard 33-year-cycle integer algorithm), `format()` /
+`format_long()` (stored ISO → Shamsi label, Persian digits optional, **time part copied verbatim**
+per Q9), and `parse_input()` (Shamsi typed by a user → canonical Gregorian `Y-m-d`, round-trip
+guarded). `Hedayati_Text::digits_to_persian()` is the display-only ASCII→Persian digit map. Wired
+into the «عملیات آموزشی» admin displays (Gregorian retained, Shamsi added in parentheses). No
+storage-format change.
+**Shamsi input (2026-09-03):** `Course Run` `start_date` / `end_date` now accept **either**
+Gregorian ISO (`YYYY-MM-DD`) **or** Shamsi (`YYYY/MM/DD`, `-`/`.` also, Persian digits ok) —
+`Hedayati_Course_Run_Service::parse_run_date()` tries ISO first, then `Hedayati_Jalali::parse_input()`.
+Only canonical Gregorian `Y-m-d` is stored; invalid dates in either calendar stay rejected.
+`parse_input()` bounds the Jalali year to ~1200–1700 so a mistyped Gregorian date (`2026-02-31`)
+cannot be silently reinterpreted as a Jalali year. A Shamsi date written with `-` (e.g.
+`1404-01-01`) is still read as Gregorian per the ISO-first rule — staff are steered to `/` for
+Shamsi by the field label and the live Shamsi hint. Public-site Shamsi rendering is still to come.
 
 ## D10 — Custom roles with least privilege; no custom `super_admin`
 
 **Decided:** `student`, `teacher`, `teacher_assistant`, `reception`, `hedayati_manager`, plus
-native `administrator`. 21 granular `hedayati_*` capabilities. `hedayati_manager` runs institute
-operations but has **no** `manage_options`; `administrator` is the technical/system owner.
+native `administrator`. 21 granular `hedayati_*` capabilities (raised to 22 by D28 —
+`hedayati_manage_teachers`). `hedayati_manager` runs institute operations but has **no**
+`manage_options`; `administrator` is the technical/system owner.
 **Why:** WordPress reserves "Super Admin" for Multisite. Institute operations and technical
 control need a clean boundary. Roles are necessary but not sufficient — services must also check
 assignment/ownership scope.
@@ -230,6 +246,129 @@ future agents, distinct from the reconstructed historical handoff.
 
 **Decided:** Treat `package-plugin/hedayati-core/` as a stale pre-Phase-2A copy, and the root
 `hedayati-core.zip` and root `drhedayati-wordpress` file as accidental artifacts. Build only from
-`plugin/hedayati-core/` and `theme/hedayati/`. Removal is recommended but deferred pending owner
-sign-off (this documentation task was scoped "do not delete files").
+`plugin/hedayati-core/` and `theme/hedayati/`.
 **Why:** Prevent future contributors or agents from editing or shipping the wrong plugin copy.
+**Executed 2026-09-03 (owner-approved):** `package-plugin/` (tracked — verified a strict subset of
+the old `1.0.0` Phase-1 code, no unique current source) and the root `drhedayati-wordpress` file
+(tracked — a 62-line `git diff` dump) were **removed** in an isolated cleanup commit. The stale
+gitignored ZIPs (`hedayati-core.zip` root + `plugin/`, and the old `staging-export/*.zip`, all
+containing `1.1.0` code) were deleted from the working tree. Release ZIPs are now produced only by
+`scripts/build-packages.ps1` (D35) from canonical source, into `staging-export/`, and stay
+gitignored.
+
+---
+
+## Decisions recorded during Phase 2B implementation (2026-09-02)
+
+## D28 — `hedayati_manage_teachers` is a distinct capability
+
+**Decided:** Phase 2B adds a 22nd managed capability, `hedayati_manage_teachers`, granted to
+`hedayati_manager` and native `administrator`. The `teacher` CPT maps all of its meta-capabilities
+to it. Roles schema version → `2.1.0`.
+**Why:** The Phase 2A set has `hedayati_manage_courses` (catalog), `hedayati_manage_course_runs`
+and `hedayati_assign_staff`, but nothing teacher-specific. Folding teacher administration into
+`hedayati_manage_courses` would couple two lifecycles that may later need different delegation
+(e.g. an HR/coordination role that curates instructor profiles but not the course catalogue).
+A dedicated capability keeps that option open and matches the "granular, least-privilege" model.
+**Replaced:** the implicit assumption (Phase 2A acceptance) that the managed-capability count is
+permanently 21. It is now 22; the future-safe sync in `class-roles.php` adds it without touching
+any existing assignment.
+
+## D29 — Academic-operations data lives in five custom relational tables, not CPTs/postmeta
+
+**Decided:** `hedayati_course_runs`, `hedayati_run_staff`, `hedayati_sessions`,
+`hedayati_enrollments`, `hedayati_attendance` — created by migration `2.1.0`, dynamic-prefixed,
+InnoDB/utf8mb4, prepared SQL only. Business states (`run_status`, `registration_status`, session
+/ enrollment / attendance status, staff role) are validated `varchar` columns, **not** MySQL
+ENUMs. Capacity and tuition are **nullable** (`NULL` = unknown; never a fabricated `0` or `20`).
+Tuition is integer **rial**. No database-level foreign keys — referential integrity is enforced
+in the service layer plus `deleted_user` / `before_delete_post` cleanup hooks (cross-engine and
+legacy-core safety).
+**Why:** Direct application of D5 / D12 / D13 and handoff Audit 8 — relational operational records
+must not be forced into postmeta, evolving business states must stay migratable, and unknown money
+/ capacity must not be invented.
+**The `Course` CPT stays authoritative for catalogue identity.** The existing `_course_teacher` /
+`_course_next_start_date` / `_course_price` / `_course_registration_state` meta remain as display
+fallbacks; they are **not** written from the run layer and no dual data entry is introduced.
+
+## D30 — Teacher CPT is not publicly queryable in Phase 2B
+
+**Decided:** Register `teacher` with `public => false` / `publicly_queryable => false` /
+`rewrite => false`. It is an admin-managed record only for now.
+**Why:** "Public instructor identity" (a teacher directory / profile pages) is Phase 2D / P1.4
+public-content work. Shipping a routable but half-designed public CPT now would expose incomplete
+profiles and lock in URLs before the directory is designed. Flipping it public later is a
+one-line, reversible change.
+
+## D31 — Course/run deletion cascades operational records; trashing does not
+
+**Decided:** Permanently deleting a `course` deletes its runs and cascades to sessions,
+enrollments, attendance and staff rows. Deleting a run cascades the same way. Deleting a WP user
+deletes their enrollments (+ that student's attendance) and their TA staff rows, unlinks their
+Teacher profile, and nulls `attendance.recorded_by`. **Trashing** a course/run does nothing
+(recoverable).
+**Why:** Mirrors the Phase 2A `deleted_user` → phone-row cleanup. Orphaned operational rows are
+worse than lost ones here (there is no student-facing history in 2B yet). **Caveat for Phase 2C:**
+once an append-only audit log exists it must be excluded from every cascade (D16 — academic /
+audit history is preserved, not cascade-deleted).
+
+## D32 — Phase 2C: only the mailing-address profile slice was built
+
+**Decided:** implement `Hedayati_Student_Profile` — `hedayati_address` / `hedayati_city` /
+`hedayati_postal_code` in `wp_usermeta` (per ROADMAP P1.2), with an extensible field registry
+(`hedayati_student_profile_fields` filter), server-side sanitization, Iranian postal-code
+digit-normalization + 10-digit validation, and admin fields on the WordPress user-edit screen.
+Self-edit gated on `hedayati_edit_own_profile`; other-user access on
+`hedayati_view_student_profiles_basic` + core `edit_user`.
+**Explicitly deferred** (see `docs/OPEN_QUESTIONS.md` Q10–Q13): national ID (needs the D15
+encryption key + HMAC secret provisioned outside Git), the verification state machine (reset rules
++ benefit linkage undecided), private documents (storage location + retention undecided), and the
+audit log's IP/UA fields (retention policy undecided).
+**Why:** the address is the one part of the profile with no policy landmine; building it now
+establishes the usermeta pattern and consumes two previously-unused capabilities without guessing
+at any of the unresolved sensitive-data questions.
+
+## D33 — Audit log: metadata-only, append-only, NO ip/user-agent
+
+**Decided:** implement `Hedayati_Audit_Log` + migration `2.2.0` (`{prefix}hedayati_audit_log`).
+Columns: `id`, `actor_id`, `action`, `object_type`, `object_id`, `note`, `created_at` — and
+**nothing else**. No `ip`, no `user_agent`, no request body, no serialized `context`/`meta` column,
+no `updated_at`. `actor_id` / `object_id` are `NOT NULL DEFAULT 0` (0 = system / not-applicable
+sentinel). `note` is a bounded `varchar(255)`, PII-free (safe enums like status/role names and
+internal record IDs only — never a name, phone, national ID or document reference).
+"Append-only" is enforced at the **API** level: `Hedayati_Audit_Log` exposes `record()` (INSERT)
+plus read helpers, and **no** update/delete/purge method. The MySQL table is not claimed to be
+immutable (per D16's terminology rule). The table is **excluded from every domain deletion
+cascade** (D31): audit history outlives the run / enrollment / user it references.
+`record()` is called only on the **success** path of each Phase 2B mutation, has a re-entrancy
+guard, and fires no WordPress hooks (raw `$wpdb->insert`), so it cannot recurse.
+Read access is gated on `hedayati_view_audit_logs`; a minimal read-only viewer ships under
+«عملیات آموزشی → گزارش رویدادها». A richer viewer (export, date range, actor search) is Phase 2D
+and was **not** invented.
+**Why:** D16 approved this subsystem's shape. The *only* unresolved part is the retention/privacy
+policy for IP/user-agent data (`docs/OPEN_QUESTIONS.md` Q13) — so those fields simply do not exist
+yet. Everything else is safe, and it makes Phase 2B operations auditable now.
+
+## D34 — Teacher CPT is not `show_in_rest` (reinforces D30)
+
+**Decided:** `show_in_rest => false` on the `teacher` CPT (uses the classic editor).
+**Why:** a `show_in_rest` CPT serves its **published** posts to anyone via
+`/wp-json/wp/v2/<type>` regardless of `public` / `publicly_queryable`
+(`WP_REST_Posts_Controller::check_read_permission()` returns true for any `publish`ed post of a
+rest-enabled type). That would have leaked teacher names / bios / photos before the Phase 2D
+public directory is designed — exactly what D30 set out to avoid. Flipping this back on is part of
+the Phase 2D directory work, alongside a deliberate public read design.
+
+## D35 — Releases are built only by `scripts/build-packages.ps1` from canonical source
+
+**Decided:** the two deployable ZIPs (`staging-export/hedayati-core.zip`,
+`staging-export/hedayati.zip`) are produced **only** by `scripts/build-packages.ps1`, whose
+**only** inputs are `plugin/hedayati-core/` and `theme/hedayati/`. It uses `tar -a` (D23), writes
+into `staging-export/`, and hard-fails unless the archive top-level layout is
+`hedayati-core/hedayati-core.php` / `hedayati/style.css` **and** the `HEDAYATI_CORE_VERSION` +
+header `Version:` inside the plugin ZIP match `plugin/hedayati-core/hedayati-core.php`.
+**Why:** an independent inspection (2026-09-03) found `./hedayati-core.zip`,
+`plugin/hedayati-core.zip` and `staging-export/*.zip` all still contained **Hedayati Core 1.1.0**
+while canonical source was `1.5.0` — a live deploy-the-wrong-code hazard. A verifying build script
++ removing the stale copies (D27) makes that mistake structurally hard. ZIPs stay gitignored;
+never commit a binary artifact; always rebuild.
