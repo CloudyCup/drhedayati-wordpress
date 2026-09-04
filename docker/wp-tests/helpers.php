@@ -14,8 +14,6 @@
  * @package Hedayati_Core\LocalTest
  */
 
-declare( strict_types=1 );
-
 if ( ! defined( 'ABSPATH' ) ) {
 	fwrite( STDERR, "helpers.php must run inside WordPress (wp eval-file)\n" );
 	exit( 2 );

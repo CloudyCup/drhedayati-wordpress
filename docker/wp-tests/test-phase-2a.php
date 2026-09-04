@@ -10,8 +10,6 @@
  * @package Hedayati_Core\LocalTest
  */
 
-declare( strict_types=1 );
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit( 2 );
 }

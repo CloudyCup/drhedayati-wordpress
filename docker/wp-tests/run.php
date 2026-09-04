@@ -22,8 +22,6 @@
  * @package Hedayati_Core\LocalTest
  */
 
-declare( strict_types=1 );
-
 if ( ! defined( 'ABSPATH' ) ) {
 	fwrite( STDERR, "run via:  wp eval-file /wp-tests/run.php\n" );
 	exit( 2 );
