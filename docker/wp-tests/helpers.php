@@ -166,15 +166,55 @@ final class HDIT_Env {
 	}
 
 	/**
+	 * Refuse to run against anything but the disposable local container
+	 * (HD-004). Two independent, cheap-to-fake-badly signals: WP-CLI is the
+	 * only way this suite is ever invoked, and docker/docker-compose.yml
+	 * hardcodes WP_ENVIRONMENT_TYPE=local. This does not make destructive
+	 * use against a real site impossible, but it stops the ordinary mistake
+	 * of pointing wp-tests/ at the wrong WordPress.
+	 *
+	 * @throws RuntimeException if the environment does not look disposable.
+	 */
+	public static function assert_disposable_environment(): void {
+		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
+			throw new RuntimeException(
+				'refusing to run: not invoked via WP-CLI. This harness deletes data — never load it on a real site.'
+			);
+		}
+
+		if ( 'local' !== wp_get_environment_type() ) {
+			throw new RuntimeException(
+				sprintf(
+					'refusing to run: WP_ENVIRONMENT_TYPE is "%s", expected "local". ' .
+					'This harness deletes data — never point it at a real WordPress site.',
+					wp_get_environment_type()
+				)
+			);
+		}
+	}
+
+	/**
 	 * Remove every trace of synthetic data and empty the Hedayati tables.
 	 * Deterministic: two runs in a row leave the exact same state.
+	 *
+	 * Returns true only once every table is CONFIRMED empty and no synthetic
+	 * user/post remains — a DELETE returning false, or a row surviving the
+	 * pass, makes this return false instead of silently reporting success
+	 * (HD-004). It never throws for a cleanup shortfall; only
+	 * assert_disposable_environment() (called first) throws, and only when
+	 * this does not look like the disposable container at all.
 	 */
-	public static function reset(): void {
+	public static function reset(): bool {
 		global $wpdb;
+
+		self::assert_disposable_environment();
 
 		require_once ABSPATH . 'wp-admin/includes/user.php';
 
 		wp_set_current_user( 0 );
+		$_POST = [];
+
+		$ok = true;
 
 		// 1. Synthetic posts (course + teacher) — fires the cascade hooks.
 		$posts = get_posts(
@@ -188,7 +228,9 @@ final class HDIT_Env {
 			]
 		);
 		foreach ( $posts as $pid ) {
-			wp_delete_post( (int) $pid, true );
+			if ( ! wp_delete_post( (int) $pid, true ) ) {
+				$ok = false;
+			}
 		}
 
 		// 2. Synthetic users — fires deleted_user cascade hooks.
@@ -200,22 +242,72 @@ final class HDIT_Env {
 			]
 		);
 		foreach ( $users as $uid ) {
-			wp_delete_user( (int) $uid );
+			if ( ! wp_delete_user( (int) $uid ) ) {
+				$ok = false;
+			}
 		}
 
 		// 3. Empty every Hedayati table (also clears audit noise from steps 1–2).
 		foreach ( self::tables() as $table ) {
-			$wpdb->query( "DELETE FROM {$table}" ); // phpcs:ignore WordPress.DB
+			if ( false === $wpdb->query( "DELETE FROM {$table}" ) ) { // phpcs:ignore WordPress.DB
+				$ok = false;
+			}
 		}
 
 		// 4. Rate-limiter transients.
-		$wpdb->query(
-			"DELETE FROM {$wpdb->options}
-			 WHERE option_name LIKE '_transient_hd_rl_%'
-			    OR option_name LIKE '_transient_timeout_hd_rl_%'"
-		);
+		if (
+			false === $wpdb->query(
+				"DELETE FROM {$wpdb->options}
+				 WHERE option_name LIKE '_transient_hd_rl_%'
+				    OR option_name LIKE '_transient_timeout_hd_rl_%'"
+			)
+		) {
+			$ok = false;
+		}
 
 		wp_cache_flush();
+
+		return $ok && self::verify_clean();
+	}
+
+	/**
+	 * Independently re-check the state reset() just tried to establish —
+	 * a DELETE can return a non-false "success" and still leave rows behind
+	 * (e.g. a foreign hook re-inserting one), so this re-queries rather than
+	 * trusting the write results alone.
+	 */
+	private static function verify_clean(): bool {
+		global $wpdb;
+
+		foreach ( self::tables() as $table ) {
+			if ( (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ) !== 0 ) {
+				return false;
+			}
+		}
+
+		$remaining_users = get_users(
+			[
+				'search'         => HDIT::USER_PREFIX . '*',
+				'search_columns' => [ 'user_login' ],
+				'fields'         => 'ID',
+			]
+		);
+		if ( ! empty( $remaining_users ) ) {
+			return false;
+		}
+
+		$remaining_posts = get_posts(
+			[
+				'post_type'        => [ 'course', Hedayati_Teacher::POST_TYPE ],
+				'post_status'      => 'any',
+				'numberposts'      => 1,
+				'fields'           => 'ids',
+				'meta_key'         => HDIT::POST_MARKER, // phpcs:ignore WordPress.DB.SlowDBQuery
+				'suppress_filters' => false,
+			]
+		);
+
+		return empty( $remaining_posts );
 	}
 
 	public static function password_for( string $slug ): string {
