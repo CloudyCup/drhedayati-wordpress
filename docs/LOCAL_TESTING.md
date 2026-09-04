@@ -170,6 +170,27 @@ only exercise a migration's already-current no-op path, not a second real `dbDel
 
 ---
 
+## Continuous integration
+
+`.github/workflows/acceptance-docker-wordpress.yml` (workflow name **"Acceptance (Docker
+WordPress)"**) runs this exact environment on a GitHub-hosted `ubuntu-latest` Linux runner:
+
+- **Triggers:** `push` to `feature/phase-2b-academic-operations` only, plus manual
+  `workflow_dispatch`. It does **not** run on `pull_request` or any other branch.
+- **What it runs:** `./scripts/run-acceptance.sh` — the same one-command entry point documented
+  above, unmodified. CI does not have a separate test path to drift from the local one.
+- **Fails the build** on any failed assertion, any inability to run, or a verified-cleanup
+  failure (the script's exit codes `1`/`2`/`3` all fail the job; see the test suite table above).
+- **On failure**, uploads `acceptance.log`, `docker compose logs`, and the WordPress
+  `debug.log` as a build artifact (`acceptance-logs-<run id>`, 14-day retention) and writes a
+  concise PASS/FAIL summary to the job's summary page.
+- **Always** tears the environment down at the end (`scripts/env-down.sh`) regardless of outcome.
+- **Never deploys, never contacts `mystik.ir` or `drhedayati.com`**, and uses only the suite's
+  synthetic data — the workflow has no deploy/publish step, `permissions: contents: read`, and
+  every service in `docker/docker-compose.yml` is a container local to the runner.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Fix |
