@@ -22,10 +22,16 @@ no other plaintext path anywhere).
   131, `verify-audit-log.js` 98, `verify-jalali.js` 53).
 - New `docker/wp-tests/test-phase-2c.php` real-WordPress-runtime suite extends the `Acceptance
   (Docker WordPress)` GitHub Actions workflow (triggered on push to
-  `feature/phase-2c-student-portal`). **This is the completion gate for Phase 2C** — it is not
-  considered done on static/mocked tests alone. Check the workflow run for this branch for the
-  actual PASS/FAIL result; this note was written immediately after pushing, before that run's
-  result was available in this session — update this line with the outcome once known.
+  `feature/phase-2c-student-portal`). **This is the completion gate for Phase 2C.**
+  **GREEN as of commit `2fc121f` (run #6, run id `33924554909`): 335 passed, 0 failed, cleanup
+  verified.** Two earlier runs on this branch (commits `e24cfca` / `968867a`) failed: a
+  pre-existing `docker/wp-tests/test-phase-2a.php` hardcoded exact-version assertion broke on
+  Phase 2C's legitimate version bump (same category as an earlier Node-suite issue, just missed
+  in this PHP file), and a genuine bug — the `profile_update` hook's `$old_user_data` properties
+  for `first_name`/`last_name` live-query `get_user_meta()` on access rather than freezing a
+  snapshot, so by the time the hook fired the "old" value already equalled the new one and the
+  legal-name-change verification reset never triggered. Fixed by hooking `update_user_meta`
+  instead (fires before the `UPDATE` query runs). See the commit `2fc121f` message for full detail.
 - `docs/PHASE_2C_ACCEPTANCE.md` (staging smoke-test matrix) is authored but **NOT executed** —
   staging execution and any deploy remain separate, explicit, owner-approved steps. Not merged to
   `main`. No production or staging contact occurred while building this.
