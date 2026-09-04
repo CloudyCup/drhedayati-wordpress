@@ -81,3 +81,31 @@ state". helpers.php's `reset()` ignored every DELETE's return value.
 Not executed here — no Docker/PHP on this machine. The corrected logic itself has not run against
 a real WordPress database; the next Docker-capable run should confirm `reset()` returns `true`
 (not just that the suite doesn't crash).
+
+## HD-005 — FIXED (CI/environment infra only) — wpcli container detected WP_ENVIRONMENT_TYPE=production in GitHub Actions
+
+First run of "Acceptance (Docker WordPress)" on GitHub Actions failed before any assertion ran:
+`assert_disposable_environment()` (HD-004's guard) correctly refused with `WP_ENVIRONMENT_TYPE is
+"production", expected "local"`. This is the guard doing exactly its job — CI/local-test
+infrastructure was misconfigured, not a product acceptance failure, and the guard was **not**
+weakened or bypassed to make the run go green.
+
+**Root cause:** the official `wordpress` Docker image's `wp-config.php` is a thin template that
+reads `WORDPRESS_*` variables — including an `eval()` of `WORDPRESS_CONFIG_EXTRA` — via `getenv()`
+**fresh in every PHP process**, not baked into the file once and shared. `docker-compose.yml` only
+declared `WORDPRESS_CONFIG_EXTRA` (carrying `define('WP_ENVIRONMENT_TYPE','local')`) on the
+`wordpress` service. The `wpcli` container mounts the same `wp-config.php` file over the shared
+`wp_core` volume, but because that file re-evaluates env vars per-process rather than sharing a
+baked value, the `wpcli` container's own environment never had `WORDPRESS_CONFIG_EXTRA` (or
+`WP_ENVIRONMENT_TYPE`) set — so the constant was never defined there, and WordPress core's
+`wp_get_environment_type()` fell through its `getenv('WP_ENVIRONMENT_TYPE')` check (also unset) to
+its hardcoded `'production'` default. This didn't surface locally only because it was never run
+against a real Docker host until this CI run.
+
+**Fix:** `docker/docker-compose.yml` now sets a plain `WP_ENVIRONMENT_TYPE: "local"` environment
+variable directly on **both** the `wordpress` and `wpcli` services — the same mechanism
+`wp_get_environment_type()` supports natively, independent of `wp-config.php`/`WORDPRESS_CONFIG_EXTRA`
+entirely. `scripts/run-acceptance.{sh,ps1}` gained a preflight step that prints
+`wp_get_environment_type()` as seen inside the `wpcli` container before the suite runs, so any
+future drift is visible in the first few lines of CI output instead of requiring a second run to
+diagnose. `HDIT_Env::assert_disposable_environment()` (the guard itself) was not touched.

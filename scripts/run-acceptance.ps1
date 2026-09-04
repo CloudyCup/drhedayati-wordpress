@@ -7,6 +7,16 @@ $script:ScriptName = 'run-acceptance'
 Ensure-Up
 Ensure-Installed
 
+# Preflight: print the environment type the wpcli container actually detects,
+# BEFORE running the suite, so a disposable-environment-guard refusal (see
+# docker/wp-tests/helpers.php) is instantly diagnosable from CI output alone.
+$detectedEnv = (Wpcli eval 'echo wp_get_environment_type();' 2>$null | Out-String).Trim()
+if (-not $detectedEnv) { $detectedEnv = '<empty/failed>' }
+Log "preflight: wp_get_environment_type() in the wpcli container => '$detectedEnv'"
+if ($detectedEnv -ne 'local') {
+  Log "WARNING: expected 'local' - the acceptance suite's disposable-environment guard will refuse to run (by design; see docker-compose.yml WP_ENVIRONMENT_TYPE)."
+}
+
 Log "running integration/acceptance suite (docker/wp-tests/run.php)"
 Write-Host "------------------------------------------------------------------------"
 Wpcli eval-file /wp-tests/run.php

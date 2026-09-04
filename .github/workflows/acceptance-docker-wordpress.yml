@@ -71,7 +71,7 @@ jobs:
             fi
             echo
             echo '```'
-            grep -E "ACCEPTANCE TOTAL:|^RESULT:|RESULT:|\[FAIL\]|\[FATAL\]|FAILED CHECKS:" acceptance.log || tail -n 40 acceptance.log
+            grep -E "preflight:|ACCEPTANCE TOTAL:|^RESULT:|RESULT:|\[FAIL\]|\[FATAL\]|FAILED CHECKS:" acceptance.log || tail -n 40 acceptance.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 

@@ -46,6 +46,15 @@ services:
       WORDPRESS_DB_PASSWORD: "${WP_DB_PASSWORD:-hedayati_local_only}"
       WORDPRESS_TABLE_PREFIX: "${WP_TABLE_PREFIX:-mystik_}"
       WORDPRESS_DEBUG: "1"
+      # The official image's wp-config.php is a thin template that reads these
+      # WORDPRESS_* vars (via getenv(), including an eval() of
+      # WORDPRESS_CONFIG_EXTRA) FRESH IN EVERY PHP PROCESS — nothing is baked
+      # into the file once and shared. Mounting wp-config.php on the shared
+      # wp_core volume therefore does NOT propagate this container's env to
+      # the wpcli container; WP_ENVIRONMENT_TYPE is set directly below (also
+      # on the wpcli service) so both containers agree without depending on
+      # WORDPRESS_CONFIG_EXTRA's eval path at all.
+      WP_ENVIRONMENT_TYPE: "local"
       WORDPRESS_CONFIG_EXTRA: |
         define( 'WP_ENVIRONMENT_TYPE', 'local' );
         define( 'WP_DEBUG_LOG', true );
@@ -72,6 +81,13 @@ services:
       WORDPRESS_DB_USER: "${WP_DB_USER:-hedayati}"
       WORDPRESS_DB_PASSWORD: "${WP_DB_PASSWORD:-hedayati_local_only}"
       WORDPRESS_TABLE_PREFIX: "${WP_TABLE_PREFIX:-mystik_}"
+      # Must be set here too — see the comment on the wordpress service above.
+      # Without this, `wp eval-file` runs with WP_ENVIRONMENT_TYPE undefined
+      # and WordPress core falls back to "production", tripping
+      # HDIT_Env::assert_disposable_environment() (by design — that guard is
+      # correct to refuse; the fix is giving this container the same
+      # environment type, not loosening the guard).
+      WP_ENVIRONMENT_TYPE: "local"
     # www-data in the Debian-based WordPress image is uid/gid 33; match it so
     # files created by WP-CLI stay readable/writable by Apache and vice versa.
     user: "33:33"
