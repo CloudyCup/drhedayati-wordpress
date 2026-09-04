@@ -413,9 +413,13 @@ pending/verified), `pending → verified|rejected` (`approve()`/`reject()`, refu
 and `verified` exits **only** through `reset_for_identity_change()` — never a direct API call, so
 reception cannot accidentally bounce a verified student back to pending by re-initiating.
 `approve()`/`reject()` additionally require a national ID on file. A legal first/last-name change
-(`profile_update` hook) resets a verified record to `unverified`; phone, address, and email
-changes do **not** — phone verification stays independent, per explicit instruction not to
-conflate the two systems. Rejection is reversible: `reject()` then a later `initiate()` returns to
+resets a verified record to `unverified`, detected via the `update_user_meta` action (fired before
+the meta `UPDATE` query, so the old value is still readable) — **not** `profile_update`, whose
+`$old_user_data->first_name`/`last_name` are usermeta-backed magic properties that live-query
+`get_user_meta()` on access and would already reflect the *new* value by the time `profile_update`
+fires (a real bug caught by the Docker acceptance suite during implementation, not a design
+choice). Phone, address, and email changes do **not** reset verification — phone verification
+stays independent, per explicit instruction not to conflate the two systems. Rejection is reversible: `reject()` then a later `initiate()` returns to
 `pending`. No manager/administrator override of this state machine exists — a future explicit
 decision if the institute asks for one, not an implicit "any state → any state" escape hatch.
 Benefit linkage (`docs/REQUIREMENTS.md` 8.6) remains unapproved and unbuilt, unchanged from before.

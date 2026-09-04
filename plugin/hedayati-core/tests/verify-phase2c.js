@@ -166,8 +166,11 @@ assert("initiate() refuses when already pending", vs.includes("'already_pending'
 assert("initiate() refuses when already verified", vs.includes("'already_verified'"));
 assert("approve()/reject() require status === pending", (vs.match(/'not_pending'/g) || []).length >= 2);
 assert("verified only exits via reset_for_identity_change", vs.includes('function reset_for_identity_change'));
-assert("legal-name change hooked via profile_update", vs.includes("'profile_update'") && vs.includes('legal_name_changed'));
-assert("phone/address/email are NOT wired to a reset (only first_name/last_name compared)", /old_user_data->first_name|old_user_data->last_name/.test(vs) && !/old_user_data->(user_email|phone)/.test(vs));
+{
+	const vsCodeOnly = vs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+	assert("legal-name change hooked via update_user_meta (NOT profile_update — see the class docblock for why)", vsCodeOnly.includes("'update_user_meta'") && vsCodeOnly.includes('legal_name_changed') && !vsCodeOnly.includes("'profile_update'"));
+}
+assert("phone/address/email are NOT wired to a reset (only first_name/last_name meta keys watched)", /'first_name'\s*!==\s*\$meta_key\s*&&\s*'last_name'\s*!==\s*\$meta_key/.test(vs) && !/user_email|hedayati_address|hedayati_city/.test(vs.split('on_update_user_meta')[1] || ''));
 assert("deleted_user cleanup hooked", vs.includes("'deleted_user'"));
 assert("addresses its table only via Hedayati_DB_Schema (never literal wp_)", vs.includes('Hedayati_DB_Schema::get_table_student_verification()') && !vs.includes("'wp_hedayati_"));
 assert("audit note never contains the national ID value (fixed safe strings only)", !/Hedayati_Audit_Log::record\(\s*'identity\.set'[\s\S]{0,150}\$raw_value/.test(vs) && !/Hedayati_Audit_Log::record\(\s*'identity\.set'[\s\S]{0,150}\$normalized/.test(vs));

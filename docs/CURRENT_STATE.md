@@ -300,7 +300,9 @@ re-tested.
   deliberate exception to the capability-agnostic-service convention elsewhere); an **enforced**
   verification transition table (`unverified|rejected → pending → verified|rejected`, `verified`
   exits only via an identity-change reset) — unlike Phase 2B's value-validated-only statuses
-  (D37). Legal first/last-name changes (`profile_update` hook) reset a `verified` record; phone/
+  (D37). Legal first/last-name changes (`update_user_meta` hook — not `profile_update`, whose
+  `$old_user_data` live-queries usermeta and would already see the new value) reset a `verified`
+  record; phone/
   address/email changes do not. `deleted_user` cleanup.
 - **`Hedayati_Document_Storage`** (`class-document-storage.php`) + **`Hedayati_Document_Service`**
   (`class-document-service.php`): environment-gated storage root (an outside-webroot

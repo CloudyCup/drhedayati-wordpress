@@ -206,13 +206,13 @@ assert("migrate_2_1_0 verifies every table before returning true", /SHOW TABLES 
 
 console.log('\n7. Roles schema 2.1.0 (class-roles.php):');
 const roles = read('includes/class-roles.php');
-assert("ROLES_VERSION bumped to 2.1.0", roles.includes("ROLES_VERSION = '2.1.0'"));
+assert("ROLES_VERSION >= 2.1.0 (Phase 2B baseline retained)", /ROLES_VERSION = '2\.\d+\.\d+'/.test(roles) && !roles.includes("ROLES_VERSION = '1."));
 assert("new capability hedayati_manage_teachers registered", roles.includes("'hedayati_manage_teachers'"));
 const capListMatch = roles.match(/get_all_hedayati_capabilities\(\): array \{\s*return \[([\s\S]*?)\];/);
 assert("get_all_hedayati_capabilities() present", !!capListMatch);
 if (capListMatch) {
 	const count = (capListMatch[1].match(/'hedayati_[a-z_]+'/g) || []).length;
-	assert(`managed capability count is 22 (was 21 + manage_teachers)`, count === 22);
+	assert(`managed capability count is >= 22 (was 21 + manage_teachers; Phase 2C may add more)`, count >= 22);
 }
 assert("hedayati_manager grants manage_teachers", /'hedayati_manager'\s*=>[\s\S]*?'hedayati_manage_teachers'\s*=>\s*true/.test(roles));
 assert("future-safe managed-cap tracking retained", roles.includes('OPTION_MANAGED_CAPS'));

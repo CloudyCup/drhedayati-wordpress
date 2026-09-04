@@ -39,7 +39,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Hedayati_Verification_Service {
 
 	public static function init(): void {
-		add_action( 'profile_update', [ self::class, 'on_profile_update' ], 10, 2 );
+		// NOT 'profile_update': $old_user_data's first_name/last_name are
+		// usermeta-backed magic properties on WP_User that live-query
+		// get_user_meta() on access rather than freezing a snapshot — by the
+		// time profile_update fires, wp_update_user() has already written the
+		// new meta, so $old_user_data->first_name would already equal the NEW
+		// value. 'update_user_meta' fires from update_metadata() BEFORE the
+		// UPDATE query runs, so get_user_meta() at that point still returns
+		// the true old value — the correct hook for detecting a meta change.
+		add_action( 'update_user_meta', [ self::class, 'on_update_user_meta' ], 10, 4 );
 		add_action( 'deleted_user', [ self::class, 'on_user_deleted' ] );
 	}
 
@@ -296,25 +304,33 @@ class Hedayati_Verification_Service {
 	// ── Hooks ───────────────────────────────────────────────────────────────
 
 	/**
-	 * @param object $old_user_data stdClass of the user's prior data.
+	 * Fires from update_metadata() BEFORE the UPDATE query runs — see the
+	 * comment on init(). Only first_name/last_name are watched; every other
+	 * meta key (including phone/address, which live outside usermeta or in
+	 * unrelated keys) is explicitly ignored here.
+	 *
+	 * @param int    $meta_id
+	 * @param int    $object_id  the user id
+	 * @param string $meta_key
+	 * @param mixed  $meta_value the NEW value about to be written
 	 */
-	public static function on_profile_update( int $user_id, object $old_user_data ): void {
-		$row = self::get_row( $user_id );
+	public static function on_update_user_meta( int $meta_id, int $object_id, string $meta_key, mixed $meta_value ): void {
+		if ( 'first_name' !== $meta_key && 'last_name' !== $meta_key ) {
+			return;
+		}
+
+		$row = self::get_row( $object_id );
 
 		if ( null === $row || 'verified' !== $row['status'] ) {
 			return;
 		}
 
-		$new_user = get_userdata( $user_id );
-		if ( ! $new_user ) {
-			return;
-		}
+		// get_user_meta() here still returns the OLD value — the UPDATE query
+		// this hook precedes has not run yet.
+		$old_value = get_user_meta( $object_id, $meta_key, true );
 
-		$old_first = isset( $old_user_data->first_name ) ? (string) $old_user_data->first_name : '';
-		$old_last  = isset( $old_user_data->last_name ) ? (string) $old_user_data->last_name : '';
-
-		if ( $old_first !== $new_user->first_name || $old_last !== $new_user->last_name ) {
-			self::reset_for_identity_change( $user_id, 'legal_name_changed' );
+		if ( (string) $old_value !== (string) $meta_value ) {
+			self::reset_for_identity_change( $object_id, 'legal_name_changed' );
 		}
 	}
 

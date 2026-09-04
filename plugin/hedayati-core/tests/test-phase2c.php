@@ -177,7 +177,7 @@ $service_api = [
 	'includes/class-verification-service.php' => [ 'Hedayati_Verification_Service', [
 		'init', 'get_status', 'get_national_id_masked', 'get_national_id_decrypted',
 		'set_national_id', 'initiate', 'approve', 'reject', 'reset_for_identity_change',
-		'on_profile_update', 'on_user_deleted',
+		'on_update_user_meta', 'on_user_deleted',
 	] ],
 	'includes/class-document-service.php' => [ 'Hedayati_Document_Service', [
 		'init', 'get', 'list_for_user', 'purge_eligible', 'upload', 'download',
