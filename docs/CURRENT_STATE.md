@@ -1,6 +1,6 @@
 # CURRENT_STATE.md
 
-**Last documentation update:** 2026-09-03
+**Last documentation update:** 2026-09-04
 **Method:** direct inspection of the repository, reconciled against `docs/HANDOFF_LEGACY.md`.
 Phase 2B + the Phase 2C address slice were implemented 2026-09-02/03 on
 `feature/phase-2b-academic-operations`.
@@ -244,6 +244,27 @@ staging retest** until `1.5.2` is redeployed (`docs/PHASE_2B_ACCEPTANCE.md`).
   thresholds/clearing, role-capability mapping, least-privilege assertions, migration constants).
   Independently re-executed on PHP 8.4 (2026-09-03): **79 passed, 0 failed**. **Not re-run by
   Claude** (no PHP in this environment). Repository verified, not WordPress runtime.
+
+### Local integration-test environment (2026-09-04)
+
+- **Added:** a disposable Docker Compose WordPress backend that simulates `mystik.ir` locally
+  (WordPress 6.6 + PHP 8.3 + MySQL 8, `utf8mb4`, non-`wp_` table prefix; plugin + theme
+  bind-mounted from the repo). Files: `docker/docker-compose.yml`, `docker/Dockerfile.wpcli`,
+  `docker/.env.example`, `scripts/{env-up,wp-install,activate,reset,run-acceptance,env-down}.{sh,ps1}`,
+  `docker/wp-tests/{helpers,test-phase-2a,test-phase-2b,run}.php`, `docs/LOCAL_TESTING.md`,
+  `.gitattributes`.
+- **Purpose:** an **additional** integration/acceptance layer — it does **not** replace the
+  Node/PHP static suites. Runs Phase 2A + Phase 2B checks through the public service APIs and real
+  WordPress behaviour (`wp_authenticate()`, roles, REST server, `$wpdb`, live UNIQUE constraints,
+  cascade hooks) that the static suites explicitly cannot prove.
+- **One command:** `./scripts/run-acceptance.sh` (or `.\scripts\run-acceptance.ps1`) — brings the
+  stack up, installs WP + activates the plugin/theme, runs `docker/wp-tests/run.php`, resets, and
+  exits non-zero on any failure. `~188` deterministic assertions across 17 sections.
+- **Status:** authored 2026-09-04. **Not yet executed** — this dev environment has no Docker
+  (WSL2/virtualization unavailable); first PASS/FAIL run must happen on a Docker-capable host.
+  It does **not** change the staging gate: `docs/PHASE_2A_ACCEPTANCE.md` / `docs/PHASE_2B_ACCEPTANCE.md`
+  on `mystik.ir` remain authoritative for deployment. Known local-vs-staging differences are
+  tabulated in `docs/LOCAL_TESTING.md`.
 
 ### Theme — public site
 

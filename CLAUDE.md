@@ -11,6 +11,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   (`node plugin/hedayati-core/tests/verify-phase2a.js`) does run; it is static/structural only.
 - **This is a theme + plugin, not a WordPress install.** Template hierarchy files resolve against a
   real WP runtime you don't have — reason about them from the code, don't try to execute them.
+- **Local integration environment:** `docker/` + `scripts/*.{sh,ps1}` provide a disposable Docker
+  Compose WordPress backend (see `docs/LOCAL_TESTING.md`). `./scripts/run-acceptance.sh` runs the
+  Phase 2A/2B runtime suite in `docker/wp-tests/`. Requires Docker — **not available in this
+  Claude Code environment** (no WSL2). It is an *additional* layer; it does not replace the
+  Node/PHP static suites and does not change the `mystik.ir` staging gate.
 - **Removed 2026-09-03** (D27, owner-approved): `package-plugin/` (stale `1.0.0` copy) and the root
   `drhedayati-wordpress` diff dump. Stale gitignored ZIPs (`./hedayati-core.zip`,
   `plugin/hedayati-core.zip`, old `staging-export/*.zip`, all `1.1.0`) were deleted from the tree.
