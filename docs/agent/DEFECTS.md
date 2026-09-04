@@ -1,11 +1,19 @@
-# Defects and acceptance gaps — 2026-09-04 (updated same day, post-fix)
+# Defects and acceptance gaps — 2026-09-04 (updated same day, GitHub Actions run #3 GREEN)
 
 Reviewed at 345e368; fixes/coverage below applied at commits 8400588 / 06db2e2 / 2af798d /
-1b16a6d. HD-001–HD-005 are harness/CI defects and evidence gaps, not product vulnerabilities —
-**no product code changed** for those; every change was to `docker/wp-tests/*`, `scripts/lib.*`,
-`docker/.env.example`, or `docker/docker-compose.yml`. **HD-006 is a real product defect**,
-found by GitHub Actions run #2 of "Acceptance (Docker WordPress)" once HD-005 let the suite
-actually execute against a real WordPress — see below.
+1b16a6d / afb5fbd / cbcb4da. HD-001–HD-005 are harness/CI defects and evidence gaps, not product
+vulnerabilities — **no product code changed** for those; every change was to `docker/wp-tests/*`,
+`scripts/lib.*`, `docker/.env.example`, or `docker/docker-compose.yml`. **HD-006 is a real product
+defect**, found by GitHub Actions run #2 of "Acceptance (Docker WordPress)" once HD-005 let the
+suite actually execute against a real WordPress, and fixed in plugin `1.5.3`.
+
+**GitHub Actions run #3** (commit `cbcb4da`, https://github.com/CloudyCup/drhedayati-wordpress/actions/runs/33910009101)
+is **GREEN**: job "Phase 2A + 2B runtime acceptance" concluded `success`, reported **228 passed, 0
+failed**, cleanup verified, result PASS. Node static suites re-run the same day: **458 passed, 0
+failed**. This is the first fully green execution of the Docker runtime suite against a real
+WordPress — every HD item below is reconciled against what that run actually exercises, not
+against what the suite's docblocks describe in aspiration. Items with assertions genuinely in the
+228 are marked runtime-verified; items the suite still does not assert are left OPEN, explicitly.
 
 ## HD-001 — FIXED & VERIFIED — Bash bootstrap fails on default configuration
 
@@ -20,20 +28,33 @@ reproduced with Git Bash: `line 16: Local: command not found`, exit 1.
 explicit. **Verified on this machine:** `source scripts/lib.sh` now reaches the Docker Compose
 check and fails there for the expected reason (Docker absent), not on `.env` line 16.
 
-## HD-002 — OPEN (coverage added, not yet executed) — Phone deletion acceptance discrepancy
+## HD-002 — FIXED & RUNTIME-VERIFIED (with one caveat below) — Phone deletion acceptance discrepancy
 
-Owner reports one orphan phone row after QA-user deletion, manually removed. class-user-phone-service.php registers deleted_user -> delete_phone, but the hook's presence does not prove runtime cleanup.
+Owner reports one orphan phone row after QA-user deletion on **staging** (mystik.ir), manually
+removed. class-user-phone-service.php registers deleted_user -> delete_phone, but the hook's
+presence alone did not prove runtime cleanup.
 
-**Coverage added (06db2e2):** `test-phase-2a.php` now assigns a synthetic phone, deletes that
-user via `wp_delete_user()`, and asserts BOTH the user is gone AND zero phone rows remain for its
-ID — checked directly, **before** `HDIT_Env::reset()` runs, so the later table-wide DELETE cannot
-hide a failure. **Still OPEN**: this assertion has not been executed on a real WordPress runtime
-(no Docker/PHP on this machine). Do not treat HD-002 as closed until it passes on a Docker-capable
-host. Related staging IDs: T2.8, T3.15 step 5, T3.16.
+**Coverage added (06db2e2):** `test-phase-2a.php` assigns a synthetic phone, deletes that user via
+`wp_delete_user()`, and asserts BOTH the user is gone AND zero phone rows remain for its ID —
+checked directly, **before** `HDIT_Env::reset()` runs, so the later table-wide DELETE cannot hide a
+failure.
 
-## HD-003 — PARTIALLY ADDRESSED (coverage added, not yet executed) — Runtime suite gaps
+**Runtime-verified (GitHub Actions run #3, 228/0):** this exact assertion executed against a real
+WordPress + MySQL and passed — the `deleted_user` -> `Hedayati_User_Phone_Service::delete_phone`
+cleanup path works correctly under normal single-request conditions. This closes HD-002 as this
+repository's own defect-tracking item defined it ("Required evidence: ... assert ... BEFORE
+reset. Keep automatic cleanup unverified until this passes" — it has now passed).
 
-**Added (2af798d):**
+**Caveat — do not over-read this:** this proves the *mechanism* works in a clean container. It does
+not retroactively explain the one specific historical orphan row the owner observed on `mystik.ir`
+(possibly pre-dating the hook, a manual DB action, or a race condition specific to that staging
+session) — that historical observation is neither confirmed nor contradicted by this run. Related
+staging IDs: T2.8, T3.15 step 5, T3.16 remain the staging-side acceptance rows to close
+separately.
+
+## HD-003 — PARTIALLY ADDRESSED, ADDITIONS RUNTIME-VERIFIED — Runtime suite gaps remain by design
+
+**Added (2af798d) and now confirmed passing in GitHub Actions run #3 (228/0):**
 - A2/A3: `handle_run_save()` exercised with no nonce and with a valid nonce but insufficient
   capability (student), via a `wp_die`/`wp_redirect` interceptor (`HDIT_AdminPost`) that throws
   instead of ever reaching the handler's real `exit()`.
@@ -59,10 +80,12 @@ docblock, not silently claimed as covered):
   attribution across a WP-CLI-run mutation is untested here).
 - Index `Non_unique` inspection and full engine/charset coverage remain untested.
 
-None of this has been executed on a real WordPress runtime yet — treat every addition above as
-"authored, not proven" until a Docker-capable host runs it green.
+The additions above executed in GitHub Actions run #3 and are part of its 228/0 result — treat
+those specific assertions as runtime-proven. The "still open" list directly above is **not**
+covered by that green run; it remains open exactly as scoped, and a passing suite must not be read
+as closing R5, B5/J9, J1/J4, or the index/engine/charset gaps.
 
-## HD-004 — FIXED (behavior corrected, not yet executed) — Cleanup failure can now be trusted
+## HD-004 — FIXED & RUNTIME-VERIFIED — Cleanup failure can now be trusted
 
 docker/wp-tests/run.php computed `HDIT::finish()` before the final reset, caught reset exceptions
 as warnings without changing the exit code, and always printed "environment reset to a clean
@@ -80,11 +103,12 @@ state". helpers.php's `reset()` ignored every DELETE's return value.
   clean" prints only when `reset()` actually returned true; a verified cleanup failure now yields
   a distinct exit code (`3`) instead of a footnote next to a claimed-successful line.
 
-Not executed here — no Docker/PHP on this machine. The corrected logic itself has not run against
-a real WordPress database; the next Docker-capable run should confirm `reset()` returns `true`
-(not just that the suite doesn't crash).
+**Runtime-verified (GitHub Actions run #3):** the user-reported result explicitly states "cleanup
+verified" and "result PASS" at 228/0 — `HDIT_Env::reset()` returned `true` on both the pre- and
+post-suite calls, confirmed by independent re-query, not merely assumed from a lack of thrown
+exceptions.
 
-## HD-005 — FIXED (CI/environment infra only) — wpcli container detected WP_ENVIRONMENT_TYPE=production in GitHub Actions
+## HD-005 — FIXED & VERIFIED (CI/environment infra only) — wpcli container detected WP_ENVIRONMENT_TYPE=production in GitHub Actions
 
 First run of "Acceptance (Docker WordPress)" on GitHub Actions failed before any assertion ran:
 `assert_disposable_environment()` (HD-004's guard) correctly refused with `WP_ENVIRONMENT_TYPE is
@@ -111,8 +135,9 @@ entirely. `scripts/run-acceptance.{sh,ps1}` gained a preflight step that prints
 `wp_get_environment_type()` as seen inside the `wpcli` container before the suite runs, so any
 future drift is visible in the first few lines of CI output instead of requiring a second run to
 diagnose. `HDIT_Env::assert_disposable_environment()` (the guard itself) was not touched.
+**Verified: GitHub Actions run #2 onward correctly detects `local` and the guard no longer fires.**
 
-## HD-006 — FIXED (product code; plugin 1.5.3) — object-level edit_post/delete_post still false for manager/administrator on a real Teacher profile
+## HD-006 — FIXED & RUNTIME-VERIFIED (product code; plugin 1.5.3) — object-level edit_post/delete_post now true for manager/administrator on a real Teacher profile
 
 GitHub Actions run #2 (first run with the environment correctly detected as `local`, HD-005) ran
 the real acceptance suite against a live WordPress and got **212 passed, 2 failed**:
@@ -173,6 +198,14 @@ one primitive; `Hedayati_Roles::ROLES_VERSION` stays `2.1.0`, the managed-capabi
   boot required) that the four keys are declared and point at the primitive, with a negative
   control proving the 1.5.2-era config (keys absent) would trip the guard.
 
-**Status: FIXED IN CODE, NOT YET RE-VERIFIED.** Do not mark Teacher CPT authorization (T1/T2) as
-PASS until GitHub Actions run #3 (or later) is green end-to-end. The next CI run is the actual
-proof; this entry describes the fix, not a confirmed result.
+**Status: FIXED AND RUNTIME-VERIFIED.** GitHub Actions run #3 (commit `cbcb4da`,
+https://github.com/CloudyCup/drhedayati-wordpress/actions/runs/33910009101) ran the exact
+regression assertions added above — manager and administrator `edit_post`/`delete_post` on both a
+`publish`- and a `private`-status Teacher profile, plus the four denied roles' `delete_post`
+checks — as part of its **228 passed, 0 failed** result (up from run #2's 214 total / 2 failed;
++14 assertions matches the coverage added for this fix exactly). Teacher CPT object-level
+authorization (T1's `edit_post`/`delete_post` retest, and T2's underlying capability path) is now
+runtime-verified in this disposable environment. **Staging (`mystik.ir`) retest is still a separate,
+not-yet-run step** — this environment is not staging (see the differences table in
+`docs/LOCAL_TESTING.md`); do not mark the `docs/PHASE_2B_ACCEPTANCE.md` T1 row's staging column
+PASS from this alone.

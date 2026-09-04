@@ -1,13 +1,22 @@
 # Phase 2B — Academic Operations Acceptance (staging matrix)
 
-**Status: PARTIAL — owner-reported staging health gate and administrator Teacher retest passed; broader functional matrix open.**
+**Status: PARTIAL — owner-reported staging health gate and administrator Teacher retest (1.5.2
+scope) passed; local Docker CI runtime suite green at plugin 1.5.3 (228/0); staging retest of
+1.5.3 and the broader functional matrix remain open.**
 
 2026-09-04 canonical handoff: plugin 1.5.2, DB 2.2.0, roles 2.1.0, six new
 InnoDB/utf8mb4 tables, healthy homepage/admin, Teacher and Course Run creation passed.
-This is owner-reported evidence, not an independent run here. Full per-role negatives,
-functional cases and local runtime acceptance remain open. See agent/STATUS.md and
-agent/DEFECTS.md. Older NOT RUN statements below describe the original plan and are
-superseded only for these explicitly reported health checks.
+This is owner-reported **staging** evidence, not an independent run here, and predates plugin
+`1.5.3`.
+
+**2026-09-04 update:** the local disposable Docker runtime suite (`docker/wp-tests/`, run via
+GitHub Actions "Acceptance (Docker WordPress)") is now GREEN at plugin `1.5.3` — run #3, commit
+`cbcb4da`, **228 passed, 0 failed**, cleanup verified. This is the first execution of this
+document's matrix rows against a real WordPress + MySQL, but it is a **local CI environment, not
+`mystik.ir`** (see the differences table in `docs/LOCAL_TESTING.md`) — it closes rows as
+"repository/local-CI verified", not as a staging retest. See `docs/agent/DEFECTS.md` and
+`docs/agent/TEST_RESULTS.md` for exactly which rows that run exercises; full per-role negatives,
+several functional cases (see HD-003's still-open list) and the **staging** retest remain open.
 
 Phase 2B (Teacher CPT, Course Runs, staff assignment, sessions, enrollments,
 attendance, **metadata-only audit log**) plus the Phase 2C address-profile slice
@@ -132,7 +141,7 @@ deletion-cleanup hooks. The full matrix is still open; see the owner-reported he
 
 | # | Test | Expected |
 |---|---|---|
-| T1 | `teacher` post type visible to manager/admin only; not to reception/teacher/student/TA | cap map to `hedayati_manage_teachers`. **FAILED on 1.5.1 (meta-cap collision); fixed in 1.5.2 for the bare primitive/menu/creation; administrator retest passed per owner for that scope.** **A second, distinct object-level gap was then found by the GitHub Actions Docker runtime suite (not staging): `current_user_can('edit_post'\|'delete_post', <teacher_id>)` on an *existing* profile still resolved `false` for manager AND administrator under 1.5.2** (`map_meta_cap => true` also requires `edit_published_posts`/`edit_private_posts`/`delete_published_posts`/`delete_private_posts`, never declared before 1.5.3 — see `docs/agent/DEFECTS.md` HD-006). **Fixed in 1.5.3. NOT YET RE-VERIFIED on CI or staging — do not mark T1 PASS until a green CI run confirms it.** Retest after deploy: as `administrator` and as `hedayati_manager` → `wp eval 'wp_set_current_user(1); var_export( current_user_can("hedayati_manage_teachers") );'` = `true`; «اساتید» menu present; `edit.php?post_type=teacher` loads; `wp eval 'var_export( current_user_can("edit_post", <teacher_id>) );'` = `true` for an existing **published** profile (not just a freshly-created one); `wp eval 'var_export( current_user_can("delete_post", <teacher_id>) );'` = `true`. As `reception` / `teacher` / `teacher_assistant` / `student` → all `false` and the direct URL denied |
+| T1 | `teacher` post type visible to manager/admin only; not to reception/teacher/student/TA | cap map to `hedayati_manage_teachers`. **FAILED on 1.5.1 (meta-cap collision); fixed in 1.5.2 for the bare primitive/menu/creation; administrator retest passed per owner for that scope.** **A second, distinct object-level gap was then found by the GitHub Actions Docker runtime suite (not staging): `current_user_can('edit_post'\|'delete_post', <teacher_id>)` on an *existing* profile still resolved `false` for manager AND administrator under 1.5.2** (`map_meta_cap => true` also requires `edit_published_posts`/`edit_private_posts`/`delete_published_posts`/`delete_private_posts`, never declared before 1.5.3 — see `docs/agent/DEFECTS.md` HD-006). **Fixed in 1.5.3 and RUNTIME-VERIFIED in GitHub Actions run #3 (commit `cbcb4da`, 228/0): manager and administrator `edit_post`/`delete_post` now resolve `true` on both a `publish`- and a `private`-status Teacher profile; the four denied roles still resolve `false` for both.** **This is local-Docker-CI verification, not a staging retest — the `mystik.ir` retest below is still open; do not mark this row's staging column PASS until it runs there.** Retest after deploy: as `administrator` and as `hedayati_manager` → `wp eval 'wp_set_current_user(1); var_export( current_user_can("hedayati_manage_teachers") );'` = `true`; «اساتید» menu present; `edit.php?post_type=teacher` loads; `wp eval 'var_export( current_user_can("edit_post", <teacher_id>) );'` = `true` for an existing **published** profile (not just a freshly-created one); `wp eval 'var_export( current_user_can("delete_post", <teacher_id>) );'` = `true`. As `reception` / `teacher` / `teacher_assistant` / `student` → all `false` and the direct URL denied |
 | T2 | Linking a WP user to a Teacher profile; linking the same user to a 2nd profile is refused | 1:1 enforced in save |
 | T3 | Deleting the linked WP user unlinks (does not delete) the Teacher profile | `on_user_deleted` |
 | T4 | Teacher CPT not reachable on the front end (`publicly_queryable => false`) | public directory is Phase 2D |

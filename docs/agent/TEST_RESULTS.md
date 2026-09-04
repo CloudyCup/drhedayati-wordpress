@@ -69,6 +69,13 @@ Commits 8400588 (HD-001), 06db2e2 (HD-002 coverage), 2af798d (HD-003 coverage), 
   ```
   This is the suite's first genuine **product** finding — a real Teacher CPT authorization gap,
   not a CI or harness problem. Root cause, fix (plugin `1.5.3`), and regression coverage: HD-006
-  in `docs/agent/DEFECTS.md`. **Do not mark Teacher CPT authorization (T1/T2) as PASS** until a
-  subsequent CI run is green — this file will be updated with that run's actual result, not an
-  assumed one.
+  in `docs/agent/DEFECTS.md`.
+- **Run #3** (commit `cbcb4da`, after the HD-006 fix):
+  https://github.com/CloudyCup/drhedayati-wordpress/actions/runs/33910009101 — job "Phase 2A + 2B
+  runtime acceptance" concluded `success`. **228 passed, 0 failed, cleanup verified, result PASS**
+  (up from run #2's 214 total; +14 matches the HD-006 regression assertions exactly). Node static
+  suites re-run the same day: **458 passed, 0 failed** (verify-phase2b rose from 199 to 208 for
+  the same reason — the new §9c static regression block). This is the first fully green execution
+  of the Docker runtime suite. Teacher CPT object-level authorization (`edit_post`/`delete_post`
+  for manager and administrator, publish and private status) is now **runtime-verified in this
+  disposable environment**. It is **not** a staging (`mystik.ir`) retest — that remains open.

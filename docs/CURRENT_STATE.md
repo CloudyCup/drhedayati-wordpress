@@ -8,10 +8,17 @@ Current status is maintained in [agent/STATUS.md](agent/STATUS.md), with indepen
 results in [agent/TEST_RESULTS.md](agent/TEST_RESULTS.md) and gaps in [agent/DEFECTS.md](agent/DEFECTS.md).
 The 2026-09-04 owner handoff supersedes older status prose below: staging plugin 1.5.2,
 DB 2.2.0 and roles 2.1.0 health gate passed; Teacher capability/menu/profile and Course Run
-creation passed. These are owner-reported results, not a new staging run by this reviewer.
-Broader Phase 2B functional acceptance remains open. Phase 2A largely passed, but automatic
-phone-row deletion is UNVERIFIED: one orphan was manually removed (HD-002). Category 4
-remains deferred/not required. Local Node suites pass 449/0; WordPress runtime NOT RUN.
+creation passed. These are owner-reported **staging** results, not a new staging run by this
+reviewer, and predate the plugin `1.5.3` fix below.
+**Update (2026-09-04, GitHub Actions run #3, commit `cbcb4da`):** the local disposable Docker
+runtime suite is now GREEN — **228 passed, 0 failed**, cleanup verified — the first fully green
+execution of `docker/wp-tests/`. Node static suites: **458 passed, 0 failed**. This is a **local
+Docker CI** result, not a new staging run; it confirms the plugin `1.5.3` fix (HD-006) and the
+HD-002/HD-004 assertions described in `docs/agent/DEFECTS.md` and `docs/agent/TEST_RESULTS.md`
+work correctly against a real WordPress + MySQL. Broader Phase 2B functional acceptance on
+**staging** remains open (see `docs/PHASE_2B_ACCEPTANCE.md`), and the specific historical staging
+phone-row-cleanup observation (HD-002) is not independently re-tested by this run — see the
+caveat in `docs/agent/DEFECTS.md`. Category 4 remains deferred/not required.
 
 **Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
 `hedayati-core` **1.5.3** · DB schema **2.2.0** · roles schema **2.1.0**.
@@ -32,8 +39,12 @@ administrator under 1.5.2. `map_meta_cap => true` also requires `edit_published_
 post authored by someone else (a Teacher profile's `post_author` is `0`); those four keys were
 never declared in the CPT's `capabilities` array, so WordPress auto-derived an ungranted
 `..._hedayati_teachers` capability from `capability_type` instead. `1.5.3` declares all four,
-pointed at `hedayati_manage_teachers`. See `docs/agent/DEFECTS.md` HD-006. **Not yet re-verified —
-do not mark Teacher CPT edit/delete authorization as PASS until the next CI run is green.**
+pointed at `hedayati_manage_teachers`. See `docs/agent/DEFECTS.md` HD-006. **Runtime-verified**:
+GitHub Actions run #3 (commit `cbcb4da`) ran the exact regression assertions for this fix — manager
+and administrator `edit_post`/`delete_post` on both `publish`- and `private`-status Teacher
+profiles — as part of its 228/0 result. **This is local-Docker-CI verification, not a staging
+retest**; the `docs/PHASE_2B_ACCEPTANCE.md` T1 staging row stays open until `mystik.ir` is
+re-tested.
 **No DB schema / `CURRENT_DB_VERSION` / `ROLES_VERSION` / 22-capability-count change in either
 `1.5.2` or `1.5.3`.**
 **`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (nothing from this branch is merged).
@@ -117,8 +128,9 @@ do not mark Teacher CPT edit/delete authorization as PASS until the next CI run 
 
 ### Plugin — academic operations (Phase 2B) — branch `feature/phase-2b-academic-operations`
 
-> Repository verified; staging health and Teacher fix passed per owner handoff; broader acceptance open — see
-> `docs/PHASE_2B_ACCEPTANCE.md`. Not on `main`.
+> Repository verified; staging health and Teacher fix (1.5.2 scope) passed per owner handoff;
+> local Docker CI runtime suite green as of `1.5.3` (228/0, GitHub Actions run #3); broader
+> **staging** acceptance open — see `docs/PHASE_2B_ACCEPTANCE.md`. Not on `main`.
 
 - **`teacher` CPT** (`class-teacher.php`): admin-only (`public` / `publicly_queryable` / `show_in_rest`
   all false — D30/D34, classic editor),
@@ -135,7 +147,8 @@ do not mark Teacher CPT edit/delete authorization as PASS until the next CI run 
   capability from `capability_type` instead of falling back to nothing. Without this,
   `current_user_can('edit_post'|'delete_post', $teacher_id)` was false for manager **and**
   administrator on an existing profile even though the bare `hedayati_manage_teachers` check and
-  `create_posts` passed — see `docs/agent/DEFECTS.md` HD-006. **Not yet CI-verified.** Meta:
+  `create_posts` passed — see `docs/agent/DEFECTS.md` HD-006. **Runtime-verified in GitHub Actions
+  run #3 (228/0); not yet retested on staging.** Meta:
   `_hedayati_teacher_user_id` (optional 1:1 WP-user link, uniqueness enforced in the save handler),
   `_hedayati_teacher_headline`. Side meta box (nonce + `edit_post` + autosave guards). `deleted_user`
   → **unlinks** (never deletes) the profile. Query helpers `exists()`, `get_user_id()`,
