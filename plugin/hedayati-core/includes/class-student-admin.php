@@ -433,7 +433,7 @@ class Hedayati_Student_Admin {
 		$back = add_query_arg( [ 'page' => self::MENU_SLUG, 'user_id' => $user_id ], admin_url( 'admin.php' ) );
 		echo '<p><a href="' . esc_url( $back ) . '">' . esc_html__( 'بازگشت', 'hedayati-core' ) . '</a></p>';
 		echo '</body></html>';
-		exit;
+		self::maybe_exit();
 	}
 
 	public static function handle_document_download(): void {
@@ -456,10 +456,23 @@ class Hedayati_Student_Admin {
 			wp_die( esc_html( $result->get_error_message() ), '', [ 'response' => 404 ] );
 		}
 
-		exit;
+		self::maybe_exit();
 	}
 
 	// ── Access scope / plumbing ─────────────────────────────────────────────
+
+	/**
+	 * exit() after a raw (non wp_die/wp_redirect) response body, EXCEPT inside
+	 * the Docker/WP-CLI acceptance harness, which defines HDIT_TESTING so it
+	 * can assert on the completed response instead of having its whole PHP
+	 * process terminated. HDIT_TESTING is defined only by
+	 * docker/wp-tests/helpers.php — never reachable in a real deployment.
+	 */
+	private static function maybe_exit(): void {
+		if ( ! defined( 'HDIT_TESTING' ) ) {
+			exit;
+		}
+	}
 
 	private static function verify( string $nonce_action, string $cap ): void {
 		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), $nonce_action ) ) {

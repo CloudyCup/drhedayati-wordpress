@@ -62,8 +62,25 @@ class Hedayati_Document_Storage {
 			return new WP_Error( 'invalid_upload', esc_html__( 'فایل ارسالی نامعتبر است.', 'hedayati-core' ) );
 		}
 
+		$size = (int) ( $php_file_upload['size'] ?? 0 );
+
+		return self::process_and_store( $user_id, $root, $tmp_path, $size );
+	}
+
+	/**
+	 * Everything after "this really came from an HTTP upload" is validated.
+	 * Split out from save() so it stays a single, independently testable
+	 * pure(-ish) function — `is_uploaded_file()` is only ever true for a real
+	 * HTTP upload, which a CLI/test harness cannot fabricate, so the Docker
+	 * acceptance suite exercises sniffing/randomization/storage/path-hardening
+	 * through THIS method via reflection while still relying on save() (the
+	 * only method wired to real $_FILES handling) to enforce the upload-origin
+	 * check in every real request.
+	 *
+	 * @return array{storage_key:string, mime:string, size:int}|WP_Error
+	 */
+	private static function process_and_store( int $user_id, string $root, string $tmp_path, int $size ): array|WP_Error {
 		$max_bytes = (int) apply_filters( 'hedayati_document_max_bytes', self::DEFAULT_MAX_BYTES );
-		$size      = (int) ( $php_file_upload['size'] ?? 0 );
 
 		if ( $size <= 0 || $size > $max_bytes || $size !== filesize( $tmp_path ) ) {
 			return new WP_Error( 'file_too_large', esc_html__( 'حجم فایل مجاز نیست.', 'hedayati-core' ) );

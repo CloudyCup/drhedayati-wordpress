@@ -24,6 +24,7 @@ on:
   push:
     branches:
       - feature/phase-2b-academic-operations
+      - feature/phase-2c-student-portal
   workflow_dispatch: {}
 
 permissions:
@@ -35,7 +36,7 @@ concurrency:
 
 jobs:
   acceptance:
-    name: Phase 2A + 2B runtime acceptance
+    name: Phase 2A + 2B + 2C runtime acceptance
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
