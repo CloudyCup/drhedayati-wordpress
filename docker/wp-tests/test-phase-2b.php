@@ -2,19 +2,90 @@
 /**
  * Phase 2B — Academic Operations — WordPress-runtime integration checks.
  *
- * Automates the docs/PHASE_2B_ACCEPTANCE.md staging matrix (sections C–K/J) that
- * the static suites explicitly cannot prove: real INSERT/UPDATE/DELETE, live
- * UNIQUE enforcement, capability mapping, REST exposure, cascade deletes,
- * capacity/closed-run guards, cross-run (IDOR) protection, Shamsi persistence,
- * and audit-log append-only behaviour.
+ * Automates a large part of the docs/PHASE_2B_ACCEPTANCE.md staging matrix
+ * (sections A–K) that the static suites explicitly cannot prove: real
+ * INSERT/UPDATE/DELETE, live UNIQUE enforcement, capability mapping, REST
+ * exposure, cascade deletes, capacity/closed-run guards, cross-run (IDOR)
+ * protection, Shamsi persistence, admin-post authorization gating (via a
+ * wp_die/wp_redirect interceptor, never a real exit()), and audit-log
+ * append-only behaviour.
  *
  * Exercised through the public service APIs and real WordPress behaviour.
+ *
+ * Known remaining gaps (docs/agent/DEFECTS.md HD-003) not covered here:
+ * R5 (every one of the 22 capabilities across all 6 roles — only a
+ * representative subset is asserted, in test-phase-2a.php), and B5/J9
+ * (re-running a migration whose version is already current only exercises
+ * the no-op early-return, not a second dbDelta pass). Do not read a PASS on
+ * this suite as proof of those specific rows.
  *
  * @package Hedayati_Core\LocalTest
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit( 2 );
+}
+
+/**
+ * Thrown by HDIT_AdminPost's wp_die/redirect interceptors instead of letting
+ * the real handler call exit() — keeps a negative admin-post test from ever
+ * being able to abort the whole suite if a capability check unexpectedly
+ * passes.
+ */
+class HDIT_WpDie extends \Exception {}
+
+/**
+ * Captures the outcome of an admin-post handler (class-academic-admin.php)
+ * without ever reaching its exit() calls, so HD-003's A2/A3/A5 negative
+ * authorization checks can run safely inside this single PHP process.
+ */
+final class HDIT_AdminPost {
+	/** @var array{status:int, message:string}|null */
+	public static ?array $result = null;
+
+	public static function arm(): void {
+		self::$result = null;
+		add_filter( 'wp_die_handler', [ self::class, 'die_handler' ], 999999 );
+		add_filter( 'wp_redirect', [ self::class, 'redirect_handler' ], 1 );
+	}
+
+	public static function disarm(): void {
+		remove_filter( 'wp_die_handler', [ self::class, 'die_handler' ], 999999 );
+		remove_filter( 'wp_redirect', [ self::class, 'redirect_handler' ], 1 );
+	}
+
+	public static function die_handler(): callable {
+		return static function ( $message, $title = '', $args = [] ): void {
+			self::$result = [
+				'status'  => (int) ( is_array( $args ) ? ( $args['response'] ?? 0 ) : 0 ),
+				'message' => is_wp_error( $message ) ? $message->get_error_message() : (string) $message,
+			];
+			throw new HDIT_WpDie( 'wp_die intercepted' );
+		};
+	}
+
+	/** A handler that would otherwise redirect+exit() on the SUCCESS path — treated as "not a 403". */
+	public static function redirect_handler( $location ) {
+		self::$result = [ 'status' => 0, 'message' => 'unexpected redirect to ' . (string) $location ];
+		throw new HDIT_WpDie( 'redirect intercepted' );
+	}
+
+	/** Run $fn with $_POST set, current user set, interceptors armed; always restores state. */
+	public static function run( int $user_id, array $post, callable $fn ): void {
+		$prev_post = $_POST;
+		self::arm();
+		wp_set_current_user( $user_id );
+		$_POST = $post;
+		try {
+			$fn();
+		} catch ( HDIT_WpDie $e ) {
+			// expected control-flow escape — see class docblock.
+		} finally {
+			self::disarm();
+			$_POST = $prev_post;
+			wp_set_current_user( 0 );
+		}
+	}
 }
 
 function hdit_run_phase_2b(): void {
@@ -60,8 +131,17 @@ function hdit_run_phase_2b(): void {
 
 	foreach ( [ '/wp/v2/hedayati_teacher', '/wp/v2/teacher' ] as $route ) {
 		$status = rest_do_request( new WP_REST_Request( 'GET', $route ) )->get_status();
-		HDIT::eq( "GET {$route} -> 404", 404, $status );
+		HDIT::eq( "GET {$route} -> 404 (anonymous)", 404, $status );
 	}
+
+	// T5: authenticated, low-privilege requests must also see nothing (not just anonymous ones).
+	wp_set_current_user( $stu );
+	foreach ( [ '/wp/v2/hedayati_teacher', '/wp/v2/teacher' ] as $route ) {
+		$status = rest_do_request( new WP_REST_Request( 'GET', $route ) )->get_status();
+		HDIT::eq( "T5: GET {$route} -> 404 (authenticated as student)", 404, $status );
+	}
+	wp_set_current_user( 0 );
+
 	$types = rest_do_request( new WP_REST_Request( 'GET', '/wp/v2/types' ) )->get_data();
 	HDIT::ok( 'teacher CPT is absent from /wp/v2/types', ! isset( $types['teacher'] ) && ! isset( $types['hedayati_teacher'] ) );
 	HDIT::ok( 'teacher CPT is not publicly_queryable', false === get_post_type_object( Hedayati_Teacher::POST_TYPE )->publicly_queryable );
@@ -78,6 +158,72 @@ function hdit_run_phase_2b(): void {
 	wp_delete_user( $link_user );
 	HDIT::ok( 'profile A survives deletion of the linked WP user', Hedayati_Teacher::exists( $t_a ) );
 	HDIT::eq( 'profile A user link is cleared to 0', 0, (int) get_post_meta( $t_a, Hedayati_Teacher::META_USER_ID, true ) );
+
+	// T2: the 1:1 link is enforced by the REAL save() handler, not just direct meta writes.
+	$shared_user = HDIT_Env::make_user( 'shared_link', 'teacher' );
+	$tp_first    = HDIT_Env::make_teacher( 'Profile one', $shared_user );
+	$tp_second   = HDIT_Env::make_teacher( 'Profile two', 0 );
+
+	wp_set_current_user( 1 ); // administrator: passes the edit_post capability check in save()
+	$prev_post = $_POST;
+	// NONCE_ACTION / NONCE_FIELD are private constants of Hedayati_Teacher; their
+	// literal values are part of the handler's stable request contract (form field names).
+	$_POST = [
+		'hedayati_teacher_meta_nonce' => wp_create_nonce( 'hedayati_teacher_meta_save' ),
+		'hd_teacher_headline'         => 'x',
+		'hd_teacher_user_id'          => (string) $shared_user,
+	];
+	Hedayati_Teacher::save( $tp_second, get_post( $tp_second ) );
+	$_POST = $prev_post;
+	wp_set_current_user( 0 );
+
+	HDIT::eq( 'T2: linking an already-claimed user to a second profile is refused by save()', 0, (int) get_post_meta( $tp_second, Hedayati_Teacher::META_USER_ID, true ) );
+	HDIT::eq( 'T2: the original profile keeps the link', $tp_first, Hedayati_Teacher::find_by_user_id( $shared_user ) );
+
+	// ── A2/A3/A5. Admin-post authorization gate ──────────────────────────
+	HDIT::section( 'Phase 2B — admin-post authorization gate (A2/A3/A5)' );
+
+	$gate_course = HDIT_Env::make_course( 'Gate course' );
+	$gate_mgr    = HDIT_Env::make_user( 'gate_mgr', 'hedayati_manager' );
+	$gate_stu    = HDIT_Env::make_user( 'gate_stu', 'student' );
+
+	HDIT_AdminPost::run( $gate_mgr, [ 'course_id' => $gate_course ], [ 'Hedayati_Academic_Admin', 'handle_run_save' ] );
+	HDIT::eq( 'A2: handle_run_save without a nonce -> wp_die 403', 403, HDIT_AdminPost::$result['status'] ?? 0 );
+
+	// The nonce is bound to the current user at creation time, so it must be
+	// created as $gate_stu — creating it before switching users would make the
+	// nonce check itself fail and mask whether the capability check works.
+	wp_set_current_user( $gate_stu );
+	$run_save_nonce = wp_create_nonce( 'hedayati_run_save' );
+	wp_set_current_user( 0 );
+	HDIT_AdminPost::run(
+		$gate_stu,
+		[ '_wpnonce' => $run_save_nonce, 'course_id' => $gate_course ],
+		[ 'Hedayati_Academic_Admin', 'handle_run_save' ]
+	);
+	HDIT::eq( 'A3: handle_run_save with a valid nonce but no capability (student) -> wp_die 403', 403, HDIT_AdminPost::$result['status'] ?? 0 );
+	HDIT::eq( 'A3: the rejected request created no run', 0, Hedayati_Course_Run_Service::count_for_course( $gate_course ) );
+
+	$gate_run     = Hedayati_Course_Run_Service::create( [ 'course_id' => $gate_course, 'run_status' => 'in_progress' ] );
+	$gate_session = Hedayati_Session_Service::create( [ 'run_id' => $gate_run, 'session_number' => '1', 'starts_at' => '2026-05-01 09:00' ] );
+
+	wp_set_current_user( $gate_mgr );
+	$attendance_nonce = wp_create_nonce( 'hedayati_attendance_save' );
+	wp_set_current_user( 0 );
+	HDIT_AdminPost::run(
+		$gate_mgr, // hedayati_manager lacks hedayati_record_attendance (asserted in the Phase 2A role matrix)
+		[ '_wpnonce' => $attendance_nonce, 'session_id' => $gate_session, 'mark' => [] ],
+		[ 'Hedayati_Academic_Admin', 'handle_attendance_save' ]
+	);
+	HDIT::eq( 'A5: hedayati_manager cannot POST attendance (lacks hedayati_record_attendance) -> 403', 403, HDIT_AdminPost::$result['status'] ?? 0 );
+
+	// A4 (per-run scope): a user staffed on one run is not treated as staff on another.
+	$scope_teacher_user = HDIT_Env::make_user( 'scope_instr', 'teacher' );
+	$scope_teacher      = HDIT_Env::make_teacher( 'Scope instructor', $scope_teacher_user );
+	Hedayati_Run_Staff_Service::assign( [ 'run_id' => $gate_run, 'staff_role' => 'primary_instructor', 'teacher_id' => $scope_teacher ] );
+	$other_gate_run = Hedayati_Course_Run_Service::create( [ 'course_id' => $gate_course, 'run_status' => 'in_progress' ] );
+	HDIT::ok( 'A4: staffed on run X -> user_is_staff_on_run(X) true', Hedayati_Run_Staff_Service::user_is_staff_on_run( $scope_teacher_user, $gate_run ) );
+	HDIT::ok( 'A4: staffed on run X -> user_is_staff_on_run(Y) false (per-run scope, not global)', ! Hedayati_Run_Staff_Service::user_is_staff_on_run( $scope_teacher_user, $other_gate_run ) );
 
 	// ── D. Course Runs ──────────────────────────────────────────────────
 	HDIT::section( 'Phase 2B — Course Run creation & validation' );
@@ -181,6 +327,9 @@ function hdit_run_phase_2b(): void {
 	$closed = Hedayati_Course_Run_Service::create( [ 'course_id' => $course, 'run_status' => 'completed' ] );
 	HDIT::is_wp_error( 'enrolling into a completed run refused', Hedayati_Enrollment_Service::enroll( $closed, $st1 ), 'run_closed' );
 
+	$cancelled = Hedayati_Course_Run_Service::create( [ 'course_id' => $course, 'run_status' => 'cancelled' ] );
+	HDIT::is_wp_error( 'G2: enrolling into a cancelled run refused', Hedayati_Enrollment_Service::enroll( $cancelled, $st1 ), 'run_closed' );
+
 	HDIT::not_wp_error( 'status transition active -> withdrawn', Hedayati_Enrollment_Service::set_status( $e1, 'withdrawn' ) );
 	HDIT::is_wp_error( 'invalid enrollment status refused', Hedayati_Enrollment_Service::set_status( $e1, 'banished' ), 'invalid_status' );
 	HDIT::eq( 'withdrawn no longer counts toward the active total', 1, Hedayati_Enrollment_Service::count_active( $cap_run ) );
@@ -219,6 +368,17 @@ function hdit_run_phase_2b(): void {
 	$bulk = Hedayati_Attendance_Service::record_bulk( $att_session, [ $att_enr => 'absent', $other_enr => 'present', 999999 => 'present' ] );
 	HDIT::eq( 'bulk record: 1 valid mark applied', 1, $bulk['recorded'] );
 	HDIT::eq( 'bulk record: 2 per-row errors reported without aborting', 2, count( $bulk['errors'] ) );
+
+	// S3: deleting a session directly (not via delete_run) cascades its attendance.
+	HDIT::ok( 'S3: delete_session() returns true', Hedayati_Session_Service::delete_session( $att_session ) );
+	HDIT::eq( 'S3: attendance row for the deleted session is gone', null, Hedayati_Attendance_Service::get( $m1 ) );
+
+	// G5: deleting an enrollment directly (not via delete_run/user-delete) cascades its attendance.
+	$g5_session = Hedayati_Session_Service::create( [ 'run_id' => $other_run, 'session_number' => '1', 'starts_at' => '2026-04-11 09:00' ] );
+	$g5_mark    = Hedayati_Attendance_Service::record( $g5_session, $other_enr, 'present' );
+	HDIT::ok( 'G5: attendance recorded ahead of the direct-delete check', is_int( $g5_mark ) && $g5_mark > 0 );
+	HDIT::ok( 'G5: delete_enrollment() returns true', Hedayati_Enrollment_Service::delete_enrollment( $other_enr ) );
+	HDIT::eq( 'G5: attendance row for the deleted enrollment is gone', null, Hedayati_Attendance_Service::get( $g5_mark ) );
 
 	// ── K. Shamsi input -> canonical Gregorian storage ───────────────
 	HDIT::section( 'Phase 2B — Shamsi input conversion & canonical persistence (D9)' );
@@ -306,8 +466,33 @@ function hdit_run_phase_2b(): void {
 
 	$ud_course  = HDIT_Env::make_course( 'User-delete course' );
 	$ud_run     = Hedayati_Course_Run_Service::create( [ 'course_id' => $ud_course, 'run_status' => 'in_progress' ] );
+	$ud_session = Hedayati_Session_Service::create( [ 'run_id' => $ud_run, 'session_number' => '1', 'starts_at' => '2026-04-25 09:00' ] );
 	$ud_student = HDIT_Env::make_user( 'ud_stu', 'student' );
 	$ud_enr     = Hedayati_Enrollment_Service::enroll( $ud_run, $ud_student );
+	$ud_mark    = Hedayati_Attendance_Service::record( $ud_session, $ud_enr, 'present' );
+	HDIT::ok( 'G6: attendance recorded ahead of the user-delete check', is_int( $ud_mark ) && $ud_mark > 0 );
+
 	wp_delete_user( $ud_student );
 	HDIT::eq( 'deleting the student deletes their enrollment (G6)', null, Hedayati_Enrollment_Service::get( $ud_enr ) );
+	HDIT::eq( 'G6: the student\'s attendance row is cascade-deleted with the enrollment', null, Hedayati_Attendance_Service::get( $ud_mark ) );
+
+	// ── J6/J8. Audit viewer authorization & filter sanitization ─────────
+	HDIT::section( 'Phase 2B — audit viewer authorization & filter sanitization (J6/J8)' );
+
+	$j6_mgr  = HDIT_Env::make_user( 'j6_mgr', 'hedayati_manager' );
+	$j6_rcpt = HDIT_Env::make_user( 'j6_rcpt', 'reception' );
+
+	wp_set_current_user( $j6_mgr );
+	HDIT::ok( 'J6: hedayati_manager can view the audit log (has hedayati_view_audit_logs)', Hedayati_Audit_Log::current_user_can_view() );
+	wp_set_current_user( $j6_rcpt );
+	HDIT::ok( 'J6: reception cannot view the audit log', ! Hedayati_Audit_Log::current_user_can_view() );
+	wp_set_current_user( 0 );
+
+	$bogus = Hedayati_Audit_Log::query( [ 'action' => "junk'; DROP TABLE x; --" ] );
+	HDIT::eq( 'J8: an out-of-vocabulary action filter yields 0 rows (sanitised, not passed raw to SQL)', [], $bogus );
+	HDIT::eq(
+		'J8: the same out-of-vocabulary filter counts 0, not an SQL error',
+		0,
+		Hedayati_Audit_Log::count( [ 'action' => "junk'; DROP TABLE x; --" ] )
+	);
 }
