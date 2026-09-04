@@ -203,6 +203,30 @@ function hdit_run_phase_2a(): void {
 		false === ( Hedayati_User_Phone_Service::get_phone_record_by_user( $a )['is_verified'] ?? null )
 	);
 
+	// HD-002: the deleted_user -> delete_phone hook is asserted DIRECTLY here,
+	// before any HDIT_Env::reset() runs. reset() also empties the phone table,
+	// which would otherwise hide a cleanup failure behind a clean final state.
+	require_once ABSPATH . 'wp-admin/includes/user.php';
+	$doomed = HDIT_Env::make_user( 'phone_del', 'student' );
+	Hedayati_User_Phone_Service::assign_phone( $doomed, '09120000777' );
+	$rows_before = (int) $wpdb->get_var(
+		$wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE user_id = %d", $doomed )
+	);
+	HDIT::eq( 'HD-002: phone row exists for the doomed user before deletion', 1, $rows_before );
+
+	$deleted = wp_delete_user( $doomed );
+	HDIT::ok( 'HD-002: wp_delete_user() reports success', true === $deleted );
+	HDIT::ok( 'HD-002: the WP user record is gone', false === get_user_by( 'id', $doomed ) );
+
+	$rows_after = (int) $wpdb->get_var(
+		$wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE user_id = %d", $doomed )
+	);
+	HDIT::eq( 'HD-002: deleted_user hook removed the phone row (checked BEFORE any reset)', 0, $rows_after );
+	HDIT::ok(
+		'HD-002: the freed phone number is immediately available again',
+		Hedayati_User_Phone_Service::is_phone_available( '09120000777' )
+	);
+
 	// ── Username / phone authentication ──────────────────────────────────
 	HDIT::section( 'Phase 2A — username / phone authentication (authenticate chain)' );
 
