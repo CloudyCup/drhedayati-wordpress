@@ -4,22 +4,15 @@
 **Method:** direct inspection of the repository, reconciled against `docs/HANDOFF_LEGACY.md`.
 Phase 2B + the Phase 2C address slice were implemented 2026-09-02/03 on
 `feature/phase-2b-academic-operations`.
-Phase 2A staging acceptance (`docs/PHASE_2A_ACCEPTANCE.md`): the static + read-only-DB layer on
-`mystik.ir` is verified **and** the non-destructive behavioural acceptance (Categories 2–3 — auth
-flows, rate-limit thresholds/reset/no-double-count, phone provisioning/format matrix/privacy/
-uniqueness/verification lifecycle/deletion cleanup, full per-role capability matrix) is **COMPLETE
-and PASSED (2026-09-03)** on disposable QA users. Only the Category-4 destructive tests remain
-**NOT RUN / DEFERRED — NOT REQUIRED for the current staging gate**. Phase 2B (below) is
-implemented on branch `feature/phase-2b-academic-operations` and is **REPOSITORY VERIFIED** —
-Node static suites run by Claude (449/0 at plugin `1.5.2`) plus an independent `php -l` +
-PHP-suite run on PHP 8.4 (302/0, at `1.5.1` — `test-phase2b.php` gained a Teacher-cap guard in
-`1.5.2`, pending re-run), and a package recreation (see the Tests and Repository-artifacts
-sections). Its **STAGING / WORDPRESS-RUNTIME** acceptance (`docs/PHASE_2B_ACCEPTANCE.md`) is still
-**NOT RUN** — dbDelta execution, WordPress hooks, capability mapping, admin-UI behaviour,
-migrations on `mystik.ir`, and authentication behaviour are **not** verified by the repository
-tests. A staging capability probe on 2026-09-03 **failed Teacher CPT acceptance test T1** on
-plugin `1.5.1` (WordPress meta-capability collision — «اساتید» menu missing); fixed in `1.5.2`
-(see the version note below); **T1 stays awaiting a staging retest** after `1.5.2` is redeployed.
+Current status is maintained in [agent/STATUS.md](agent/STATUS.md), with independent local
+results in [agent/TEST_RESULTS.md](agent/TEST_RESULTS.md) and gaps in [agent/DEFECTS.md](agent/DEFECTS.md).
+The 2026-09-04 owner handoff supersedes older status prose below: staging plugin 1.5.2,
+DB 2.2.0 and roles 2.1.0 health gate passed; Teacher capability/menu/profile and Course Run
+creation passed. These are owner-reported results, not a new staging run by this reviewer.
+Broader Phase 2B functional acceptance remains open. Phase 2A largely passed, but automatic
+phone-row deletion is UNVERIFIED: one orphan was manually removed (HD-002). Category 4
+remains deferred/not required. Local Node suites pass 449/0; WordPress runtime NOT RUN.
+
 **Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
 `hedayati-core` **1.5.2** · DB schema **2.2.0** · roles schema **2.1.0**.
 **`1.5.2` (2026-09-03)** is a CPT-mapping bug fix only — `includes/class-teacher.php`: the Teacher
@@ -29,8 +22,7 @@ the primitive itself into an object-scoped check and `current_user_can('hedayati
 (no post ID) returned false on staging — the «اساتید» menu vanished and `edit.php?post_type=teacher`
 was denied (Phase 2B acceptance **T1 FAILED on 1.5.1**). `1.5.2` gives the meta caps distinct names
 (`edit_hedayati_teacher` etc.) that map down to the primitive via the collection caps. **No DB
-schema / `CURRENT_DB_VERSION` / `ROLES_VERSION` / 22-capability-count change.** T1 stays **awaiting
-staging retest** until `1.5.2` is redeployed (`docs/PHASE_2B_ACCEPTANCE.md`).
+schema / `CURRENT_DB_VERSION` / `ROLES_VERSION` / 22-capability-count change.** Owner reports the administrator staging retest passed; the full role matrix remains open.
 **`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (nothing from this branch is merged).
 
 > The repository is authoritative for "what is implemented". It contains **code only** — no
@@ -112,7 +104,7 @@ staging retest** until `1.5.2` is redeployed (`docs/PHASE_2B_ACCEPTANCE.md`).
 
 ### Plugin — academic operations (Phase 2B) — branch `feature/phase-2b-academic-operations`
 
-> Repository + Node-suite verified only. **No staging/runtime verification** — see
+> Repository verified; staging health and Teacher fix passed per owner handoff; broader acceptance open — see
 > `docs/PHASE_2B_ACCEPTANCE.md`. Not on `main`.
 
 - **`teacher` CPT** (`class-teacher.php`): admin-only (`public` / `publicly_queryable` / `show_in_rest`
@@ -318,8 +310,8 @@ staging retest** until `1.5.2` is redeployed (`docs/PHASE_2B_ACCEPTANCE.md`).
 
 | Area | What exists | What is missing |
 |---|---|---|
-| **Username-or-phone login** | Full backend adapter, normalization, rate limiting, roles — extends the standard `wp-login.php` pipeline; deployed code + DB schema + roles/caps **verified on staging 2026-09-02**; **non-destructive runtime behaviour acceptance-tested and PASSED 2026-09-03** (username auth, rate-limit no-double-count/lockout/reset, phone 10-format login matrix, privacy-safe errors, uniqueness, verification lifecycle, deletion cleanup) | No custom/branded login form or account UI; only the Category-4 destructive tests of `docs/PHASE_2A_ACCEPTANCE.md` remain (deferred, not required for the gate); T2.4 (native unknown-username wording) not exercised |
-| **Roles & capabilities** | 5 roles + **22** caps registered; least-privilege verified in unit tests **and by an exact per-role WP-CLI capability audit on staging 2026-09-03** (21-cap Phase-2A set; matches Appendix A; negatives hold). Phase 2B consumes `hedayati_manage_course_runs`, `hedayati_manage_teachers`, `hedayati_assign_staff`, `hedayati_create_enrollments`, `hedayati_manage_enrollments`, `hedayati_record_attendance` | The 22nd cap (`hedayati_manage_teachers`) + Phase 2B roles `2.1.0` are **not yet on staging** (staging still runs roles `2.0.0`). `hedayati_verify_students`, `hedayati_view_private_documents`, `hedayati_view_audit_logs`, `hedayati_initiate_verification`, `hedayati_view_own_*`, teacher/TA `view_assigned_*` still unused (Phase 2C/2D) |
+| **Username-or-phone login** | Full backend adapter, normalization, rate limiting, roles — extends the standard `wp-login.php` pipeline; deployed code + DB schema + roles/caps **verified on staging 2026-09-02**; **non-destructive runtime behaviour acceptance-tested and PASSED 2026-09-03** (username auth, rate-limit no-double-count/lockout/reset, phone 10-format login matrix, privacy-safe errors, uniqueness, verification lifecycle; automatic deletion cleanup unverified, HD-002) | No custom/branded login form or account UI; only the Category-4 destructive tests of `docs/PHASE_2A_ACCEPTANCE.md` remain (deferred, not required for the gate); T2.4 (native unknown-username wording) not exercised |
+| **Roles & capabilities** | 5 roles + **22** caps registered; least-privilege verified in unit tests **and by an exact per-role WP-CLI capability audit on staging 2026-09-03** (21-cap Phase-2A set; matches Appendix A; negatives hold). Phase 2B consumes `hedayati_manage_course_runs`, `hedayati_manage_teachers`, `hedayati_assign_staff`, `hedayati_create_enrollments`, `hedayati_manage_enrollments`, `hedayati_record_attendance` | The owner reports roles `2.1.0` and plugin `1.5.2` on staging; broader role-matrix acceptance remains open. `hedayati_verify_students`, `hedayati_view_private_documents`, `hedayati_view_audit_logs`, `hedayati_initiate_verification`, `hedayati_view_own_*`, teacher/TA `view_assigned_*` still unused (Phase 2C/2D) |
 | **Student accounts** | WordPress user + `student` role + phone-identity table + address profile fields (usermeta) + enrollments (Phase 2B) | No portal UI, no verification state, no national ID, no document upload (all blocked — Q10–Q13) |
 | **Homepage impact/value section** | Dark editorial band with 4 institutional bullet points and copy | Stat numbers (years, graduates, …) intentionally omitted pending verified data + an input mechanism (Customizer or plugin settings) — **neither mechanism is coded** |
 | **Contact / consultation** | Phone/address settings, footer + CTA rendering, links to `/consult/` | The `/consult/`, `/contact/`, `/about/` pages do not exist; no consultation form or submission handler |
@@ -337,13 +329,12 @@ staging retest** until `1.5.2` is redeployed (`docs/PHASE_2B_ACCEPTANCE.md`).
   `_course_*` meta on the public course page).
 - Staff interfaces beyond the manager-facing «عملیات آموزشی» screen: reception panel, scoped
   teacher/TA portal (incl. teacher-facing attendance), audit-log viewer.
-- Audit-log IP/user-agent capture + a retention policy (Q13); operational consumption of the log
-  (alerts, reports). The metadata-only append-only log itself is **built** (see Phase 2B above).
+- Operational audit reporting beyond the existing viewer. Preserve metadata-only logs: IP/UA/JSON capture is outside the canonical handoff.
 - Dedicated `HEDAYATI_DATA_ENCRYPTION_KEY` + key versioning + HMAC for reversible national-ID
   storage and duplicate detection.
 - Self-hosted **Vazirmatn** WOFF2 fonts — `functions.php` deliberately does **not** enqueue a
   font; no font files exist in the repo; the CSS stack falls back to system Persian fonts.
-- Shamsi (Jalali) date input/display layer over Gregorian storage.
+- Remaining public/other-field Shamsi coverage; the helper and Course Run input/display layer already exist.
 - Persian/Arabic → ASCII digit normalization for fields other than phone (e.g. national ID).
 - SMS / OTP provider integration (provider abstraction, provider unknown).
 - Homepage/footer/navigation content settings beyond the current fixed structure.
@@ -407,9 +398,10 @@ available via the hosting WordPress Toolkit.
 - **Uniqueness + verification lifecycle (T3.13, T3.15).** Duplicate normalized number rejected
   (user 3 kept 0 rows); `verify_phone()` set the flags; changing the number reset
   `is_verified`/`verified_at`; same normalized number = no-op; no duplicate row.
-- **Deletion cleanup + teardown (T2.8, T2.9, T3.16).** User deletion removed the phone row via the
-  lifecycle hook; QA phone-row count back to baseline 0; transients cleared; administrator access
-  intact.
+- **Deletion cleanup + teardown (T2.8, T2.9, T3.16): UNVERIFIED.** Owner reports one orphan
+  phone row after QA-user deletion, manually removed. Earlier automatic-cleanup PASS claim
+  withdrawn; see HD-002. User deletion/admin access and automatic phone-row deletion are
+  separate checks.
 - **Environment (closes M3).** `wp-content/object-cache.php` absent — rate-limit transients are
   DB-backed, as assumed.
 

@@ -1,5 +1,10 @@
 # LOCAL_TESTING.md — disposable local integration-test environment
 
+> **Review 2026-09-04:** runtime suite NOT RUN on this machine; Node static suites 449/0.
+> Bash bootstrap currently fails on the unquoted default WP_TITLE (HD-001). Coverage and
+> cleanup guarantees below are intentions, not completed acceptance evidence; see
+> [agent/TEST_RESULTS.md](agent/TEST_RESULTS.md) and [agent/DEFECTS.md](agent/DEFECTS.md).
+
 A fully disposable local WordPress backend that simulates staging (`mystik.ir`)
 closely enough to run **automated Phase 2A + Phase 2B integration/acceptance
 tests** without needing access to the Iran-restricted staging domain.

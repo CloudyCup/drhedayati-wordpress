@@ -1,13 +1,19 @@
 # Phase 2B — Academic Operations Acceptance (staging matrix)
 
-**Status: NOT STARTED — repository implementation only.**
+**Status: PARTIAL — owner-reported staging health gate and administrator Teacher retest passed; broader functional matrix open.**
+
+2026-09-04 canonical handoff: plugin 1.5.2, DB 2.2.0, roles 2.1.0, six new
+InnoDB/utf8mb4 tables, healthy homepage/admin, Teacher and Course Run creation passed.
+This is owner-reported evidence, not an independent run here. Full per-role negatives,
+functional cases and local runtime acceptance remain open. See agent/STATUS.md and
+agent/DEFECTS.md. Older NOT RUN statements below describe the original plan and are
+superseded only for these explicitly reported health checks.
 
 Phase 2B (Teacher CPT, Course Runs, staff assignment, sessions, enrollments,
 attendance, **metadata-only audit log**) plus the Phase 2C address-profile slice
 were implemented on branch `feature/phase-2b-academic-operations`. As with Phase
 2A, **runtime/behavioural acceptance runs on staging (`mystik.ir`)** and is a
-**pre-merge / pre-deployment gate**. Nothing in this file has been executed —
-every row below is **NOT RUN**.
+**pre-merge / pre-deployment gate**. The original matrix below is not fully executed; the reported health checks above do not close every assertion within a row.
 
 Constraints (unchanged from `docs/PHASE_2A_ACCEPTANCE.md`): operator drives every
 authenticated step; no destructive DB changes without per-test approval; no
@@ -51,8 +57,7 @@ found that **section C test T1 fails on plugin `1.5.1`**:
   `1.5.1` config trips the guard. The former assertion (a bare
   `contains("=> 'hedayati_manage_teachers'")` string check) stayed green through the
   bug and has been removed.
-- **T1 remains `NOT RUN` / awaiting staging retest** until `1.5.2` is deployed to
-  `mystik.ir` and the checks in section C below are executed.
+- **Administrator T1 retest passed per owner handoff:** primitive capability true, menu accessible, Teacher profile creation works. Full manager/low-privilege negative matrix remains open.
 
 ---
 
@@ -96,11 +101,11 @@ execution and the migrations on `mystik.ir`, WordPress hook firing, capability
 mapping in a live role structure, admin-UI behaviour, authentication behaviour,
 real INSERT/UPDATE/DELETE behaviour, UNIQUE constraint enforcement, cascade
 deletes, capacity enforcement, per-run scope against a live user, and the
-deletion-cleanup hooks. Every row in the staging matrix below remains **NOT RUN**.
+deletion-cleanup hooks. The full matrix is still open; see the owner-reported health subset above.
 
 ---
 
-## Staging matrix — ALL NOT RUN
+## Staging matrix — partial health evidence; remaining cases open
 
 ### A. Migration 2.1.0
 
@@ -127,7 +132,7 @@ deletion-cleanup hooks. Every row in the staging matrix below remains **NOT RUN*
 
 | # | Test | Expected |
 |---|---|---|
-| T1 | `teacher` post type visible to manager/admin only; not to reception/teacher/student/TA | cap map to `hedayati_manage_teachers`. **FAILED on 1.5.1 (meta-cap collision — see the 2026-09-03 note above); fixed in 1.5.2; awaiting staging retest.** Retest after deploy: as `administrator` and as `hedayati_manager` → `wp eval 'wp_set_current_user(1); var_export( current_user_can("hedayati_manage_teachers") );'` = `true`; «اساتید» menu present; `edit.php?post_type=teacher` loads; `wp eval 'var_export( current_user_can("edit_post", <teacher_id>) );'` = `true`. As `reception` / `teacher` / `teacher_assistant` / `student` → all four `false` and the direct URL denied |
+| T1 | `teacher` post type visible to manager/admin only; not to reception/teacher/student/TA | cap map to `hedayati_manage_teachers`. **FAILED on 1.5.1 (meta-cap collision — see the 2026-09-03 note above); fixed in 1.5.2; administrator retest passed per owner; full role matrix open.** Retest after deploy: as `administrator` and as `hedayati_manager` → `wp eval 'wp_set_current_user(1); var_export( current_user_can("hedayati_manage_teachers") );'` = `true`; «اساتید» menu present; `edit.php?post_type=teacher` loads; `wp eval 'var_export( current_user_can("edit_post", <teacher_id>) );'` = `true`. As `reception` / `teacher` / `teacher_assistant` / `student` → all four `false` and the direct URL denied |
 | T2 | Linking a WP user to a Teacher profile; linking the same user to a 2nd profile is refused | 1:1 enforced in save |
 | T3 | Deleting the linked WP user unlinks (does not delete) the Teacher profile | `on_user_deleted` |
 | T4 | Teacher CPT not reachable on the front end (`publicly_queryable => false`) | public directory is Phase 2D |
@@ -223,7 +228,4 @@ deletion-cleanup hooks. Every row in the staging matrix below remains **NOT RUN*
 
 ## Note
 
-Phase 2A behavioural acceptance (Categories 2–4 of `docs/PHASE_2A_ACCEPTANCE.md`)
-remains **open** and is still the first pre-deployment gate. Phase 2B staging
-acceptance should run **after** Phase 2A's, on the same disposable-account
-discipline, ideally in the same staging window.
+Phase 2A non-destructive acceptance largely passed, with phone cleanup discrepancy HD-002 open. Category 4 remains deferred/not required for the normal gate. Continue broader Phase 2B functional acceptance on synthetic data; local success does not authorize staging changes or deployment.

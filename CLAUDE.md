@@ -27,8 +27,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   `staging-export/`, and fails on a wrong layout or a version mismatch. See `docs/DEPLOYMENT.md`.
 - **Persian UI strings** are expected throughout templates and admin — match the existing tone and
   keep `esc_html_e()` / text-domain usage (`hedayati` for the theme, `hedayati-core` for the plugin).
-- **Current priority** (per the handoff, unless the user redirects): Phase 2A *staging integration
-  acceptance* — not Phase 2B feature work. You cannot perform that acceptance from here; scope work
-  accordingly and surface what needs a real staging environment.
+- **Current priority:** local Phase 2A/2B acceptance review/execution per the canonical owner
+  handoff in `docs/agent/STATUS.md`. Read TEST_RESULTS.md and DEFECTS.md alongside it.
+  Phase 2B staging health and Teacher fix retest passed per the owner; broader functional
+  acceptance remains open. Check runtime availability rather than relying on old environment notes.
 - When you change code that a `docs/*` file describes, update that doc in the same change and bump
   the date in `docs/CURRENT_STATE.md`.

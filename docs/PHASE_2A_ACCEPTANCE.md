@@ -1,5 +1,10 @@
 # Phase 2A — Staging Acceptance Test Plan & Log (`mystik.ir`)
 
+> **2026-09-04 canonical correction:** automatic phone-row cleanup is UNVERIFIED (HD-002).
+> Owner reports one orphan after QA-user deletion, manually removed. Earlier blanket PASS
+> claims exclude that check. Other non-destructive results stand; Category 4 stays deferred.
+> See agent/STATUS.md for current staging versions and acceptance state.
+
 > **2026-09-02 — Phase 2B branch development has begun** on
 > `feature/phase-2b-academic-operations` (academic operations: Teacher CPT, Course Runs, sessions,
 > enrollments, attendance). This does **not** change Phase 2A's status: the behavioural acceptance
@@ -10,12 +15,12 @@
 > Phase 2B additionally changes the schema (`2.1.0`) and roles (`2.1.0`, +`hedayati_manage_teachers`),
 > so once Phase 2B reaches staging the T3.5 role-matrix review must cover 22 capabilities, not 21.
 
-> **2026-09-03 — Non-destructive behavioural acceptance COMPLETE.** The operator executed
+> **2026-09-03 — Non-destructive behavioural acceptance largely passed; cleanup discrepancy open.** The operator executed
 > Categories 2–3 (auth flows, rate-limit thresholds / no-double-count / reset, phone provisioning /
 > format matrix / privacy / uniqueness / verification lifecycle / deletion cleanup) against the
 > **current Phase 2A staging build** (plugin `1.1.0`, DB & roles `2.0.0`) on `mystik.ir`, using only
 > two disposable `student` users (`qa_phase2a` = ID 2, `qa_phase2a_b` = ID 3) and synthetic data,
-> both deleted during teardown. All executed checks **PASS** — see "Behavioural execution log
+> both deleted during teardown. Other executed checks **PASS**; automatic phone deletion is unverified (HD-002) — see "Behavioural execution log
 > (2026-09-03)" below. The only non-destructive item not exercised is **T2.4** (native
 > `invalid_username` wording for an unknown non-phone identifier) — cosmetic, not gating.
 > **Category 4 (destructive) remains NOT RUN / DEFERRED — NOT REQUIRED for the current staging
@@ -72,8 +77,8 @@ operator's authenticated browser*.
 | T3.12 | Phone-login: rejection & generic-error behaviour | 3 | ✅ PASS | 2026-09-03 | assigned phone + wrong password, valid-format unassigned phone, malformed phone-like values, non-Iranian, too-short, separator/injection inputs all failed safely with the generic privacy-safe error; no account-existence disclosure, no cross-account login |
 | T3.13 | Phone uniqueness (service level + DB level) | 3 | ✅ PASS | 2026-09-03 | assigning user 2's normalized number to user 3 was rejected; user 3 retained zero phone rows; re-assigning the same normalized number was the documented no-op; no duplicate row created (`uq_phone_e164` enforced via the service's `phone_already_exists` path) |
 | T3.14 | Equivalent formats normalize identically | 3 | ✅ PASS | 2026-09-03 | every accepted representation resolved to the single `+989123456789` record / `qa_phase2a` (demonstrated through the T3.11 login matrix) |
-| T3.15 | Phone lifecycle & verification-flag transitions | 3 | ✅ PASS | 2026-09-03 | `verify_phone(user 2)` set `is_verified`/`verified_at`; changing to a different number reset `is_verified`→false and `verified_at`→NULL with the new normalized value; same normalized number was a no-op; user deletion removed the phone row |
-| T3.16 | Category 3 teardown | 3 | ✅ PASS | 2026-09-03 | disposable users deleted; their phone rows removed by lifecycle cleanup; final QA phone-row count back to baseline (0); rate-limit transients cleared; administrator access intact |
+| T3.15 | Phone lifecycle & verification-flag transitions | 3 | PARTIAL — cleanup unverified | 2026-09-03 | `verify_phone(user 2)` set `is_verified`/`verified_at`; changing to a different number reset `is_verified`→false and `verified_at`→NULL with the new normalized value; same normalized number was a no-op; automatic phone-row removal is unverified (HD-002) |
+| T3.16 | Category 3 teardown | 3 | MANUAL CLEANUP — HD-002 | 2026-09-03 | disposable users deleted; one orphan phone row required manual removal (HD-002); final QA phone-row count back to baseline (0); rate-limit transients cleared; administrator access intact |
 | T4.1–T4.8 | Potentially destructive (Category 4) | 4 | ⬜ NOT RUN / DEFERRED | — | **NOT REQUIRED for the current staging gate.** Run only with a fresh full backup, a maintenance window, no live traffic, and per-test written approval — and only if a defect ever forces one |
 
 **Baseline status: STATIC + READ-ONLY LAYER FULLY VERIFIED · NON-DESTRUCTIVE BEHAVIOURAL
@@ -88,7 +93,7 @@ no-double-count / identifier lockout / success-reset / IP-bucket design (T2.5, T
 T3.9), phone provisioning + canonical storage (T3.10), the 10-format login matrix (T3.11, T3.14),
 privacy-safe generic errors for bad / unassigned / malformed / non-Iranian phone input (T3.12),
 phone uniqueness (T3.13), the verification lifecycle incl. change-resets-verification (T3.15), and
-user-deletion phone-row cleanup + teardown to baseline (T2.8, T2.9, T3.16).
+user deletion + manual teardown to baseline; automatic phone-row cleanup unverified (T2.8, T2.9, T3.16; HD-002).
 Not exercised (non-gating): T2.4 (native `invalid_username` wording for an unknown non-phone
 identifier).
 Outstanding: **Category 4 destructive tests only** — forced migration re-run/reset, DROP/recreate
@@ -208,7 +213,7 @@ canonical `+989123456789`. No real accounts or real data were touched.
   no duplicate phone row was created.
 
 ### Deletion / teardown (T2.8, T2.9, T3.16)
-- `qa_phase2a` and `qa_phase2a_b` deleted; their phone rows removed by lifecycle cleanup; final QA
+- `qa_phase2a` and `qa_phase2a_b` deleted; one orphan phone row required manual removal (HD-002); final QA
   phone-row count returned to baseline (0); final Hedayati rate-limit transient cleanup completed;
   administrator access remained intact. No real user accounts were used or deleted.
 
@@ -696,7 +701,7 @@ and written per-test approval (N10) — to be arranged only if a defect ever for
 | **T4.3** | Simulate concurrent `admin_init` migrations to exercise the lock + 60s stale recovery | Medium | Timing-dependent; a stuck lock blocks migrations 60s. Cleanup: `DELETE … option_name='hedayati_db_migration_lock'`. |
 | **T4.4** | Plugin deactivate → reactivate (fires the activation hook) | Medium | Rewrite-flush → transient 404s; LiteSpeed may serve stale pages. Cleanup: Settings → Permalinks → Save; purge cache; re-run T3.5. |
 | **T4.5** | Drive 30 failed logins from one IP to confirm the IP threshold | Medium–High | Locks that IP (likely your own) out of login for 15 min. Cleanup: T3.9 or wait 900s. Only with a second admin route. |
-| **T4.6** | Delete a **real** user to test cleanup | High | Data loss. Already covered safely by T3.15 step 5 on a disposable user. Cleanup: restore from backup. |
+| **T4.6** | Delete a **real** user to test cleanup | High | Data loss. Automatic cleanup still requires a disposable-user retest (HD-002). Cleanup: restore from backup. |
 | **T4.7** | `wp-config.php` changes (`WP_DEBUG`, prefix independence) | Medium | A syntax slip downs the whole site; prefix changes are destructive. Cleanup: restore original `wp-config.php`. |
 | **T4.8** | Any redeploy of theme/plugin from the repo to staging | Medium | Changes the artifact under test; needs its own migration/non-regression check (`docs/DEPLOYMENT.md`). Only if T1.3 finds drift. |
 
