@@ -1,33 +1,83 @@
-# Defects and acceptance gaps — 2026-09-04
+# Defects and acceptance gaps — 2026-09-04 (updated same day, post-fix)
 
-Reviewed at 345e368. These are harness defects and evidence gaps, not newly proven product vulnerabilities. No product code changed.
+Reviewed at 345e368; fixes/coverage below applied at commits 8400588 / 06db2e2 / 2af798d /
+1b16a6d. These are harness defects and evidence gaps, not newly proven product vulnerabilities.
+**No product code changed** — every change below is to `docker/wp-tests/*`, `scripts/lib.*`, or
+`docker/.env.example`.
 
-## HD-001 — OPEN — Bash bootstrap fails on default configuration
+## HD-001 — FIXED & VERIFIED — Bash bootstrap fails on default configuration
 
-docker/.env.example:16 contains WP_TITLE=Hedayati Local Test. scripts/lib.sh sources it under set -e; Bash interprets Local as a command and exits before Docker is checked. Independently reproduced with Git Bash: line 16: Local: command not found, exit 1.
+docker/.env.example:16 contained `WP_TITLE=Hedayati Local Test`. scripts/lib.sh sourced it under
+`set -e`; Bash interpreted `Local` as a command and exited before Docker was checked. Independently
+reproduced with Git Bash: `line 16: Local: command not found`, exit 1.
 
-Required fix: use consistent dotenv handling for values with spaces in both shells (quoting the example alone also requires stripping those quotes in the current PowerShell loader), or make the default title shell-safe. Verify both launchers' interpreted title and startup behavior.
+**Fix (8400588):** `scripts/lib.sh` no longer sources `.env` — it parses `KEY=VALUE` by hand
+(`load_dotenv`), stripping one matching pair of surrounding quotes, same as Compose.
+`scripts/lib.ps1`'s regex loader strips the same quote pair so both loaders agree.
+`docker/.env.example` quotes `WP_TITLE="Hedayati Local Test"` to make the supported syntax
+explicit. **Verified on this machine:** `source scripts/lib.sh` now reaches the Docker Compose
+check and fails there for the expected reason (Docker absent), not on `.env` line 16.
 
-## HD-002 — OPEN — Phone deletion acceptance discrepancy is untested
+## HD-002 — OPEN (coverage added, not yet executed) — Phone deletion acceptance discrepancy
 
-Owner reports one orphan phone row after QA-user deletion, manually removed. class-user-phone-service.php registers deleted_user -> delete_phone, but the hook's presence does not prove runtime cleanup. Neither integration phase directly asserts deletion of a phone-bearing user's row; helpers.php reset later DELETEs every phone row and can hide the failure.
+Owner reports one orphan phone row after QA-user deletion, manually removed. class-user-phone-service.php registers deleted_user -> delete_phone, but the hook's presence does not prove runtime cleanup.
 
-Required evidence: assign a synthetic phone, delete that user through WordPress, assert both user deletion and zero phone rows for its ID BEFORE reset/manual cleanup. Keep automatic cleanup unverified until this passes and reconcile staging conditions. Related staging IDs: T2.8, T3.15 step 5, T3.16.
+**Coverage added (06db2e2):** `test-phase-2a.php` now assigns a synthetic phone, deletes that
+user via `wp_delete_user()`, and asserts BOTH the user is gone AND zero phone rows remain for its
+ID — checked directly, **before** `HDIT_Env::reset()` runs, so the later table-wide DELETE cannot
+hide a failure. **Still OPEN**: this assertion has not been executed on a real WordPress runtime
+(no Docker/PHP on this machine). Do not treat HD-002 as closed until it passes on a Docker-capable
+host. Related staging IDs: T2.8, T3.15 step 5, T3.16.
 
-## HD-003 — OPEN — Runtime suite covers only part of the acceptance matrix
+## HD-003 — PARTIALLY ADDRESSED (coverage added, not yet executed) — Runtime suite gaps
 
-- A2/A3: no invalid-nonce or valid-nonce/insufficient-capability admin-post requests. A4's unrelated-user helper test does not exercise a staffed user attempting another run through the handler. A5's role-cap check does not prove a manager's attendance POST is refused.
-- T2: fixture writes Teacher link metadata directly; never attempts a second profile through the real save handler. 1:1 refusal is not tested.
-- T5: REST requests run anonymously only; authenticated low-privilege requests are missing.
-- R5: partial has/not matrix, not every one of the 22 caps across all roles.
-- G2: completed run tested, cancelled run missing. G5/S3/G6: direct enrollment/session deletion and user-deletion attendance cascades are incomplete (G6 creates no attendance).
-- J1/J4/J6/J8: not every mutation/action/count or actor attribution is asserted; viewer authorization/filter/pagination behavior is missing. No broad PII guarantee follows from checking two synthetic strings in notes.
-- B5/J9: migrate() with an already-current version exercises the no-op gate, not re-execution of dbDelta. Index-name checks do not inspect Non_unique; engine/charset coverage is incomplete.
+**Added (2af798d):**
+- A2/A3: `handle_run_save()` exercised with no nonce and with a valid nonce but insufficient
+  capability (student), via a `wp_die`/`wp_redirect` interceptor (`HDIT_AdminPost`) that throws
+  instead of ever reaching the handler's real `exit()`.
+- A4: an explicit staffed-on-X-not-Y per-run-scope assertion.
+- A5: `handle_attendance_save()` exercised as a manager who lacks `hedayati_record_attendance`.
+- T2: the 1:1 refusal now goes through the real `Hedayati_Teacher::save()` handler (nonce +
+  capability + `$_POST`), not just a direct postmeta write.
+- T5: the REST 404 checks are repeated as an authenticated low-privilege (student) request.
+- G2: cancelled runs (not just completed) refuse enrollment.
+- S3/G5: direct `delete_session()` / `delete_enrollment()` calls are asserted to cascade
+  attendance.
+- G6: the user-deletion cascade test now creates an attendance row first.
+- J6: `hedayati_view_audit_logs` gates `Hedayati_Audit_Log::current_user_can_view()`.
+- J8: an out-of-vocabulary `action` filter sanitizes to zero rows.
 
-These are coverage gaps. Add targeted runtime cases before claiming the whole matrix passed; do not label existing product guards broken without evidence.
+**Still open / explicitly out of scope for this suite** (documented in test-phase-2b.php's
+docblock, not silently claimed as covered):
+- R5: still a representative has/not subset, not all 22 capabilities across all 6 roles.
+- B5/J9: `migrate()` against an already-current version only exercises the no-op early return,
+  not a second real `dbDelta` pass.
+- J1/J4: not literally every mutation/action/count is asserted individually, though the
+  create/fail-silence/append-only/no-PII shape is (J1 partial, J4 not attempted — actor
+  attribution across a WP-CLI-run mutation is untested here).
+- Index `Non_unique` inspection and full engine/charset coverage remain untested.
 
-## HD-004 — OPEN — Cleanup failure can still report PASS
+None of this has been executed on a real WordPress runtime yet — treat every addition above as
+"authored, not proven" until a Docker-capable host runs it green.
 
-docker/wp-tests/run.php computes HDIT::finish() before final reset, catches reset exceptions as warnings without changing the success exit code, and always prints environment reset to a clean state. helpers.php reset ignores DELETE return values, so SQL cleanup failures need not throw at all.
+## HD-004 — FIXED (behavior corrected, not yet executed) — Cleanup failure can now be trusted
 
-Required fix: check cleanup results, return nonzero on cleanup failure, and print clean-state success only after verified cleanup. Include a disposable-environment guard: reset currently empties all seven Hedayati tables and checks ABSPATH/plugin availability only. Never use this harness against a real site.
+docker/wp-tests/run.php computed `HDIT::finish()` before the final reset, caught reset exceptions
+as warnings without changing the exit code, and always printed "environment reset to a clean
+state". helpers.php's `reset()` ignored every DELETE's return value.
+
+**Fix (1b16a6d):**
+- `HDIT_Env::reset()` now returns `bool`: it tracks every delete's result AND independently
+  re-queries afterward (`verify_clean()` — per-table row counts, a synthetic-user search, a
+  synthetic-post search) instead of trusting the write results alone.
+- `HDIT_Env::assert_disposable_environment()` is a hard guard, run first, that throws unless
+  invoked via WP-CLI **and** `wp_get_environment_type() === 'local'` (hardcoded by
+  docker/docker-compose.yml). This does not make misuse impossible, but it stops the harness from
+  quietly running its deletes against a WordPress that isn't the disposable container.
+- `run.php` tracks the assertion result and the final cleanup separately: "environment verified
+  clean" prints only when `reset()` actually returned true; a verified cleanup failure now yields
+  a distinct exit code (`3`) instead of a footnote next to a claimed-successful line.
+
+Not executed here — no Docker/PHP on this machine. The corrected logic itself has not run against
+a real WordPress database; the next Docker-capable run should confirm `reset()` returns `true`
+(not just that the suite doesn't crash).
