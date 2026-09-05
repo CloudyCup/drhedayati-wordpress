@@ -51,6 +51,17 @@ wp-admin (no separate front-end manager dashboard); students never see verificat
   `Hedayati_Account_Security::intercept()` and the portal `template_redirect` guard chains need a
   real HTTP request; real multipart file upload can't be fabricated by WP-CLI. All are explicit
   Phase 4 staging-acceptance items.
+- **Visual completion pass done (2026-09-05).** No local WordPress/PHP/Docker, so all 8 Phase 3
+  user-facing surfaces (`/account/` views, the forced-change screen, `/panel/` home/students/run,
+  About/Contact/Consult/Teachers, the single-course "upcoming runs" part) were reviewed rendered
+  through the **real theme CSS** (`main.css` + `account.css` + `public-pages.css` + `rtl.css`,
+  faithful reconstructed markup) at desktop + mobile widths, RTL, light + dark. Fixes landed in
+  commit `3e274d9` (`fix(phase3): visual-completion pass…`) — CSS + template polish only, no
+  logic/security change: mobile portal-nav overflow + collision, flat panel nav cards, unstyled
+  run/roster/result lists, the inline temp-password reveal, the tall attendance stack, teacher-card
+  alignment + avatar, empty `.hd-page-copy`, forced-change screen chrome, a thin student dashboard,
+  and missing document-upload labels. `verify-phase3.js` 85 → 101; Node total **748/0**. A final
+  visual check on real hardware is folded into Phase 4 staging acceptance.
 
 ## Phase 2D — account shell & student self-service portal (2026-09-05) — IMPLEMENTED, NOT MERGED, NOT STAGING-TESTED
 
