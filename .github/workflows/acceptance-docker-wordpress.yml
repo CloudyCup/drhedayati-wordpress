@@ -16,15 +16,18 @@ name: Acceptance (Docker WordPress)
 #     _hdit_synthetic posts) inside a database that lives only in this job's
 #     ephemeral containers and is destroyed at the end regardless of outcome.
 #
-# Triggers are deliberately narrow: this workflow does not run on pull_request
-# or on other branches — only pushes to the feature branch it was built on,
-# plus an explicit manual run.
+# Triggers (docs/PHASE_2D_PLANNING.md §11): every push to main (catches merges,
+# including fast-forward/squash merges that don't go through a PR), every pull
+# request targeting main (so a new feature branch gets Docker acceptance signal
+# without editing this file per phase), plus an explicit manual run.
 
 on:
   push:
     branches:
-      - feature/phase-2b-academic-operations
-      - feature/phase-2c-student-portal
+      - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch: {}
 
 permissions:
