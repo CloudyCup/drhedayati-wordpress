@@ -9,7 +9,7 @@ reception-created accounts with one-shot temporary passwords (`Hedayati_Account_
 `hedayati_create_students`, `ROLES_VERSION` `2.3.0`, 24 caps — D41); the front-end staff `/panel/`
 (`Hedayati_Staff_Portal`); public About/Contact/Consult/Teachers pages + per-run publication
 opt-in (`Hedayati_Public_Content` — D43); and the course/taxonomy/settings capability-consistency
-fixes (D42). Plugin `1.8.0`, theme `1.2.0`, **no DB schema change** (`CURRENT_DB_VERSION` `2.3.0`).
+fixes (D42). Plugin `1.8.1` (staging lockout-expiry fix), theme `1.2.0`, **no DB schema change** (`CURRENT_DB_VERSION` `2.3.0`).
 See `docs/agent/STATUS.md`'s Phase 3 section for the authoritative summary. Everything below this
 banner still describes `main` unless a line explicitly says otherwise.
 

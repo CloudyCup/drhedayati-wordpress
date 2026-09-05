@@ -284,5 +284,16 @@ function hdit_run_phase_2a(): void {
 	}
 	$blocked = wp_authenticate( $login, $pass );
 	HDIT::is_wp_error( 'a rate-limited identifier is blocked even WITH the correct password', $blocked, 'too_many_retries' );
+
+	$key_method = new ReflectionMethod( Hedayati_Rate_Limiter::class, 'get_transient_key' );
+	$key_method->setAccessible( true );
+	$id_key = (string) $key_method->invoke( null, 'id', $login );
+	$count_before_blocked_retry = (int) get_transient( $id_key );
+	Hedayati_Auth::on_login_failed( $login, new WP_Error( 'too_many_retries' ) );
+	HDIT::eq(
+		'an already-blocked retry does not increment or extend its lockout counter',
+		$count_before_blocked_retry,
+		(int) get_transient( $id_key )
+	);
 	Hedayati_Rate_Limiter::clear_identifier_attempts( $login );
 }
