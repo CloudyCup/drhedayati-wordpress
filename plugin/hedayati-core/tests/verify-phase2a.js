@@ -194,6 +194,8 @@ for (const file of pluginFiles) {
 const authFile = fs.readFileSync(path.join(__dirname, '..', 'includes/class-auth.php'), 'utf8');
 assert("class-auth.php registers phone adapter at priority 30", authFile.includes("add_filter( 'authenticate', [ self::class, 'authenticate_phone' ], 30, 3 );"));
 assert("class-auth.php registers late rate limiter at priority 90", authFile.includes("add_filter( 'authenticate', [ self::class, 'enforce_rate_limit' ], 90, 3 );"));
+assert("wp_login_failed receives the final WP_Error", authFile.includes("add_action( 'wp_login_failed', [ self::class, 'on_login_failed' ], 10, 2 );"));
+assert("an already-blocked retry does not extend its own lockout", /on_login_failed[\s\S]{0,700}too_many_retries[\s\S]{0,120}return;/.test(authFile));
 
 // Check DB schema lock & table existence check
 const dbFile = fs.readFileSync(path.join(__dirname, '..', 'includes/class-db-schema.php'), 'utf8');

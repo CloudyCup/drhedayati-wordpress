@@ -67,6 +67,11 @@ wp-admin (no separate front-end manager dashboard); students never see verificat
   `/panel/` home/run, and the forced password screen rendered without page-level horizontal
   overflow. This exposed WordPress's admin toolbar above the staff and forced-password journeys;
   both flows now suppress it. `verify-phase3.js` is **103/0**; Node total **750/0**.
+- **Staging login correction (2026-09-05).** Plugin `1.8.1` stops a request already rejected as
+  `too_many_retries` from being recorded as another failed credential attempt. The 15-minute
+  transient can now expire even if someone retries while blocked. No threshold, password rule,
+  role, capability, or database schema changed. Hotfix branch `fix/staging-login-lockout`:
+  Node static **752/0** and local real-WordPress acceptance **492/0**.
 
 ## Phase 2D — account shell & student self-service portal (2026-09-05) — IMPLEMENTED, NOT MERGED, NOT STAGING-TESTED
 

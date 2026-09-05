@@ -21,6 +21,13 @@ Branch `feature/phase-3-launch-completion`. Baseline = the preserved Codex/ChatG
 | Real local WordPress browser review | Desktop/mobile, RTL, light/dark: public pages, all account views, panel home/run, and forced-password screen reviewed on genuine HTTP responses; no page-level horizontal overflow. WordPress admin toolbar defect found and fixed for panel/forced flows. |
 | Live staging / production | NOT CONTACTED. |
 
+Plugin `1.8.1` adds a staging-discovered lockout-expiry regression check: `wp_login_failed` now
+receives WordPress's final `WP_Error`, and an error already carrying `too_many_retries` does not
+increment the counter or refresh its expiry. This adds two static assertions and one real
+WordPress-runtime assertion; all prior thresholds and successful-login behavior remain unchanged.
+Hotfix result: Node static **752/0**; local WordPress/PHP 8.3 acceptance **492/0**, synthetic-data
+cleanup verified.
+
 `test-phase-3.php` runtime coverage: temp-password generation (length ≥ 16, entropy classes,
 uniqueness); reception-create → `must_change` marker set + `user_pass` stored only as a WP hash +
 one-shot staff notice consumed exactly once + `account.created` audit (actor = reception, no
