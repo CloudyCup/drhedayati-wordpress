@@ -3,7 +3,7 @@
  * Plugin Name:       Hedayati Core
  * Plugin URI:        https://mystik.ir
  * Description:       هسته عملکردی مجتمع آموزشی دکتر هدایتی — دوره‌ها، طبقه‌بندی‌ها، احراز هویت، متادیتا و توابع کمکی.
- * Version:           1.5.3
+ * Version:           1.6.0
  * Author:            مجتمع آموزشی دکتر هدایتی
  * Author URI:        https://mystik.ir
  * Text Domain:       hedayati-core
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_CORE_VERSION', '1.5.3' );
+define( 'HEDAYATI_CORE_VERSION', '1.6.0' );
 define( 'HEDAYATI_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HEDAYATI_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -59,6 +59,13 @@ require_once HEDAYATI_CORE_DIR . 'includes/class-academic-admin.php';
 // Phase 2C (foundation) — student profile fields only
 require_once HEDAYATI_CORE_DIR . 'includes/class-student-profile.php';
 
+// Phase 2C — student identity, verification, private documents
+require_once HEDAYATI_CORE_DIR . 'includes/class-crypto.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-verification-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-document-storage.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-document-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-student-admin.php';
+
 // ── Hook Registration ─────────────────────────────────────────────────────────
 
 add_action( 'init', [ Hedayati_Post_Types::class, 'register' ] );
@@ -89,6 +96,11 @@ Hedayati_Academic_Admin::init();
 
 // Phase 2C (foundation)
 Hedayati_Student_Profile::init();
+
+// Phase 2C — student identity, verification, private documents
+Hedayati_Verification_Service::init();
+Hedayati_Document_Service::init();
+Hedayati_Student_Admin::init();
 
 // ── Shared helpers (callable from theme without knowing internals) ─────────────
 

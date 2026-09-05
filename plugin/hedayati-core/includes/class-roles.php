@@ -29,7 +29,7 @@ class Hedayati_Roles {
 	/**
 	 * Version tracker for roles/capabilities synchronization.
 	 */
-	public const ROLES_VERSION = '2.1.0';
+	public const ROLES_VERSION = '2.2.0';
 	public const OPTION_ROLES_VERSION = 'hedayati_core_roles_version';
 
 	/**
@@ -94,32 +94,34 @@ class Hedayati_Roles {
 			'reception' => [
 				'display_name' => 'پذیرش و ثبت‌نام',
 				'capabilities' => [
-					'read'                                 => true,
-					'hedayati_lookup_students'             => true,
-					'hedayati_create_enrollments'          => true,
-					'hedayati_edit_enrollments_basic'      => true,
-					'hedayati_view_student_profiles_basic' => true,
-					'hedayati_initiate_verification'       => true,
+					'read'                                   => true,
+					'hedayati_lookup_students'               => true,
+					'hedayati_create_enrollments'            => true,
+					'hedayati_edit_enrollments_basic'        => true,
+					'hedayati_view_student_profiles_basic'   => true,
+					'hedayati_initiate_verification'         => true,
+					'hedayati_upload_student_documents'      => true,
 				],
 			],
 			'hedayati_manager' => [
 				'display_name' => 'مدیر آموزش مجتمع',
 				'capabilities' => [
-					'read'                                 => true,
-					'hedayati_lookup_students'             => true,
-					'hedayati_create_enrollments'          => true,
-					'hedayati_edit_enrollments_basic'      => true,
-					'hedayati_view_student_profiles_basic' => true,
-					'hedayati_initiate_verification'       => true,
-					'hedayati_manage_courses'              => true,
-					'hedayati_manage_teachers'             => true,
-					'hedayati_manage_course_runs'          => true,
-					'hedayati_assign_staff'                => true,
-					'hedayati_verify_students'             => true,
-					'hedayati_view_private_documents'      => true,
-					'hedayati_view_audit_logs'             => true,
-					'hedayati_manage_enrollments'          => true,
-					'hedayati_manage_settings'             => true,
+					'read'                                   => true,
+					'hedayati_lookup_students'               => true,
+					'hedayati_create_enrollments'            => true,
+					'hedayati_edit_enrollments_basic'        => true,
+					'hedayati_view_student_profiles_basic'   => true,
+					'hedayati_initiate_verification'         => true,
+					'hedayati_upload_student_documents'      => true,
+					'hedayati_manage_courses'                => true,
+					'hedayati_manage_teachers'               => true,
+					'hedayati_manage_course_runs'            => true,
+					'hedayati_assign_staff'                  => true,
+					'hedayati_verify_students'               => true,
+					'hedayati_view_private_documents'        => true,
+					'hedayati_view_audit_logs'               => true,
+					'hedayati_manage_enrollments'            => true,
+					'hedayati_manage_settings'               => true,
 				],
 			],
 		];
@@ -154,6 +156,7 @@ class Hedayati_Roles {
 			'hedayati_view_audit_logs',
 			'hedayati_manage_enrollments',
 			'hedayati_manage_settings',
+			'hedayati_upload_student_documents',
 		];
 	}
 

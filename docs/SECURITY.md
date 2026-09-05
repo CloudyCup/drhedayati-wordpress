@@ -47,14 +47,14 @@ authorization must never depend on hidden UI.
   | `student` | view own portal, edit own profile, view own enrollments, upload own documents | everything else |
   | `teacher_assistant` | view assigned runs, view assigned roster | attendance, session management, student PII beyond roster |
   | `teacher` | + manage assigned sessions, record attendance | student management, verification, settings |
-  | `reception` | lookup students, create/basic-edit enrollments, basic profile view, initiate verification | `manage_options`, `delete_users`, `edit_theme_options`, course/run management, verify students, private documents, audit logs |
+  | `reception` | lookup students, create/basic-edit enrollments, basic profile view, initiate verification, staff-assisted national-ID/document intake | `manage_options`, `delete_users`, `edit_theme_options`, `edit_user`, course/run management, verify students (decrypt), view/download private documents, audit logs |
   | `hedayati_manager` | operational: manage courses, teachers, runs, staff assignment, enrollments, verify students, view private documents, view audit logs, manage settings | `manage_options` (no WordPress technical administration) |
   | `administrator` (native) | all of the above **plus** WordPress technical administration | — |
 
 - **No custom `super_admin`** (WordPress reserves that for Multisite). Technical control =
   `administrator`; institute operations = `hedayati_manager`.
-- **22 granular `hedayati_*` capabilities** (21 from Phase 2A + `hedayati_manage_teachers` added
-  by Phase 2B, roles schema `2.1.0` — D28).
+- **23 granular `hedayati_*` capabilities** (21 from Phase 2A + `hedayati_manage_teachers` from
+  Phase 2B (D28) + `hedayati_upload_student_documents` from Phase 2C (D40), roles schema `2.2.0`).
   - **Consumed by Phase 2B** (`class-academic-admin.php`): `hedayati_manage_course_runs` (screen
     access + run/session CRUD), `hedayati_manage_teachers` (Teacher CPT), `hedayati_assign_staff`
     (run staff), `hedayati_create_enrollments` / `hedayati_manage_enrollments` (enrollments),
@@ -65,17 +65,30 @@ authorization must never depend on hidden UI.
     `hedayati_edit_own_profile` (a user editing their own address fields) and
     `hedayati_view_student_profiles_basic` (staff viewing/editing another user's fields, in
     addition to core `edit_user`).
-  - **Still defined but not yet consumed:** `hedayati_verify_students`,
-    `hedayati_view_private_documents`, `hedayati_view_audit_logs`, `hedayati_initiate_verification`,
-    `hedayati_view_own_portal` / `hedayati_view_own_enrollments` / `hedayati_upload_own_documents`,
-    and the teacher/TA `view_assigned_*` caps (the scoped teacher/TA/student portals are Phase 2D).
-    When building those, add the ownership/scope check alongside.
+  - **Consumed by Phase 2C identity/verification/documents** (`class-student-admin.php`,
+    `class-verification-service.php`, `class-document-service.php`):
+    `hedayati_initiate_verification` (reception/manager — start a review), `hedayati_verify_students`
+    (manager/admin only — approve/reject **and** the one path that may decrypt a national ID, checked
+    both in the controller and, deliberately, inside `Hedayati_Verification_Service` itself — D36),
+    `hedayati_view_private_documents` (manager/admin only — download/archive/purge documents),
+    `hedayati_upload_student_documents` (reception/manager only — staff-assisted national-ID
+    intake + document upload on behalf of a student, plus a target-must-hold-`student`-role scope
+    check; deliberately **not** `edit_user` — D40). `hedayati_upload_own_documents` /
+    `hedayati_view_own_portal` are wired into the service authorization *contracts* (ready for a
+    Phase 2D portal caller) but have no reachable caller yet — Phase 2C ships no student-facing UI.
+  - **Still defined but not yet consumed:** the teacher/TA `view_assigned_*` caps and
+    `hedayati_view_own_enrollments` await the scoped teacher/TA/student portals (Phase 2D). When
+    building those, add the ownership/scope check alongside.
 - **Academic-operations authorization boundary:** the service classes
   (`Hedayati_*_Service`, `Hedayati_Audit_Log`) are a capability-agnostic data layer — exactly like
   `Hedayati_User_Phone_Service` in Phase 2A. Every capability and nonce check lives in the caller
-  (`class-academic-admin.php` today; the Phase 2D portals later). A future REST/AJAX/CLI caller
-  MUST repeat those checks. `Hedayati_Audit_Log::current_user_can_view()` (→ `hedayati_view_audit_logs`)
-  is provided for read callers; the shipped viewer calls it.
+  (`class-academic-admin.php` / `class-student-admin.php` today; the Phase 2D portals later). A
+  future REST/AJAX/CLI caller MUST repeat those checks. `Hedayati_Audit_Log::current_user_can_view()`
+  (→ `hedayati_view_audit_logs`) is provided for read callers; the shipped viewer calls it.
+  **`Hedayati_Verification_Service::get_national_id_decrypted()` is the one deliberate exception**
+  to this boundary (D36): it enforces `hedayati_verify_students` inside the service itself, in
+  addition to the controller — defense in depth for the single highest-risk read in the plugin.
+  Do not "fix" this back to the general capability-agnostic pattern.
 - **Capability sync is future-safe:** on version bump the plugin removes only capabilities it
   previously managed (tracked in `hedayati_core_managed_capabilities`) — never core or
   third-party caps.
@@ -119,12 +132,30 @@ authorization must never depend on hidden UI.
 
 - `hedayati_user_phones` holds real phone numbers. Access it only through
   `Hedayati_User_Phone_Service` (prepared statements, normalization, race handling).
-- Phase 2C foundation stores a student **mailing address** (`hedayati_address` / `hedayati_city` /
+- Phase 2C stores a student **mailing address** (`hedayati_address` / `hedayati_city` /
   `hedayati_postal_code`) in `wp_usermeta` — standard-sensitivity contact PII, `show_in_rest`
-  false, capability-gated read/write via `Hedayati_Student_Profile`. **National ID, verification
-  records and documents are deliberately NOT stored** — see `docs/OPEN_QUESTIONS.md` Q10–Q13 and
-  D15/D16. Do not add a national-ID field until `HEDAYATI_DATA_ENCRYPTION_KEY` + a separate HMAC
-  secret are provisioned in server config (outside Git) with a key-versioning scheme.
+  false, capability-gated read/write via `Hedayati_Student_Profile`.
+- **National ID** (`hedayati_student_verification.national_id_enc`, D36): encrypted at rest
+  (AES-256-GCM via `Hedayati_Crypto`), with a separate keyed-HMAC fingerprint
+  (`national_id_hmac`) for DB-level duplicate detection. `HEDAYATI_DATA_ENCRYPTION_KEY` /
+  `HEDAYATI_DATA_HMAC_KEY` must each be a base64 string decoding to exactly 32 raw bytes, defined
+  in `wp-config.php` / server config **outside Git**; a missing or malformed key means the feature
+  fails closed — no plaintext fallback exists anywhere. **Only** `hedayati_verify_students` may
+  decrypt a value, through the one narrow "نمایش شناسه ملی" admin action (POST-only, nonced,
+  no-store headers, audited without the value) — students, reception, teachers and TAs can never
+  see a decrypted national ID, including their own.
+- **Verification** (`hedayati_student_verification.status`, D37): `unverified` / `pending` /
+  `verified` / `rejected` with an **enforced** transition table (`Hedayati_Verification_Service`)
+  — `initiate()`/`approve()`/`reject()` refuse illegal transitions rather than allowing any value
+  at any time. A legal first/last-name change resets a `verified` record; phone/address/email
+  changes do not.
+- **Private documents** (`hedayati_documents`, D38): bytes never touch this table or any public
+  path — `Hedayati_Document_Storage` resolves an outside-webroot root (required on
+  staging/production; the protected `wp-content` fallback is local/Docker-CI only), validates
+  real content (not client-declared MIME) against a PDF/JPEG/PNG allowlist, and canonicalizes +
+  containment-checks every storage-key lookup before touching the filesystem. Retention is
+  manual-only: a staff "archived" confirmation, a computed 7-day purge-eligibility window, and an
+  explicit staff purge action — never a cron job.
 - Deleting a WordPress user triggers `delete_phone` cleanup plus the Phase 2B cleanup hooks
   (enrollments + that student's attendance deleted; TA staff rows removed; Teacher profile
   unlinked; `attendance.recorded_by` nulled). Preserve these hooks.
@@ -132,47 +163,25 @@ authorization must never depend on hidden UI.
   `Hedayati_Settings::tel_uri()`.
 - Never log phone numbers, and never place them (or any identifier) in URLs/query strings.
 - **Audit log** (`hedayati_audit_log`, D33): metadata only — actor id, dotted action, object
-  type/id, a short PII-free `note`, UTC timestamp. **No ip, no user-agent** (Q13 retention policy
-  unresolved), no `updated_at`, no serialized context. `note` may contain safe enums (status /
-  role names) and internal record ids (`user #45`, `run #12`) for the authorized reader
-  (`hedayati_view_audit_logs`) — **never** a name, phone, national ID, or document reference.
-  `Hedayati_Audit_Log` has no update/delete method (append-only at the API); the table is excluded
-  from every deletion cascade so history survives the objects it references.
+  type/id, a short PII-free `note`, UTC timestamp. **No ip, no user-agent, ever** (D39 — a
+  permanent decision, not a policy pending resolution), no `updated_at`, no serialized context.
+  `note` may contain safe enums (status / role names) and internal record ids (`user #45`,
+  `run #12`) for the authorized reader (`hedayati_view_audit_logs`) — **never** a name, phone,
+  national ID, or document reference/filename. `Hedayati_Audit_Log` has no update/delete method
+  (append-only at the API); the table is excluded from every deletion cascade so history survives
+  the objects it references.
 - **`teacher` CPT is `show_in_rest => false`** (D34) — a rest-enabled CPT leaks its published
   posts via `/wp-json` regardless of `public`/`publicly_queryable`.
-
-## Sensitive data — planned (Phase 2C, not yet built)
-
-- **Private student documents** (national ID card, birth certificate, etc.):
-  - Bytes stored **outside** `public_html` where the host allows PHP access; a verified protected
-    directory inside the web root only as a fallback. **Never** a normal Media Library URL.
-  - Application-controlled streaming/download **after** capability **and** ownership/scope checks.
-  - MIME/extension allowlist, size limits, generated storage names, no executable uploads.
-  - Records store an abstract `storage_backend` + `storage_key` (not a permanent public path),
-    plus `archive_reference` / `archived_at` / `deleted_at` lifecycle fields.
-- **National ID:** reversible encryption with a dedicated **`HEDAYATI_DATA_ENCRYPTION_KEY`** kept
-  in `wp-config.php` / server config (outside Git), with key **versioning/rotation** support.
-  Duplicate detection uses a **separate keyed HMAC**, not the encryption key. Do **not** derive
-  either from `SECURE_AUTH_KEY` or any rotatable WordPress salt (rotating salts must not make
-  business records unreadable).
-- **Verification** is an independent state (unverified/pending/verified/rejected), separate from
-  role and from phone verification. No approved policy yet links verification to any benefit
-  (certificates, exams) — do not assume one.
-- **Audit logging:** application-level, append-only (do not call a normal DB table "immutable").
-  Log upload/access/review/deletion/archive and verification actions — metadata only, never
-  document contents. A retention/privacy policy for IP/user-agent audit data is **required but not
-  yet decided**.
-- The institute intends to move sensitive documents to local storage roughly every 48 hours; after
-  transfer the online bytes may be removed while minimal metadata + archive reference + audit
-  history remain. Protocol (acknowledgement, retry, deletion timing, restore) is **not specified**.
 
 ---
 
 ## Secrets & repository hygiene
 
 - Never commit: hosting/cPanel credentials, database passwords, API keys, WordPress salts,
-  `HEDAYATI_DATA_ENCRYPTION_KEY` or any encryption/HMAC material, `.env` files, or real student
-  personal data.
+  `HEDAYATI_DATA_ENCRYPTION_KEY` / `HEDAYATI_DATA_HMAC_KEY` or any encryption/HMAC material, real
+  private student documents, `.env` files, or real student personal data. The only exception is
+  the throwaway, committed, test-only key pair in `docker/docker-compose.yml` — scoped explicitly
+  to the disposable Docker-CI containers, never usable against a real database (see D36).
 - `.gitignore` already excludes `.env*` (except `.env.example`), `node_modules/`, `vendor/`,
   `*.zip`, `*.rar`, build dirs, `wp-content/uploads/`, `*.log`.
 - `reference-react/AUDIT_NOTES.md` records that the prototype's `.env` (dev credentials) and git

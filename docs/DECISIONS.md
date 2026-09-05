@@ -372,3 +372,114 @@ header `Version:` inside the plugin ZIP match `plugin/hedayati-core/hedayati-cor
 while canonical source was `1.5.0` — a live deploy-the-wrong-code hazard. A verifying build script
 + removing the stale copies (D27) makes that mistake structurally hard. ZIPs stay gitignored;
 never commit a binary artifact; always rebuild.
+
+---
+
+## Decisions recorded during Phase 2C implementation (2026-09-05)
+
+Resolves `docs/OPEN_QUESTIONS.md` Q10–Q13 by explicit owner decision. Implemented on
+`feature/phase-2c-student-portal`.
+
+## D36 — National ID: AES-256-GCM + keyed HMAC, strict key format, one privileged reveal path
+
+**Decided:** national ID is stored encrypted (`Hedayati_Crypto`, AES-256-GCM) in
+`hedayati_student_verification.national_id_enc`, with a separate keyed-HMAC fingerprint
+(`national_id_hmac`) for DB-level `UNIQUE`-constraint duplicate detection — the same pattern as
+`hedayati_user_phones` (D7). Both `HEDAYATI_DATA_ENCRYPTION_KEY` and `HEDAYATI_DATA_HMAC_KEY` must
+be base64-encoded strings that decode to exactly 32 raw bytes; a missing or malformed key means
+`Hedayati_Crypto::is_configured()` is false and every dependent write/read fails closed — there is
+no plaintext or weak-cipher fallback anywhere. Neither key is ever derived from `SECURE_AUTH_KEY`
+or any rotatable WordPress salt. Key rotation is version-tagged in the encrypted blob
+(`"{version}:{iv}:{ciphertext}"`) so a future key change does not require a format migration.
+**`get_national_id_decrypted()` is the one deliberate exception** to the plugin's otherwise
+capability-agnostic-service convention: it enforces `current_user_can`-equivalent
+(`user_can( $viewer_id, 'hedayati_verify_students' )`) *inside the service itself*, in addition to
+the controller checking the same capability — defense in depth for the single highest-risk read in
+the codebase. The only UI path that ever renders the decrypted value is one narrow, POST-only,
+nonced, `hedayati_verify_students`-gated "نمایش شناسه ملی" admin action, which sends no-store/
+no-cache headers, never persists the value to a transient/notice, and audits `identity.viewed`
+without the value. Students, reception, teachers, and TAs can never see a decrypted national ID.
+**Why:** the owner requires national ID for verified profiles but explicitly ruled out plaintext
+storage and any student self-decryption; D15's key-management design is now built exactly as
+specified, plus the additional defense-in-depth check the review round added on top of it.
+**Replaces:** the blocked status of D15/Q10.
+
+## D37 — Verification workflow: enforced transitions, identity-change reset, no override
+
+**Decided:** `unverified` / `pending` / `verified` / `rejected` with an **enforced** state machine
+(`Hedayati_Verification_Service`), not the free value-to-value movement used by Phase 2B's
+operational statuses: `unverified|rejected → pending` (`initiate()`, refuses if already
+pending/verified), `pending → verified|rejected` (`approve()`/`reject()`, refuse if not pending),
+and `verified` exits **only** through `reset_for_identity_change()` — never a direct API call, so
+reception cannot accidentally bounce a verified student back to pending by re-initiating.
+`approve()`/`reject()` additionally require a national ID on file. A legal first/last-name change
+resets a verified record to `unverified`, detected via the `update_user_meta` action (fired before
+the meta `UPDATE` query, so the old value is still readable) — **not** `profile_update`, whose
+`$old_user_data->first_name`/`last_name` are usermeta-backed magic properties that live-query
+`get_user_meta()` on access and would already reflect the *new* value by the time `profile_update`
+fires (a real bug caught by the Docker acceptance suite during implementation, not a design
+choice). Phone, address, and email changes do **not** reset verification — phone verification
+stays independent, per explicit instruction not to conflate the two systems. Rejection is reversible: `reject()` then a later `initiate()` returns to
+`pending`. No manager/administrator override of this state machine exists — a future explicit
+decision if the institute asks for one, not an implicit "any state → any state" escape hatch.
+Benefit linkage (`docs/REQUIREMENTS.md` 8.6) remains unapproved and unbuilt, unchanged from before.
+**Why:** the owner approved the four states and reset-on-identity-change, but was explicit that
+uncontrolled transitions were a real operational risk (an accidental re-initiate silently
+discarding a verified status) — the enforced table makes that structurally impossible rather than
+relying on staff discipline.
+**Replaces:** the blocked status of Q11.
+
+## D38 — Private documents: real content-sniffing, path-containment hardening, environment-gated storage, manual retention
+
+**Decided:** `Hedayati_Document_Storage` resolves an outside-webroot storage root
+(`HEDAYATI_PRIVATE_UPLOADS_DIR`) that is **required** on any environment except
+`wp_get_environment_type() === 'local'`; the protected `wp-content/uploads/hedayati-private/`
+fallback (Deny-all `.htaccess` + silence `index.php`) is local/Docker-CI only and fails closed
+everywhere else. Uploaded content is validated by real content-sniffing — `finfo` on the actual
+bytes, a `%PDF-` magic-header check for PDF, and a `getimagesize()` structural check for
+JPEG/PNG — not the client-declared MIME type or file extension, against a fixed
+PDF/JPEG/PNG allowlist; anything that cannot be confidently classified is rejected, not
+best-guess-accepted. Every `stream()`/`delete()` call re-resolves the requested `storage_key`
+against a strict allowlist regex, then canonicalizes both the candidate path and the storage root
+with `realpath()` and requires true containment (path-separator-aware, not a string prefix) —
+rejecting traversal, absolute keys, and symlink escapes before any filesystem call. Storage keys
+are randomized (`wp_generate_password`), never derived from user input or the original filename.
+Upload failure consistency: bytes are written before the metadata row is inserted, and a failed
+insert immediately deletes the orphaned bytes. Purge failure consistency: `deleted_at` is only set
+after a successful filesystem delete; a delete failure returns `purge_failed` (row unchanged, file
+presumed to still exist); a delete-succeeds-but-DB-update-fails case returns
+`purge_partially_failed` and is logged distinctly rather than silently believed clean. Retention is
+manual only: `mark_archived()` records a staff confirmation (no real offsite-transfer mechanism is
+implemented or assumed); `purge_eligible()` computes a 7-day-since-archived window; purging bytes
+is always an explicit staff action from the admin screen, never a cron job.
+**Why:** D14's design (outside-webroot, abstract storage reference, capability+ownership-gated
+streaming) is now built, with the review round's additional requirements: `wp_check_filetype_and_ext()`
+alone is not sufficient content-sniffing for this threat model; a DB `storage_key` must never be
+trusted blindly against the filesystem; and a retention system must never let a row lie about
+whether bytes still exist.
+**Replaces:** the blocked status of D14/Q12 (D14 itself is not replaced, just implemented).
+
+## D39 — Audit log IP/UA: permanently decided against (closes Q13)
+
+**Decided:** the metadata-only, append-only audit log (D33) is not extended with IP address or
+user-agent capture, and this is not a deferred decision awaiting a retention policy — the owner
+explicitly instructed against ever collecting this data. `docs/REQUIREMENTS.md` 12.10's IP/UA
+wording is superseded by this decision.
+**Why:** removes an open question that had no forcing function; the metadata-only log already
+satisfies the operational auditability need.
+
+## D40 — Dedicated `hedayati_upload_student_documents` capability
+
+**Decided:** staff-assisted national-ID intake and document upload (on behalf of a student) are
+gated on a new, dedicated capability `hedayati_upload_student_documents`, assigned only to
+`reception` and `hedayati_manager` (and `administrator` via the existing "augment admin with all
+managed caps" sync) — **not** `hedayati_edit_own_profile`/`edit_user` (which would have implied WP
+core user-management power reception does not and should not hold) and **not** overloaded onto
+`hedayati_initiate_verification` (which is specifically about starting a review, not capturing
+intake data). Every staff-assisted action additionally requires the target account to hold the
+`student` role (service-level scope check). `ROLES_VERSION` → `2.2.0`; managed capability count
+22 → 23.
+**Why:** an earlier draft of this work proposed reusing `hedayati_view_student_profiles_basic` +
+core `edit_user`, which the review round correctly rejected — reception intentionally lacks
+WordPress user-management capabilities, and granting `edit_user` for this purpose would have been
+a real privilege escalation, not a documentation shortcut.

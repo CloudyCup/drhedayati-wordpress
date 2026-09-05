@@ -63,6 +63,15 @@ class Hedayati_Academic_Validation {
 	 */
 	public const INSTRUCTOR_ROLES = [ 'primary_instructor', 'additional_instructor' ];
 
+	/**
+	 * Phase 2C — student identity verification review states. Unlike the Phase 2B
+	 * vocabularies above, this one has an ENFORCED transition table (see
+	 * Hedayati_Verification_Service) rather than free value-to-value movement —
+	 * an identity-verification decision is not equivalent to an operational status
+	 * field.
+	 */
+	public const VERIFICATION_STATUSES = [ 'unverified', 'pending', 'verified', 'rejected' ];
+
 	// ── Business-state sanitizers (allowlist + safe fallback) ──────────────────
 
 	public static function sanitize_run_status( string $value, string $fallback = 'draft' ): string {

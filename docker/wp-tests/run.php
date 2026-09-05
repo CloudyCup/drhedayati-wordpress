@@ -33,6 +33,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 require __DIR__ . '/helpers.php';
 require __DIR__ . '/test-phase-2a.php';
 require __DIR__ . '/test-phase-2b.php';
+require __DIR__ . '/test-phase-2c.php';
 
 global $wpdb;
 
@@ -65,6 +66,7 @@ try {
 	} else {
 		hdit_run_phase_2a();
 		hdit_run_phase_2b();
+		hdit_run_phase_2c();
 		$assertions_exit = HDIT::finish();
 		$suite_completed = true;
 	}

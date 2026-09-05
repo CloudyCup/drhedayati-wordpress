@@ -69,16 +69,20 @@ several items still need institute decisions (marked ❓, see the bottom of this
    own matrix never tested the public theme; this was never part of Phase 2B's actual acceptance
    scope. ~~(c) close Phase 2A behavioural acceptance first~~ — **done 2026-09-03** (non-destructive
    gate; Category 4 deferred, not required).
-2. **Phase 2C — student identity & security.** 🟡 **Foundation slice done** on
-   `feature/phase-2b-academic-operations`: address/city/postal-code profile fields in usermeta
-   with an extensible registry + server-side normalization (`Hedayati_Student_Profile`).
-   The **metadata-only append-only audit log** is now **built** (`hedayati_audit_log`, migration
-   `2.2.0`, `Hedayati_Audit_Log`, wired into every Phase 2B mutation + a read-only viewer — D33).
-   **Still blocked on institute policy** (`docs/OPEN_QUESTIONS.md` Q10–Q13): verification workflow
-   and states (reset rules + benefit linkage); `HEDAYATI_DATA_ENCRYPTION_KEY` + key versioning +
-   separate HMAC provisioned outside Git **before** any national ID; private document
-   upload/storage-outside-webroot/authorized streaming/lifecycle; the audit log's **IP/UA fields**
-   + a retention/rotation policy.
+2. **Phase 2C — student identity & security.** 🟢 **Built** on
+   `feature/phase-2c-student-portal` (branched from merged Phase 2B): address/city/postal-code
+   profile fields in usermeta (`Hedayati_Student_Profile`); the metadata-only append-only audit
+   log (`hedayati_audit_log`, `Hedayati_Audit_Log`, D33); **and now** national ID (encrypted at
+   rest + keyed-HMAC duplicate detection, `Hedayati_Crypto` + `Hedayati_Verification_Service`,
+   D36), an enforced verification-state workflow (D37), and private document
+   upload/storage-outside-webroot/authorized streaming/manual-retention (`Hedayati_Document_Storage`
+   + `Hedayati_Document_Service`, D38). See `docs/OPEN_QUESTIONS.md` Q10–Q13 (all resolved) and
+   `docs/DECISIONS.md` D36–D40. Audit log IP/UA fields are **permanently** not added (D39, not a
+   deferred policy). **Merge gate:** Node static suites 564/0; the extended `Acceptance (Docker
+   WordPress)` GitHub Actions runtime suite must be green (see `docs/agent/STATUS.md`); staging
+   execution of `docs/PHASE_2C_ACCEPTANCE.md` and any deploy remain separate, owner-approved steps.
+   Benefit linkage (verification unlocking certificates/exams) remains unapproved and unbuilt —
+   `docs/REQUIREMENTS.md` 8.6, unchanged.
 3. **Phase 2D — interfaces** (built on proven backend services, not mock data): branded
    login/registration/password-reset; student portal (profile, verification status, documents,
    enrollments/sessions); teacher & TA portal (assigned runs/rosters/sessions/attendance);
@@ -143,7 +147,8 @@ several items still need institute decisions (marked ❓, see the bottom of this
 ## Items needing an institute / owner decision before implementation
 
 - Does identity verification unlock any benefit (certificates, accredited exams)? What documents
-  are mandatory? Retention period for documents and for IP/user-agent audit data?
+  are mandatory? (Document web-host retention — 7 days post-archive-confirmation, then manual
+  purge — and audit IP/UA — never collected — are now resolved, D38/D39.)
 - Consultation page: form fields, where submissions go (email? CRM? WP admin?), spam handling.
 - Impact-section statistics: the actual numbers, and Customizer vs plugin-settings as the editor.
 - Course category default ordering behavior.
