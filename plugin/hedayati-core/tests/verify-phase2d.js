@@ -43,13 +43,30 @@ assert('has ABSPATH guard', authUi.includes("if ( ! defined( 'ABSPATH' ) ) {"));
 assert('forces users_can_register to false regardless of the stored option (no self-registration, ever)', authUi.includes("add_filter( 'option_users_can_register', '__return_false' )"));
 assert('branded login assets enqueued via login_enqueue_scripts', authUi.includes("'login_enqueue_scripts'"));
 assert('login CSS is a theme asset (get_theme_file_uri), not hardcoded into the plugin URL', authUi.includes('get_theme_file_uri(') && authUi.includes('get_theme_file_path('));
-assert('lostpassword_errors filter registered for enumeration hardening', authUi.includes("'lostpassword_errors'"));
 {
 	const src = codeOnly(authUi);
-	assert('enumeration hardening neutralizes invalid_email/invalidcombo/invalid_username specifically', /invalid_email/.test(src) && /invalidcombo/.test(src) && /invalid_username/.test(src));
-	assert('enumeration hardening does NOT swallow empty_username (real UX error, not an existence leak)', !/empty_username/.test(src));
+
+	// Regression guard (release-blocking defect, fixed): a `lostpassword_errors`
+	// filter MUST always return WP_Error (its documented contract —
+	// retrieve_password() calls $errors->has_errors() on the return value
+	// unconditionally, so a boolean fatals). The fix removes that filter
+	// entirely rather than trying to satisfy the contract while faking
+	// success, so the strongest regression guard is that the filter is not
+	// registered at all.
+	assert('REGRESSION GUARD: lostpassword_errors is NOT filtered (the earlier boolean-return defect is gone, not just patched)', !src.includes("'lostpassword_errors'"));
+	assert('REGRESSION GUARD: no method in this file can return a bare `true` where a WP_Error is expected (no lingering true|WP_Error return type on a *_errors handler)', !/function \w*errors\w*\([^)]*\):\s*true\|WP_Error/i.test(src));
+
+	assert('enumeration hardening now hooks login_form_lostpassword (an action, not a filter — no return-type contract to violate)', src.includes("add_action( 'login_form_lostpassword', [ self::class, 'handle_lostpassword_request' ] )"));
+	assert('handle_lostpassword_request() only acts on a POST submission (never intercepts the plain GET form display)', /function handle_lostpassword_request\(\)[\s\S]{0,200}REQUEST_METHOD/.test(src));
+	assert('handle_lostpassword_request() leaves an empty submission untouched (real validation feedback, not an existence leak)', /function handle_lostpassword_request\(\)[\s\S]{0,600}'' === \$login[\s\S]{0,100}return;/.test(src));
+	assert('handle_lostpassword_request() calls WordPress\'s real, unmodified retrieve_password() — reset-key/email generation is never reimplemented', /function handle_lostpassword_request\(\)[\s\S]{0,800}retrieve_password\(\);/.test(src));
+	assert('handle_lostpassword_request() never inspects retrieve_password()\'s return value (no is_wp_error/has_errors/if-check on its result)', !/retrieve_password\(\)[\s\S]{0,80}(is_wp_error|has_errors|if\s*\()/.test(src));
+	assert('handle_lostpassword_request() always redirects to the exact native WordPress success URL, unconditionally', src.includes("wp_safe_redirect( 'wp-login.php?checkemail=confirm' )"));
+	{
+		const handlerBody = (src.match(/function handle_lostpassword_request\(\)[\s\S]*?\n\t\}/) || [''])[0];
+		assert('handle_lostpassword_request() never sends mail or creates a user itself (no wp_mail/wp_insert_user/wp_create_user call)', handlerBody.length > 0 && !/(wp_mail|wp_insert_user|wp_create_user)\s*\(/.test(handlerBody));
+	}
 }
-assert('neutralize_lostpassword_enumeration can return true (fakes the same success path as a real account)', /function neutralize_lostpassword_enumeration[\s\S]{0,400}return true;/.test(authUi));
 assert('login_redirect filter registered for role-aware routing', authUi.includes("'login_redirect'"));
 assert('student login redirect targets the account URL via Hedayati_Student_Portal, not a hardcoded path', /student_login_redirect[\s\S]{0,300}Hedayati_Student_Portal::get_account_url\(\)/.test(authUi));
 assert('wp-admin block hooked on admin_init', authUi.includes("add_action( 'admin_init', [ self::class, 'maybe_redirect_student_away_from_admin' ] )"));

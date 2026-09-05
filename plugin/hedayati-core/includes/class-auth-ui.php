@@ -15,14 +15,45 @@
  *
  * Enumeration resistance: the phone-login path already returns a generic error
  * (`Hedayati_Auth`, Phase 2A). This class extends the same discipline to the
- * password-reset request flow via the `lostpassword_errors` filter — an
- * account-existence-revealing error code is converted to the same "check your
- * email" success response a real account gets, so a requester cannot tell
- * whether the identifier they submitted belongs to a real account. WordPress's
- * own default username/email login error wording is a separate, pre-existing,
- * documented limitation (see docs/PHASE_2D_PLANNING.md) — not touched here, to
- * avoid broad changes to WordPress's own core error branching beyond the one
- * documented, tested hardening point.
+ * password-reset request flow — WITHOUT filtering `lostpassword_errors`.
+ *
+ * An earlier revision of this class filtered `lostpassword_errors` and
+ * returned boolean `true` for an account-existence-revealing error code. That
+ * violates the filter's contract: `retrieve_password()` (wp-includes/user.php)
+ * calls `$errors->has_errors()` directly on whatever `apply_filters(
+ * 'lostpassword_errors', $errors, $user_data )` returns, unconditionally — a
+ * non-WP_Error return value fatals ("Call to a member function has_errors() on
+ * bool") on exactly the request this class exists to protect: an unknown-
+ * account password-reset attempt. Deleting the error codes from inside that
+ * filter is also insufficient on its own, because WordPress adds `invalidcombo`
+ * itself when `$user_data` is false — a re-add this class cannot reliably race
+ * against from inside that one filter.
+ *
+ * The fix does not filter `lostpassword_errors` at all, so there is no
+ * WP_Error/boolean contract to violate. Instead, `handle_lostpassword_request()`
+ * hooks the `login_form_lostpassword` action — fired by wp-login.php's
+ * `lostpassword`/`retrievepassword` case for both a plain GET (form display,
+ * left untouched) and a submitted POST that did not already redirect (a
+ * successful reset already exits before this action can fire, at whichever
+ * point in that case block WordPress calls it). When a non-empty identifier
+ * was submitted, this method calls the REAL `retrieve_password()` itself
+ * (idempotent: if WordPress core already called it earlier in the same
+ * request, calling it again for an unknown account is a harmless no-op — it
+ * still sends no email and creates no account; for a real account it is, at
+ * worst, a second legitimate reset email, never a security issue) and then
+ * ALWAYS redirects to the exact same `wp-login.php?checkemail=confirm` URL
+ * used by a genuine success — regardless of whether the account existed. The
+ * outward response (redirect target, HTTP status, rendered message) is
+ * therefore byte-identical for an existing and a nonexistent identifier,
+ * without this class ever inspecting, discarding, or manufacturing a
+ * WP_Error. An empty submission (`user_login` missing/blank) is left
+ * untouched — that is a real form-validation message, not an
+ * account-existence leak, so WordPress's native "enter a username or email"
+ * feedback still renders normally.
+ *
+ * WordPress's own default username/email LOGIN error wording (not
+ * password-reset) is a separate, pre-existing, documented limitation (see
+ * docs/PHASE_2D_PLANNING.md) — not touched here.
  *
  * @package Hedayati_Core
  */
@@ -44,8 +75,9 @@ class Hedayati_Auth_UI {
 		add_filter( 'login_headerurl', [ self::class, 'login_header_url' ] );
 		add_filter( 'login_headertext', [ self::class, 'login_header_text' ] );
 
-		// Password-reset enumeration hardening.
-		add_filter( 'lostpassword_errors', [ self::class, 'neutralize_lostpassword_enumeration' ], 10, 2 );
+		// Password-reset enumeration hardening — NOT a lostpassword_errors
+		// filter (see the class docblock for why that approach is unsafe).
+		add_action( 'login_form_lostpassword', [ self::class, 'handle_lostpassword_request' ] );
 
 		// Role-aware post-login routing.
 		add_filter( 'login_redirect', [ self::class, 'student_login_redirect' ], 10, 3 );
@@ -88,32 +120,38 @@ class Hedayati_Auth_UI {
 	// ── Password-reset enumeration hardening ────────────────────────────────
 
 	/**
-	 * `retrieve_password()` (wp-includes/user.php) returns
-	 * `apply_filters( 'lostpassword_errors', $errors, $user_login )` at each of
-	 * its early-return validation-failure points, each with exactly one error
-	 * code already added. wp-login.php then does `if ( ! is_wp_error( $errors ) )`
-	 * to decide between the generic "check your email" success redirect and
-	 * showing the error. Returning `true` (not a WP_Error) here for the specific
-	 * codes that reveal account existence makes `is_wp_error()` false, so
-	 * wp-login.php takes the exact same success path a real account gets —
-	 * indistinguishable from the outside. `empty_username` (nothing submitted)
-	 * is left alone: it's a form-validation message, not an account-existence
-	 * leak, so a real user still gets useful feedback for an empty submission.
+	 * See the class docblock for the full design rationale. Summary: never
+	 * inspects or manufactures a WP_Error; always gives an existing and a
+	 * nonexistent identifier the identical outward redirect.
 	 *
-	 * @param WP_Error   $errors
-	 * @param string|null $user_data
-	 * @return true|WP_Error
+	 * Deliberately never sends an email itself, never creates an account, and
+	 * never branches its own behavior on whether the account exists — the ONE
+	 * call into WordPress's real `retrieve_password()` is the only place an
+	 * email can be sent, and it is WordPress's own native logic (unmodified)
+	 * that decides whether that email actually goes out.
 	 */
-	public static function neutralize_lostpassword_enumeration( WP_Error $errors, $user_data ): true|WP_Error {
-		$enumeration_codes = [ 'invalid_email', 'invalidcombo', 'invalid_username' ];
-
-		foreach ( $enumeration_codes as $code ) {
-			if ( $errors->get_error_message( $code ) ) {
-				return true;
-			}
+	public static function handle_lostpassword_request(): void {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			return;
 		}
 
-		return $errors;
+		$login = isset( $_POST['user_login'] ) ? trim( (string) wp_unslash( $_POST['user_login'] ) ) : '';
+
+		if ( '' === $login ) {
+			// Nothing submitted — real WordPress validation feedback, not an
+			// account-existence leak. Let the native flow render it.
+			return;
+		}
+
+		// The real, unmodified WordPress reset flow: generates a genuine
+		// reset key and sends a genuine email ONLY if $login resolves to a
+		// real account. Its return value is deliberately never inspected —
+		// that is exactly the branch point that used to leak account
+		// existence.
+		retrieve_password();
+
+		wp_safe_redirect( 'wp-login.php?checkemail=confirm' );
+		exit;
 	}
 
 	// ── Role-aware routing ───────────────────────────────────────────────────

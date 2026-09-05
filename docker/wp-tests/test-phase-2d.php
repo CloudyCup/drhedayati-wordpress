@@ -51,6 +51,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit( 2 );
 }
 
+/**
+ * Real-runtime companion to verify-phase2d.js's static regression guard:
+ * confirms no callback is actually attached to the `lostpassword_errors`
+ * filter in this live WordPress instance (not just absent from source) —
+ * the exact filter whose contract violation caused the fixed defect.
+ */
+function assert_no_lostpassword_filter_registered(): void {
+	global $wp_filter;
+
+	$registered = isset( $wp_filter['lostpassword_errors'] ) && ! empty( $wp_filter['lostpassword_errors']->callbacks );
+	HDIT::ok( 'no callback is attached to the lostpassword_errors filter at runtime (the fixed defect\'s filter is gone, not just unused)', ! $registered );
+}
+
 function hdit_run_phase_2d(): void {
 	global $wpdb;
 
@@ -102,18 +115,118 @@ function hdit_run_phase_2d(): void {
 	HDIT::ok( 'option_users_can_register filter forces false even when the stored option is 1', ! get_option( 'users_can_register' ) );
 	update_option( 'users_can_register', 0 );
 
-	// ── 4. Password-reset enumeration hardening (filter logic) ─────────────
-	HDIT::section( 'Phase 2D — lostpassword_errors enumeration hardening' );
+	// ── 4. Password-reset enumeration hardening — real runtime behaviour ────
+	// Release-blocking defect (fixed): the earlier implementation filtered
+	// `lostpassword_errors` and returned boolean `true`, which violates that
+	// filter's contract (retrieve_password() calls $errors->has_errors() on
+	// the return value unconditionally — a bare bool fatals). The fix removes
+	// that filter entirely and instead hooks `login_form_lostpassword`
+	// (see class-auth-ui.php's docblock). These tests exercise the REAL
+	// handler end to end — not a direct call into an isolated filter — so a
+	// regression back to the old approach would show up here as a PHP fatal,
+	// not just a static-source mismatch.
+	HDIT::section( 'Phase 2D — password-reset enumeration hardening (real handler, not a filter)' );
 
-	foreach ( [ 'invalid_email', 'invalidcombo', 'invalid_username' ] as $code ) {
-		$errors = new WP_Error( $code, 'irrelevant message' );
-		$result = Hedayati_Auth_UI::neutralize_lostpassword_enumeration( $errors, null );
-		HDIT::ok( "'{$code}' (account-existence-revealing) is neutralized to true (same success path as a real account)", true === $result );
+	assert_no_lostpassword_filter_registered();
+
+	$reset_user_id = HDIT_Env::make_user( 'resetuser', 'student' );
+	$reset_login   = get_userdata( $reset_user_id )->user_login;
+
+	$wpdb->update( $wpdb->users, [ 'user_activation_key' => '' ], [ 'ID' => $reset_user_id ] );
+
+	// `pre_wp_mail` (short-circuit filter, WP 5.7+) both captures the attempt
+	// AND prevents wp_mail() from actually trying to send anything — this
+	// container has no configured mail transport, and a real send attempt
+	// risks a slow/hanging SMTP connection attempt in CI, not just a failure.
+	$mail_attempts = [];
+	$capture_mail  = static function ( $short_circuit, $atts ) use ( &$mail_attempts ) {
+		$mail_attempts[] = $atts;
+		return true; // short-circuit: wp_mail() returns true, sends nothing.
+	};
+	add_filter( 'pre_wp_mail', $capture_mail, 10, 2 );
+
+	// 4a. Unknown account — must not fatal, must not email, must still redirect
+	// to the exact same URL a real account gets.
+	$fatal_caught = false;
+	$_SERVER['REQUEST_METHOD'] = 'POST';
+	$_POST = [ 'user_login' => 'hdit_definitely_nonexistent_' . wp_generate_password( 8, false ) ];
+	HDIT_AdminPost::arm();
+	try {
+		Hedayati_Auth_UI::handle_lostpassword_request();
+	} catch ( \Throwable $e ) {
+		if ( ! ( $e instanceof HDIT_WpDie ) ) {
+			$fatal_caught = true;
+		}
+	} finally {
+		HDIT_AdminPost::disarm();
 	}
+	$redirect_for_unknown = HDIT_AdminPost::$result['message'] ?? '';
+	$_POST = [];
+	$_SERVER['REQUEST_METHOD'] = '';
 
-	$empty_username_errors = new WP_Error( 'empty_username', 'please enter a username or email' );
-	$empty_username_result = Hedayati_Auth_UI::neutralize_lostpassword_enumeration( $empty_username_errors, null );
-	HDIT::ok( "'empty_username' (a real form-validation message, not an existence leak) is left as a WP_Error", is_wp_error( $empty_username_result ) );
+	HDIT::ok( 'an unknown-account password-reset request does NOT fatal (the exact defect this fix addresses)', ! $fatal_caught );
+	HDIT::ok( 'an unknown account redirects to the native WordPress success target (checkemail=confirm)', false !== strpos( $redirect_for_unknown, 'checkemail=confirm' ) );
+	HDIT::eq( 'no email was attempted for the nonexistent identifier', 0, count( $mail_attempts ) );
+
+	// 4b. Existing account — real reset path: a genuine key is generated and
+	// WordPress's own mail attempt fires (captured, not actually delivered —
+	// this container has no configured mail transport, which is fine; we are
+	// asserting WordPress's own logic decided to send, not that delivery
+	// succeeded).
+	$mail_attempts = [];
+	$_SERVER['REQUEST_METHOD'] = 'POST';
+	$_POST = [ 'user_login' => $reset_login ];
+	HDIT_AdminPost::arm();
+	try {
+		Hedayati_Auth_UI::handle_lostpassword_request();
+	} catch ( HDIT_WpDie $e ) {
+		// expected control-flow escape.
+	} finally {
+		HDIT_AdminPost::disarm();
+	}
+	$redirect_for_real = HDIT_AdminPost::$result['message'] ?? '';
+	$_POST = [];
+	$_SERVER['REQUEST_METHOD'] = '';
+
+	remove_filter( 'pre_wp_mail', $capture_mail, 10 );
+
+	$activation_key_after = $wpdb->get_var( $wpdb->prepare( "SELECT user_activation_key FROM {$wpdb->users} WHERE ID = %d", $reset_user_id ) );
+	HDIT::ok( 'an existing account gets a REAL reset key generated by the unmodified retrieve_password() call', '' !== (string) $activation_key_after );
+	HDIT::ok( 'an existing account\'s reset attempts a real email send (WordPress\'s own decision, not reimplemented here)', count( $mail_attempts ) >= 1 );
+	HDIT::eq( 'an existing account redirects to the identical URL an unknown account gets', $redirect_for_unknown, $redirect_for_real );
+
+	// 4c. Outward indistinguishability, stated explicitly as its own assertion.
+	HDIT::eq(
+		'existing vs. nonexistent identifiers produce a byte-identical outward redirect — the core enumeration-resistance property',
+		$redirect_for_real,
+		$redirect_for_unknown
+	);
+
+	// 4d. Empty submission is untouched (real validation feedback, not a leak):
+	// the handler must return without redirecting or touching mail.
+	$mail_attempts_empty = [];
+	$capture_mail_empty  = static function ( $short_circuit, $atts ) use ( &$mail_attempts_empty ) {
+		$mail_attempts_empty[] = $atts;
+		return true;
+	};
+	add_filter( 'pre_wp_mail', $capture_mail_empty, 10, 2 );
+	HDIT_AdminPost::$result = null;
+	$_SERVER['REQUEST_METHOD'] = 'POST';
+	$_POST = [ 'user_login' => '' ];
+	HDIT_AdminPost::arm();
+	try {
+		Hedayati_Auth_UI::handle_lostpassword_request();
+	} catch ( HDIT_WpDie $e ) {
+		// not expected — an empty submission must not redirect.
+	} finally {
+		HDIT_AdminPost::disarm();
+	}
+	$_POST = [];
+	$_SERVER['REQUEST_METHOD'] = '';
+	remove_filter( 'pre_wp_mail', $capture_mail_empty, 10 );
+
+	HDIT::ok( 'an empty submission does not redirect (native WordPress validation feedback renders instead)', null === HDIT_AdminPost::$result );
+	HDIT::eq( 'an empty submission never attempts an email', 0, count( $mail_attempts_empty ) );
 
 	// ── 5. Ownership: student A cannot mutate student B's profile/phone ────
 	HDIT::section( 'Phase 2D — student A cannot mutate student B (posted user_id is ignored)' );

@@ -308,9 +308,20 @@ on:
   file, keyed on `github.ref`) so superseded pushes cancel their own in-flight run rather than both
   running to completion.
 
-This is a small, low-risk, mechanical fix — recommended to land at the **start** of Phase 2D
-(before Phase 2D's own feature branch is pushed) so Phase 2D gets automatic CI without another
-manual workflow edit.
+This is a small, low-risk, mechanical fix, landed at the start of Phase 2D.
+
+**Correction (an earlier draft of this section was inaccurate):** under this configuration,
+**pushing a feature branch by itself does NOT trigger the workflow** — `push` is scoped to `main`
+only. Getting a Docker acceptance run on `feature/phase-2d-account-shell` (or any future feature
+branch) requires **either**:
+- opening a pull request from that branch targeting `main` (the `pull_request` trigger fires on
+  the PR, running against that branch's HEAD), **or**
+- an explicit `workflow_dispatch` run, chosen against that branch, from the Actions tab or the API/CLI.
+
+Simply pushing commits to the feature branch, with no PR open and no manual dispatch, produces
+**no** GitHub Actions run at all under this configuration. This is a deliberate trade-off (no
+hardcoded branch names to maintain per phase) — plan the actual CI-verification step accordingly,
+not around a push alone.
 
 ---
 

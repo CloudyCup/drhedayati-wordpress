@@ -29,7 +29,12 @@ wp-admin exclusion for students) and `Hedayati_Student_Portal` (a real `account`
   narrowing, and read-only Shamsi-dated enrollments.
   **GitHub Actions result: not yet run in this session as of this note — this branch has not been
   pushed. Update this line with the actual run result once pushed and checked**, mirroring how
-  Phase 2C's STATUS.md entries tracked real CI evidence rather than an assumed pass.
+  Phase 2C's STATUS.md entries tracked real CI evidence rather than an assumed pass. **Correction:**
+  under the §11 trigger fix (`push`/`pull_request` both scoped to `main`), pushing this feature
+  branch alone will **not** trigger a run — a pull request against `main` or an explicit
+  `workflow_dispatch` targeting this branch is required. Do not assume a push alone produces CI
+  evidence; a release-blocking password-reset defect was found and fixed on this branch
+  (see the commit correcting `Hedayati_Auth_UI`'s enumeration hardening) before any such run.
 - Two runtime-testability gaps are explicitly documented (not silently skipped), matching Phase
   2C's precedent: (1) `is_uploaded_file()` cannot be satisfied by a WP-CLI process, so full
   end-to-end upload acceptance needs a real HTTP request; (2) the full `template_redirect` →
