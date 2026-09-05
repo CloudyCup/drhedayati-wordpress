@@ -1,4 +1,54 @@
+# Defects and acceptance gaps
+
+## Phase 3 (2026-09-05) — HD-007, HD-008, HD-009: latent capability defects, FIXED
+
+Found during the Phase 3 reconciliation of the adopted Codex/ChatGPT WIP; all three are
+capability-map completeness issues (no schema/data change), fixed on
+`feature/phase-3-launch-completion` and runtime-verified by `docker/wp-tests/test-launch.php` +
+`test-phase-3.php` (full role × {course, category, settings} matrix). See `docs/DECISIONS.md` D42.
+
+- **HD-007 — `hedayati_manager` could not create or edit a `course` at all.** The `course` CPT used
+  `capability_type => 'post'`, mapping to native primitives (`edit_posts`, `edit_others_posts`, …)
+  that `hedayati_manager` does not hold; the dedicated `hedayati_manage_courses` capability was
+  defined and granted but **never checked anywhere**. Fixed: `course` CPT now uses a dedicated
+  `['hedayati_course','hedayati_courses']` + `map_meta_cap => true` map with every primitive and
+  every status-conditional key (`edit_published_posts` / `edit_private_posts` /
+  `delete_published_posts` / `delete_private_posts` — the HD-006 trap) pointed at
+  `hedayati_manage_courses`.
+- **HD-008 — `hedayati_manager` could not manage the `course-category` taxonomy or its term meta.**
+  Same root cause (`manage_categories` / `manage_terms` are core caps the role lacks). Fixed:
+  taxonomy `manage_terms`/`edit_terms`/`delete_terms`/`assign_terms` and `Hedayati_Term_Meta`'s
+  save guard now require `hedayati_manage_courses`.
+- **HD-009 — `hedayati_manager` could not open or save Settings → Hedayati.** `Hedayati_Settings`
+  required core `manage_options` (deliberately not held by the operational role, D10) even though
+  `hedayati_manage_settings` existed and was granted. Fixed: capability constant →
+  `hedayati_manage_settings`, plus the matching `option_page_capability_hedayati_institute` filter
+  so `options.php` agrees on save.
+
+**HD-002 caveat unchanged:** `Hedayati_Staff_Portal::handle_student()` adds two new code paths in
+the historically-sensitive phone area — a pre-insert `is_phone_available()` check and a
+compensating `wp_delete_user()` if `assign_phone()` fails after the account is created (a race).
+`test-phase-3.php` asserts that a duplicate-phone create is refused with **no account and no
+orphan phone row** in the disposable container; the compensating-delete race branch itself is not
+reproducible from WP-CLI. Neither retroactively explains the original unexplained `mystik.ir`
+orphan-row observation.
+
+---
+
 # Defects and acceptance gaps — 2026-09-04 (updated same day: GitHub Actions run #3 GREEN + staging 1.5.3 smoke test PASSED)
+
+**Reconciliation note (2026-09-05):** HD-001 through HD-006 below are preserved as an accurate
+historical record — do not edit them. `feature/phase-2b-academic-operations` (which HD-001–HD-006
+were found and fixed on) has since been merged into `main` (`--no-ff` commit `32640e4`,
+2026-09-05, together with Phase 2C). **None of HD-001–HD-006's closure status changes as a result
+of the merge**: HD-006 stays CLOSED (fixed, runtime-verified, staging-verified before the merge);
+HD-002's historical orphan-phone-row observation stays unexplained and OPEN — merging code does
+not retroactively explain a staging data point, and this caveat must not be erased; HD-003's
+documented coverage gaps stay OPEN exactly as scoped. Phase 2C added no new numbered HD defect —
+its own build-time bugs (a stale hardcoded version assertion, a `profile_update`-vs-
+`update_user_meta` hook-timing bug, a plugin-header version-string drift) were found and fixed
+before Phase 2C's own merge; see `docs/agent/STATUS.md`'s Phase 2C section and commit `2fc121f` /
+`da77119` for detail rather than duplicating numbered-HD treatment here.
 
 Reviewed at 345e368; fixes/coverage below applied at commits 8400588 / 06db2e2 / 2af798d /
 1b16a6d / afb5fbd / cbcb4da. HD-001–HD-005 are harness/CI defects and evidence gaps, not product

@@ -43,50 +43,60 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ## P1 — required for launch
 
-1. **Phase 2B — academic operations.** 🟢 **Merge gate satisfied — READY TO MERGE, not yet merged**
-   on branch `feature/phase-2b-academic-operations`: Teacher CPT (+ optional 1:1 WP-user link);
-   Course Runs (nullable capacity/tuition, integer-rial tuition, separate `run_status` /
-   `registration_status` as validated strings); Sessions (`UNIQUE(run_id, session_number)`,
-   canonical datetimes); staff assignments (primary/additional instructor, TA — D11 asymmetry);
-   Enrollments (`UNIQUE(run_id, user_id)`, capacity check); attendance (`UNIQUE(session_id,
-   enrollment_id)`, same-run guard); metadata-only append-only audit log (migration `2.2.0`).
-   Plugin `1.5.3`, `CURRENT_DB_VERSION` `2.2.0`, `ROLES_VERSION` `2.1.0`. Node static suites 458/0;
-   local Docker CI runtime suite 228/0 with verified cleanup (GitHub Actions run #3, commit
-   `cbcb4da`); a plugin-`1.5.3` staging smoke test PASSED on `mystik.ir` (2026-09-04) covering the
-   Teacher CPT object-level authorization fix (HD-006) and core admin flows. See
-   `docs/agent/STATUS.md`'s "Merge gate" note and `docs/PHASE_2B_ACCEPTANCE.md` for the exact
-   evidence and what remains explicitly deferred (not blocking, mirroring how Phase 2A's Category 4
-   was treated): HD-003's documented coverage gaps (full 22-cap × 6-role matrix, a second real
-   `dbDelta` pass, exhaustive mutation/actor-attribution assertions), the staging low-privilege
-   negative matrix, and the unexplained historical staging phone-row observation.
-   ~~(a) staging behavioural acceptance~~ — **the Teacher CPT scope this branch's own defect (HD-006)
-   touches is done and passed; the broader functional matrix's exhaustive per-role/mutation rows
-   remain open as documented, non-blocking evidence gaps, not known defects.**
-   **Explicitly NOT part of this item, deferred to Phase 2D** (corrected from an earlier draft of
+1. **Phase 2B — academic operations.** 🟢 **MERGED to `main`** (`--no-ff` commit `32640e4`,
+   alongside Phase 2C; originally built on `feature/phase-2b-academic-operations`, which has since
+   been superseded by `main`'s history): Teacher CPT (+ optional 1:1 WP-user link); Course Runs
+   (nullable capacity/tuition, integer-rial tuition, separate `run_status` / `registration_status`
+   as validated strings); Sessions (`UNIQUE(run_id, session_number)`, canonical datetimes); staff
+   assignments (primary/additional instructor, TA — D11 asymmetry); Enrollments
+   (`UNIQUE(run_id, user_id)`, capacity check); attendance (`UNIQUE(session_id, enrollment_id)`,
+   same-run guard); metadata-only append-only audit log (migration `2.2.0`). A plugin-`1.5.3`
+   staging smoke test PASSED on `mystik.ir` (2026-09-04) covering the Teacher CPT object-level
+   authorization fix (HD-006) and core admin flows — **staging acceptance beyond that smoke test
+   remains NOT RUN**; merging to `main` did not require or constitute it. See
+   `docs/agent/STATUS.md` and `docs/PHASE_2B_ACCEPTANCE.md` for the exact evidence and what remains
+   explicitly deferred (not blocking, mirroring how Phase 2A's Category 4 was treated): HD-003's
+   documented coverage gaps (full 22-cap × 6-role matrix, a second real `dbDelta` pass, exhaustive
+   mutation/actor-attribution assertions), the staging low-privilege negative matrix, and the
+   unexplained historical staging phone-row observation (HD-002 — still not retroactively
+   explained by anything built since).
+   **Explicitly NOT part of this item, deferred to Phase 2D/2F** (corrected from an earlier draft of
    this bullet): theme-side fallback wiring so the public course page reads Course Run data for
    `_course_teacher` / `_course_next_start_date` / `_course_price` / `_course_registration_state` —
    see `docs/CURRENT_STATE.md`'s "Planned / not implemented" list. `docs/PHASE_2B_ACCEPTANCE.md`'s
    own matrix never tested the public theme; this was never part of Phase 2B's actual acceptance
-   scope. ~~(c) close Phase 2A behavioural acceptance first~~ — **done 2026-09-03** (non-destructive
-   gate; Category 4 deferred, not required).
-2. **Phase 2C — student identity & security.** 🟢 **Built** on
-   `feature/phase-2c-student-portal` (branched from merged Phase 2B): address/city/postal-code
-   profile fields in usermeta (`Hedayati_Student_Profile`); the metadata-only append-only audit
-   log (`hedayati_audit_log`, `Hedayati_Audit_Log`, D33); **and now** national ID (encrypted at
-   rest + keyed-HMAC duplicate detection, `Hedayati_Crypto` + `Hedayati_Verification_Service`,
-   D36), an enforced verification-state workflow (D37), and private document
-   upload/storage-outside-webroot/authorized streaming/manual-retention (`Hedayati_Document_Storage`
-   + `Hedayati_Document_Service`, D38). See `docs/OPEN_QUESTIONS.md` Q10–Q13 (all resolved) and
-   `docs/DECISIONS.md` D36–D40. Audit log IP/UA fields are **permanently** not added (D39, not a
-   deferred policy). **Merge gate:** Node static suites 564/0; the extended `Acceptance (Docker
-   WordPress)` GitHub Actions runtime suite must be green (see `docs/agent/STATUS.md`); staging
-   execution of `docs/PHASE_2C_ACCEPTANCE.md` and any deploy remain separate, owner-approved steps.
-   Benefit linkage (verification unlocking certificates/exams) remains unapproved and unbuilt —
-   `docs/REQUIREMENTS.md` 8.6, unchanged.
-3. **Phase 2D — interfaces** (built on proven backend services, not mock data): branded
-   login/registration/password-reset; student portal (profile, verification status, documents,
-   enrollments/sessions); teacher & TA portal (assigned runs/rosters/sessions/attendance);
-   reception panel; manager/admin operational dashboards; audit-log viewer.
+   scope.
+2. **Phase 2C — student identity & security.** 🟢 **MERGED to `main`** (`--no-ff` commit `32640e4`;
+   originally built on `feature/phase-2c-student-portal`, kept but superseded by `main`'s history):
+   address/city/postal-code profile fields in usermeta (`Hedayati_Student_Profile`); the
+   metadata-only append-only audit log (`hedayati_audit_log`, `Hedayati_Audit_Log`, D33); national
+   ID (encrypted at rest + keyed-HMAC duplicate detection, `Hedayati_Crypto` +
+   `Hedayati_Verification_Service`, D36); an enforced verification-state workflow (D37); and
+   private document upload/storage-outside-webroot/authorized streaming/manual-retention
+   (`Hedayati_Document_Storage` + `Hedayati_Document_Service`, D38). See
+   `docs/OPEN_QUESTIONS.md` Q10–Q13 (all resolved) and `docs/DECISIONS.md` D36–D40. Audit log
+   IP/UA fields are **permanently** not added (D39, not a deferred policy). Plugin `1.6.0`,
+   `CURRENT_DB_VERSION` `2.3.0`, `ROLES_VERSION` `2.2.0`, 23 managed capabilities. Node static
+   suites 565/0; the extended `Acceptance (Docker WordPress)` GitHub Actions runtime suite is
+   **GREEN on the merged HEAD** (335/0, cleanup verified). **Staging execution of
+   `docs/PHASE_2C_ACCEPTANCE.md` and any deploy remain separate, owner-approved, NOT-YET-DONE
+   steps — merging to `main` is not staging acceptance and is not a deploy.** The three required
+   `wp-config.php` constants are not provisioned anywhere. Benefit linkage (verification unlocking
+   certificates/exams) remains unapproved and unbuilt — `docs/REQUIREMENTS.md` 8.6, unchanged.
+3. **Interfaces + launch completion.** The old "Phase 2D/2E/2F" split is superseded — Phases 2E
+   and 2F were consolidated into a single **Phase 3 "launch completion"** (the shape the prior
+   Codex working session had already taken, ratified by the owner 2026-09-05). Status:
+   - **Phase 2D — shared account shell + student portal: 🟢 IMPLEMENTED** on
+     `feature/phase-2d-account-shell` (off `main` @ `32640e4`), now the base of the Phase 3 branch.
+   - **Phase 3 — launch completion: 🟢 IMPLEMENTED, runtime-CI GREEN** on
+     `feature/phase-3-launch-completion`. Front-end staff `/panel/` (teacher/TA/reception);
+     reception-created student accounts + one-shot temporary password + forced first-login change
+     (`Hedayati_Account_Security`, D41); public About/Contact/Consult/Teachers pages + per-run
+     publication opt-in (D43); course/taxonomy/settings capability-consistency fixes (D42);
+     `page.php`; self-hosted Vazirmatn; Shamsi on the course page. Plugin `1.8.0`, theme `1.2.0`,
+     no DB change. Node static **750/0**; `Acceptance (Docker WordPress)` **491/0, PASS** on the latest pushed HEAD. **NOT merged, NOT staging-tested, NOT deployed.**
+   - **Phase 4 — integrated staging** (`mystik.ir`, once, end to end) and **Phase 5 — production
+     cutover** (`drhedayati.com`) remain the only steps after Phase 3 merges to `main`.
 4. **Public content & pages.** Create About, Contact, and consultation pages (templates + a
    consultation submission handler ❓ UX undecided); teacher directory/profiles; editable
    homepage/footer/navigation content where staff editing is required. Note: `header.php`,

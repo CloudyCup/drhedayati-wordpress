@@ -138,6 +138,10 @@ class Hedayati_Student_Admin {
 	// ── Student detail ──────────────────────────────────────────────────────
 
 	private static function render_student_detail( int $user_id ): void {
+		if ( ! current_user_can( 'hedayati_view_student_profiles_basic' ) ) {
+			wp_die( esc_html__( 'دسترسی مجاز نیست.', 'hedayati-core' ), '', [ 'response' => 403 ] );
+		}
+		self::require_student_scope( $user_id );
 		$user = get_user_by( 'id', $user_id );
 
 		if ( ! $user ) {

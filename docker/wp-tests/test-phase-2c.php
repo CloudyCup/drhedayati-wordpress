@@ -76,7 +76,7 @@ function hdit_run_phase_2c(): void {
 	HDIT::ok( 'teacher role does NOT have hedayati_upload_student_documents', ! ( get_role( 'teacher' )->has_cap( 'hedayati_upload_student_documents' ) ?? false ) );
 
 	$managed = get_option( Hedayati_Roles::OPTION_MANAGED_CAPS, [] );
-	HDIT::eq( 'managed capability count is 23', 23, is_array( $managed ) ? count( $managed ) : -1 );
+	HDIT::eq( 'managed capability count is 24 including reception account creation', 24, is_array( $managed ) ? count( $managed ) : -1 );
 
 	// ── Fixtures ─────────────────────────────────────────────────────────────
 	$student1 = HDIT_Env::make_user( 'stu1', 'student' );

@@ -26,7 +26,7 @@ class Hedayati_Settings {
 	private const OPTION_GROUP = 'hedayati_institute';
 	private const OPTION_NAME  = 'hedayati_institute_settings';
 	private const PAGE_SLUG    = 'hedayati-settings';
-	private const CAPABILITY   = 'manage_options';
+	private const CAPABILITY   = 'hedayati_manage_settings';
 
 	/**
 	 * Default values for every field.
@@ -41,6 +41,8 @@ class Hedayati_Settings {
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
 	public static function init(): void {
+		// options.php checks this separately from the menu/page capability.
+		add_filter( 'option_page_capability_' . self::OPTION_GROUP, static fn() => self::CAPABILITY );
 		add_action( 'admin_menu',    [ self::class, 'add_page'    ] );
 		add_action( 'admin_init',    [ self::class, 'register'    ] );
 	}

@@ -3,7 +3,7 @@
  * Plugin Name:       Hedayati Core
  * Plugin URI:        https://mystik.ir
  * Description:       هسته عملکردی مجتمع آموزشی دکتر هدایتی — دوره‌ها، طبقه‌بندی‌ها، احراز هویت، متادیتا و توابع کمکی.
- * Version:           1.6.0
+ * Version:           1.8.0
  * Author:            مجتمع آموزشی دکتر هدایتی
  * Author URI:        https://mystik.ir
  * Text Domain:       hedayati-core
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_CORE_VERSION', '1.6.0' );
+define( 'HEDAYATI_CORE_VERSION', '1.8.0' );
 define( 'HEDAYATI_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HEDAYATI_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -66,6 +66,13 @@ require_once HEDAYATI_CORE_DIR . 'includes/class-document-storage.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-document-service.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-student-admin.php';
 
+// Phase 2D — account shell, front-end auth/routing, student self-service portal
+require_once HEDAYATI_CORE_DIR . 'includes/class-auth-ui.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-account-security.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-student-portal.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-staff-portal.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-public-content.php';
+
 // ── Hook Registration ─────────────────────────────────────────────────────────
 
 add_action( 'init', [ Hedayati_Post_Types::class, 'register' ] );
@@ -101,6 +108,13 @@ Hedayati_Student_Profile::init();
 Hedayati_Verification_Service::init();
 Hedayati_Document_Service::init();
 Hedayati_Student_Admin::init();
+
+// Phase 2D — account shell, front-end auth/routing, student self-service portal
+Hedayati_Auth_UI::init();
+Hedayati_Account_Security::init();
+Hedayati_Student_Portal::init();
+Hedayati_Staff_Portal::init();
+Hedayati_Public_Content::init();
 
 // ── Shared helpers (callable from theme without knowing internals) ─────────────
 
@@ -167,6 +181,9 @@ register_activation_hook( __FILE__, function (): void {
 	Hedayati_Teacher::register();
 	Hedayati_DB_Schema::migrate();
 	Hedayati_Roles::register_roles();
+	Hedayati_Student_Portal::maybe_create_account_page();
+	Hedayati_Staff_Portal::ensure_page();
+	Hedayati_Public_Content::ensure_pages();
 	flush_rewrite_rules();
 } );
 

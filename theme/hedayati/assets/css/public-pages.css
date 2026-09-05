@@ -1,0 +1,74 @@
+/* Phase 3 public surfaces (page.php: about/contact/consult/teachers) +
+ * the single-course "upcoming runs" part. Vazirmatn @font-face lives in
+ * main.css (always enqueued before this file). */
+
+.hd-public-page { min-height: 60vh; }
+.hd-page-copy { max-width: 780px; margin-block: 20px 32px; }
+.hd-page-copy:empty { display: none; }
+.hd-page-lead { max-width: 720px; font-size: 1.15rem; color: var(--hd-muted); margin-block: 0 32px; }
+
+.hd-public-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+	gap: 24px;
+	align-items: stretch;
+}
+
+.hd-public-card {
+	display: flex;
+	flex-direction: column;
+	padding: 28px;
+	background: var(--hd-surface);
+	border: 1px solid var(--hd-line);
+	border-radius: var(--hd-radius);
+}
+
+.hd-public-card h2 { margin-block: 0 12px; font-size: 1.25rem; }
+.hd-public-card h3 { margin-block: 0 14px; font-size: 1.15rem; }
+.hd-public-card p { margin-block: 0 16px; }
+.hd-public-card address { font-style: normal; line-height: 2; color: var(--hd-muted); }
+
+/* Push the trailing CTA / phone to the bottom so buttons align across a row. */
+.hd-public-card > .solid-btn,
+.hd-public-card > .outline-btn,
+.hd-public-card > .hd-contact-phone { margin-block-start: auto; align-self: flex-start; }
+
+/* Teacher portrait — consistent frame regardless of the uploaded photo ratio,
+   capped so a card with a photo doesn't tower over one without. */
+.hd-public-card img {
+	width: 100%;
+	max-width: 160px;
+	aspect-ratio: 1 / 1;
+	object-fit: cover;
+	border-radius: 999px;
+	margin-block-end: 16px;
+}
+
+.hd-contact-phone {
+	color: var(--hd-red);
+	font-size: clamp(20px, 3vw, 28px);
+	font-weight: 700;
+	display: inline-block;
+	direction: ltr;
+}
+
+/* Registration-status pill on the public course-runs cards. */
+.hd-run-status {
+	align-self: flex-start;
+	padding: 4px 12px;
+	border-radius: 999px;
+	font-size: .85rem;
+	font-weight: 700;
+	margin-block-end: 16px;
+}
+.hd-run-status--open   { background: var(--hd-red-light); color: var(--hd-red-dark); border: 1px solid var(--hd-red-border); }
+.hd-run-status--soon   { background: var(--hd-surface2); color: var(--hd-muted); border: 1px solid var(--hd-line); }
+.hd-run-status--closed { background: var(--hd-surface2); color: var(--hd-muted); border: 1px solid var(--hd-line); }
+
+.hd-run-fee { font-weight: 700; font-size: 1.05rem; margin-block: 0 8px; }
+.hd-run-fee bdi { direction: rtl; }
+
+@media (max-width: 420px) {
+	.hd-account-link { padding: 7px 9px; font-size: 12px; }
+	.hd-public-card { padding: 22px; }
+}

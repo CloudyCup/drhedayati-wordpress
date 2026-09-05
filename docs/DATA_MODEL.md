@@ -20,7 +20,7 @@ staging install uses a non-`wp_` randomized prefix. Code always uses `$wpdb->pre
 | `wp_options` | ✅ Institute settings + plugin version/state markers (see below). |
 | Nav menus | ✅ `primary`, `footer` locations (fallbacks provided). |
 | Media library | ✅ Featured images (`course-card` 560×320, `course-hero` 1200×600). ⬜ **Not** for private student documents. |
-| Roles & capabilities | ✅ 5 custom roles + 23 `hedayati_*` caps (21 from Phase 2A + `hedayati_manage_teachers` from Phase 2B + `hedayati_upload_student_documents` from Phase 2C; see `docs/SECURITY.md`). |
+| Roles & capabilities | ✅ 5 custom roles + **24** `hedayati_*` caps (21 from Phase 2A + `hedayati_manage_teachers` from Phase 2B + `hedayati_upload_student_documents` from Phase 2C + `hedayati_create_students` from Phase 3; `ROLES_VERSION` `2.3.0`; see `docs/SECURITY.md`). Phase 3 (D42) also makes the previously-defined-but-unchecked `hedayati_manage_courses` (course CPT + `course-category` taxonomy + term meta) and `hedayati_manage_settings` (Settings page) into real enforced gates. |
 | Transients | ✅ Auth rate-limit buckets. |
 
 ---
@@ -461,3 +461,19 @@ other user → `hedayati_view_student_profiles_basic` + core `edit_user`.
 National ID, verification state, and document metadata are **not** in usermeta — they live in the
 dedicated `hedayati_student_verification` / `hedayati_documents` tables above (they need DB-level
 uniqueness and an enforced transition table that usermeta cannot provide).
+
+## Phase 3 meta keys ✅ (no migration — `CURRENT_DB_VERSION` stays `2.3.0`)
+
+| Key | Location | Type | Written by | Notes |
+|---|---|---|---|---|
+| `hedayati_must_change_password` | `wp_usermeta` | `'1'` or absent | `Hedayati_Account_Security` | Boolean marker only — **never** a password. Set when reception creates an account; cleared only after a successful `wp_set_password()`. `Hedayati_Account_Security::intercept()` forces the change screen while it is set. See D41. |
+| `_hedayati_public_teacher` | `wp_postmeta` (`teacher`) | `'1'` / `'0'` | `Hedayati_Public_Content` meta box | Staff opt-in to show this Teacher profile on `/teachers/`. `show_in_rest` false. |
+| `_hedayati_public_catalog_details` | `wp_postmeta` (`course`) | `'1'` / `'0'` | `Hedayati_Public_Content` meta box | Staff opt-in to show teacher name / fee / start date in the public course hero (`single-course.php` reads it). |
+| `_hedayati_public_run_ids` | `wp_postmeta` (`course`) | array of ints | `Hedayati_Public_Content` meta box | Per-run publication allow-list; each id validated to belong to the course on save. `Hedayati_Public_Content::runs()` projects each to `start_date` / `tuition_rial` / `registration_status` only. See D43 / Q8. |
+
+The temporary password itself is **not stored** — `wp_insert_user()` hashes it; the plaintext
+lives only in a 45-second single-use transient (`hedayati_staff_notice_<staff_id>`) shown to the
+creating staff member once and deleted on first render.
+
+Audit vocabulary gained object type `account` and actions `account.created`,
+`account.password_changed` (metadata only — no password, no PII; D33/D39 unchanged).

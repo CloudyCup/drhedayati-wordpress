@@ -2,7 +2,11 @@
 
 Canonical product requirements for the Dr. Hedayati WordPress rebuild, front end and back end.
 Derived from `docs/HANDOFF_LEGACY.md` (user intent and historical decisions) reconciled with the
-current repository. Status reflects the repository as of 2026-09-02.
+current repository. Status last reconciled 2026-09-05 against `main` @ `32640e4` (Phase 2B **and**
+Phase 2C both merged, `--no-ff`). Where a row below still says "planned"/⬜ for something Phase 2B
+or 2C actually built, that row was stale until this pass — see the row itself for the correction.
+Phase 2C **staging** acceptance (`mystik.ir`) remains explicitly NOT RUN regardless of what is
+merged into `main` — merging code is not staging acceptance and is not a deploy.
 
 **Status legend:** ✅ implemented · 🟡 partial · ⬜ planned · ❓ needs institute decision
 
@@ -32,9 +36,9 @@ current repository. Status reflects the repository as of 2026-09-02.
 | 2.7 | Featured courses on the homepage, staff-selectable, max 8, deliberate layout for sparse sets | ✅ |
 | 2.8 | Branded Persian 404 page | ✅ |
 | 2.9 | Professional thin custom scrollbar, coherent in both themes, sane touch/Firefox fallback | ✅ |
-| 2.10 | About page (editable institutional content) | ⬜ |
-| 2.11 | Contact page (locations, phones, map/address) | ⬜ (settings data exists; page does not) |
-| 2.12 | Consultation request page + submission handling | ⬜ / ❓ (UX and handler undecided) |
+| 2.10 | About page (editable institutional content) | 🟡 (Phase 3, not merged/not staging-tested: `page.php` + auto-provisioned `about` Page, staff-editable, with course/consult CTA sections) |
+| 2.11 | Contact page (locations, phones, map/address) | 🟡 (Phase 3: auto-provisioned `contact` Page renders `Hedayati_Settings` phones/address; no map — not required for launch) |
+| 2.12 | Consultation request page + submission handling | 🟡 (Phase 3: auto-provisioned `consult` Page is a phone/contact CTA only — owner decision, D-series Phase 3; a submission form remains a later feature) |
 | 2.13 | Blog / articles; inventory and migrate relevant legacy content, preserve SEO | ⬜ |
 | 2.14 | Site search across relevant public content | ⬜ / ❓ (exact UX not finalized) |
 | 2.15 | Real WordPress Custom Logo with controlled sizing / CSS glow (not baked into the image) | ✅ (support + fallback) / ❓ (real asset upload unverified) |
@@ -45,7 +49,7 @@ current repository. Status reflects the repository as of 2026-09-02.
 | # | Requirement | Status |
 |---|---|---|
 | 3.1 | Brand palette: Dr. Hedayati red `#c52232`, white/warm white, black/charcoal; red controlled for emphasis/CTAs | ✅ |
-| 3.2 | Primary typeface **Vazirmatn**, self-hosted WOFF2, `font-display: swap`, weights 400/500/600/700/800; **no Google Fonts / CDN** | 🟡 (stack references it; files not shipped; falls back to system fonts) |
+| 3.2 | Primary typeface **Vazirmatn**, self-hosted WOFF2, `font-display: swap`; **no Google Fonts / CDN** | ✅ (Phase 3, not merged/staging-tested: variable WOFF2 `theme/assets/fonts/Vazirmatn-variable.woff2` + `OFL.txt`; `@font-face` weight `100 900` / `font-display: swap` at the top of `main.css` — enqueued site-wide — and in `login.css` for `wp-login.php`; `--hd-font` stack leads with `'Vazirmatn'`; no `@import`, no CDN) |
 | 3.3 | Monospace only for genuinely technical Latin/code content | ✅ |
 | 3.4 | Cards, buttons with clear primary/secondary hierarchy and visible hover/focus/disabled states | ✅ |
 | 3.5 | Subtle, functional motion; respect `prefers-reduced-motion` | ✅ |
@@ -91,7 +95,7 @@ current repository. Status reflects the repository as of 2026-09-02.
 | 6.8 | Rate limiting: per-identifier (default 5) and per-IP (default 30), 900s window, filterable; equivalent phone forms share one bucket; successful login clears identifier bucket but not the shared IP bucket | ✅ |
 | 6.9 | Single authoritative failure-count path (`wp_login_failed`), no double counting | ✅ |
 | 6.10 | Deleting a WordPress user cleans up the phone row | ✅ |
-| 6.11 | Branded login / registration / password-reset UI | ⬜ |
+| 6.11 | Branded login / password-reset UI + staff account creation | 🟡 (Phase 2D + Phase 3, not merged/not staging-tested: branded login + enumeration-hardened password reset; **no public registration — deliberate** (D41); staff create student accounts via `/panel/` with a one-shot temporary password + forced first-login change, `Hedayati_Account_Security`) |
 | 6.12 | Future OTP, account recovery, notifications via a provider abstraction | ⬜ / ❓ (provider unknown) |
 
 ## 7. Roles & authorization
@@ -100,25 +104,28 @@ current repository. Status reflects the repository as of 2026-09-02.
 |---|---|---|
 | 7.1 | Custom roles: `student`, `teacher`, `teacher_assistant`, `reception`, `hedayati_manager`; native `administrator` for technical/system ownership | ✅ |
 | 7.2 | No custom `super_admin` role (WordPress reserves it for Multisite) | ✅ |
-| 7.3 | Granular capabilities (22 `hedayati_*`), least privilege — TA has no attendance by default; reception/manager lack `manage_options` | ✅ (21 in 2A + `hedayati_manage_teachers` in 2B) |
-| 7.4 | Versioned, future-safe capability sync; remove only own obsolete caps, never core/third-party | ✅ (schema `2.1.0`) |
-| 7.5 | Roles are necessary but not sufficient — every protected operational action must also verify assignment/ownership scope | 🟡 (enforced for Phase 2B academic-ops admin via `Hedayati_Run_Staff_Service::user_is_staff_on_run()` + `require_run_scope()`; Phase 2C/2D surfaces still to come) |
+| 7.3 | Granular capabilities (**24** `hedayati_*`), least privilege — TA has no attendance by default; reception/manager lack `manage_options` | ✅ (21 in 2A + `hedayati_manage_teachers` 2B + `hedayati_upload_student_documents` 2C + `hedayati_create_students` 3; `ROLES_VERSION` `2.3.0`) |
+| 7.4 | Versioned, future-safe capability sync; remove only own obsolete caps, never core/third-party | ✅ (schema `2.2.0`) |
+| 7.5 | Roles are necessary but not sufficient — every protected operational action must also verify assignment/ownership scope | 🟡→✅ for what's built: Phase 2B admin + Phase 3 `/panel/` teacher/TA actions derive run scope from `Hedayati_Run_Staff_Service::user_is_staff_on_run()` (managers bypass); the Phase 2D student portal owner is **always** `get_current_user_id()` (never a posted id); Phase 3 `Hedayati_Student_Admin::render_student_detail()` now re-checks `hedayati_view_student_profiles_basic` + `require_student_scope()`. Reception/manager student actions remain intentionally unscoped (any student is a valid target — D40). |
 
 ## 8. Students, profiles, verification, documents
 
 | # | Requirement | Status |
 |---|---|---|
-| 8.1 | WordPress user-based student account | 🟡 (role + phone identity + address profile fields) |
-| 8.2 | Profile: phone, email, address, national ID, extensible fields; identity fields normalized server-side before validation/search/storage | 🟡 (address/city/postal in usermeta with an extensible registry + server-side normalization; national ID **blocked** on the D15 encryption key — `docs/OPEN_QUESTIONS.md` Q10) |
-| 8.3 | Verification state independent of role and of phone verification; conceptual states unverified/pending/verified/rejected | ⬜ (blocked — reset rules + benefit linkage undecided, Q11) |
-| 8.4 | Upload national ID card, birth certificate, other requested documents | ⬜ |
-| 8.5 | Student sees enrolled courses/runs and sessions | ⬜ |
-| 8.6 | No approved policy that verification unlocks certificates/exams/benefits — requires institute input | ❓ |
+| 8.1 | WordPress user-based student account | 🟡 (role + phone identity + address profile fields + national ID + verification + documents; self-service front-end now exists on `feature/phase-2d-account-shell` — not merged, not staging-tested) |
+| 8.2 | Profile: phone, email, address, national ID, extensible fields; identity fields normalized server-side before validation/search/storage | 🟡 address/city/postal/email/phone self-service now built (Phase 2D portal, reuses `Hedayati_Student_Profile`/`Hedayati_User_Phone_Service` directly — not merged/staging-tested). National ID stays **staff-entry only, by design** — a student can see presence (`set`/`not set`) only, never enter or view the value themselves (D36, unchanged by Phase 2D) |
+| 8.3 | Verification state independent of role and of phone verification; conceptual states unverified/pending/verified/rejected | ✅ backend (`Hedayati_Verification_Service`, **enforced** transition table, D37). 🟡 Student-facing read-only status view now built (Phase 2D — status + national-ID presence only; `reviewer_id`/`reviewed_at`/`note` deliberately never reach the student) — not merged/staging-tested |
+| 8.4 | Upload national ID card, birth certificate, other requested documents | ✅ backend, staff-assisted (`Hedayati_Document_Service`/`Hedayati_Document_Storage`, D38). 🟡 Student **self**-upload/download now built (Phase 2D, ownership-checked in the new portal controller) — not merged/staging-tested; full end-to-end upload acceptance still needs a real HTTP request (Docker-CI limitation, documented in `docker/wp-tests/test-phase-2d.php`) |
+| 8.5 | Student sees enrolled courses/runs and sessions | 🟡 read-only Shamsi-dated view now built (Phase 2D, reuses `Hedayati_Enrollment_Service`/`Hedayati_Course_Run_Service`/`Hedayati_Session_Service`) — not merged/staging-tested; no self-enrollment |
+| 8.6 | No approved policy that verification unlocks certificates/exams/benefits — requires institute input | ❓ (unchanged — still unresolved, not addressed by Phase 2C) |
+| 8.7 | Decrypted national ID is visible **only** to staff holding `hedayati_verify_students`, through one narrow, audited, POST-only admin action — never the student themselves, never any other role | ✅ (D36; defense-in-depth: checked in both the service and the controller) |
 
-## 9. Academic operations (Phase 2B — backend + admin implemented; staging acceptance pending)
+## 9. Academic operations (Phase 2B — backend + admin implemented, merged to `main`; staging acceptance still pending)
 
-Repository implementation is complete on `feature/phase-2b-academic-operations`. Behavioural
-acceptance on staging (`docs/PHASE_2B_ACCEPTANCE.md`) is a **pre-merge gate** and is NOT RUN.
+Implementation is complete and **merged to `main`** (commit `32640e4`, alongside Phase 2C).
+Behavioural acceptance on staging (`docs/PHASE_2B_ACCEPTANCE.md`) was **not** a blocker for merging
+code — the merge gate tracked in `docs/agent/STATUS.md` was Docker-CI runtime evidence, not a
+staging run — and staging acceptance remains NOT RUN.
 
 | # | Requirement | Status |
 |---|---|---|
@@ -131,15 +138,17 @@ acceptance on staging (`docs/PHASE_2B_ACCEPTANCE.md`) is a **pre-merge gate** an
 | 9.7 | Existing `_course_teacher` / `_course_next_start_date` / `_course_price` / `_course_registration_state` become backward-compatible fallbacks; no permanent dual source of truth | ✅ repo (run layer never writes the meta; theme fallback wiring is Phase 2D) |
 | 9.8 | Enrollments per Course Run; attendance per session | ✅ repo (`hedayati_enrollments` `uq_run_user`; `hedayati_attendance` `uq_session_enrollment` + same-run guard) |
 
-## 10. Staff interfaces (Phase 2D — not built)
+## 10. Staff interfaces (branded, self-service front end — Phase 2D/2E, not built; a staff-only wp-admin screen exists today)
 
 | # | Requirement | Status |
 |---|---|---|
-| 10.1 | Reception: student lookup, create/basic-edit enrollments, basic profile view, initiate verification | ⬜ |
-| 10.2 | Teacher: assigned runs, rosters, sessions, attendance | ⬜ |
-| 10.3 | TA: assigned runs and rosters only; no attendance by default | ⬜ |
-| 10.4 | Manager: courses, runs, assignments, enrollments, verification, private documents, settings, audit logs | 🟡 (courses/settings + Phase 2B: teachers, runs, staff, sessions, enrollments via «عملیات آموزشی»; verification/documents/audit still Phase 2C) |
-| 10.5 | Audit-log viewer | 🟡 (minimal read-only viewer under «عملیات آموزشی → گزارش رویدادها», `hedayati_view_audit_logs`, filter + paginate; richer UX — export, date range, actor search — is Phase 2D) |
+| 10.1 | Reception: student lookup, create/basic-edit enrollments, basic profile view, initiate verification | 🟡 Phase 3 (`feature/phase-3-launch-completion`, not merged/staging-tested): the front-end `/panel/?view=students` (`Hedayati_Staff_Portal`) gives reception a single scoped surface — POST search, **create student account** (`hedayati_create_students`, temp password + forced first-login change, D41), enroll into a scheduled/in-progress run (`hedayati_create_enrollments`), national-ID intake, document upload, initiate verification. Address/phone self-service editing stays with the student portal. Historical note below.  
+**Historical (pre-Phase 3):** Reception has, today, via the staff-only wp-admin screen «دانشجویان و احراز هویت» (Phase 2C): student lookup (`hedayati_lookup_students`), national-ID/document intake (`hedayati_upload_student_documents`), and verification initiation (`hedayati_initiate_verification`). Reception does **not** have enrollment creation — «عملیات آموزشی» (Phase 2B) gates its entire screen, including the enrollment form, on `hedayati_manage_course_runs`, which reception lacks; the `hedayati_create_enrollments` capability reception does hold has no reachable UI, since it can't load the screen that would use it. Reception also lacks an integrated basic-profile (address/phone) editing workflow — «دانشجویان و احراز هویت» shows national-ID/verification/documents only; `Hedayati_Student_Profile`'s address fields live on the native WordPress user-edit screen, a separate, unintegrated surface. Enrollment access and integrated basic-profile editing for reception are Phase 2E work, not built. |
+| 10.2 | Teacher: assigned runs, rosters, sessions, attendance | 🟡 Phase 3 (not merged/staging-tested): `/panel/?view=run&run_id=` — assigned runs (`Hedayati_Run_Staff_Service::user_is_staff_on_run()`), roster (names only), sessions, an attendance grid + "new session" form gated on `hedayati_record_attendance` / `hedayati_manage_assigned_sessions`. |
+| 10.3 | TA: assigned runs and rosters only; no attendance by default | 🟡 Phase 3 (not merged/staging-tested): same `/panel/` run view, roster names only, **no** attendance/session write UI (TA lacks the caps; the view returns before rendering them). |
+| 10.4 | Manager: courses, runs, assignments, enrollments, verification, private documents, settings, audit logs | 🟡 wp-admin (owner decision: no separate front-end manager dashboard for launch). **Capability gating fixed in Phase 3 (D42, HD-007/008/009):** the `course` CPT, `course-category` taxonomy + term meta, and Settings now gate on `hedayati_manage_courses` / `hedayati_manage_settings` (previously defined-but-unchecked), so `hedayati_manager` can actually manage courses/categories/settings. `/panel/` also gives the manager quick links into every wp-admin operational screen. |
+| 10.5 | Audit-log viewer | 🟡 (minimal read-only viewer under «عملیات آموزشی → گزارش رویدادها», `hedayati_view_audit_logs`, filter + paginate; richer UX — export, date range, actor search — remains future work) |
+| 10.6 | Administrator: full technical + operational access, distinct from `hedayati_manager`'s operational-only scope | ✅ (native `administrator` augmented with all managed capabilities; no `manage_options` granted to `hedayati_manager` — D10) |
 
 ## 11. Data, localization, dates
 
@@ -162,9 +171,9 @@ acceptance on staging (`docs/PHASE_2B_ACCEPTANCE.md`) is a **pre-merge gate** an
 | 12.5 | Prepared SQL, dynamic `$wpdb->prefix` | ✅ |
 | 12.6 | Phone identity DB-unique | ✅ |
 | 12.7 | Privacy-safe auth errors + rate limiting | ✅ |
-| 12.8 | Private documents stored outside public access, served only after authorization | ⬜ |
-| 12.9 | Dedicated `HEDAYATI_DATA_ENCRYPTION_KEY` (not a rotatable WP salt), key versioning, separate HMAC for duplicate detection | ⬜ |
-| 12.10 | Application-level append-only audit logs; retention/privacy policy for IP/UA data | 🟡 (metadata-only append-only log built — `hedayati_audit_log`, migration 2.2.0, wired into every Phase 2B mutation, read-only viewer; **IP/UA fields intentionally omitted** pending the retention policy — Q13) |
+| 12.8 | Private documents stored outside public access, served only after authorization | ✅ backend (`Hedayati_Document_Storage`: environment-gated outside-webroot root, real content-sniffing, canonical path-containment hardening; served only via `stream()` after a caller capability+ownership check, D38) — 🟡 overall: staging deployment/provisioning of `HEDAYATI_PRIVATE_UPLOADS_DIR` not yet done anywhere |
+| 12.9 | Dedicated `HEDAYATI_DATA_ENCRYPTION_KEY` (not a rotatable WP salt), key versioning, separate HMAC for duplicate detection | ✅ backend (`Hedayati_Crypto`: AES-256-GCM, strict base64/32-byte format, version-tagged blob for rotation, independent `HEDAYATI_DATA_HMAC_KEY`, fails closed if either is missing/malformed — D36) — 🟡 overall: not yet provisioned on staging or production |
+| 12.10 | Application-level append-only audit logs; retention/privacy policy for IP/UA data | 🟡 (metadata-only append-only log built — `hedayati_audit_log`, migration 2.2.0, wired into every Phase 2B **and** Phase 2C mutation, read-only viewer; **IP/UA fields are now permanently decided against, not a retention policy pending resolution — D39 closes Q13**) |
 | 12.11 | Secrets never in Git; no personal student data in Git | ✅ |
 
 ## 13. SEO, accessibility, performance

@@ -1,7 +1,57 @@
+# Test results
+
+## Phase 3 — launch completion (2026-09-05) — GREEN
+
+Branch `feature/phase-3-launch-completion`. Baseline = the preserved Codex/ChatGPT WIP (commit
+`7500348`, also `snapshot/codex-launch-completion-wip-2026-09-05`).
+
+| Check | Result |
+|---|---|
+| `verify-phase2a.js` | 74 / 0 |
+| `verify-phase2b.js` | 208 / 0 |
+| `verify-phase2c.js` | 132 / 0 |
+| `verify-phase2d.js` | 82 / 0 |
+| `verify-phase3.js` (new) | 103 / 0 (85 + 16 visual-completion assertions + 2 admin-toolbar regression assertions) |
+| `verify-audit-log.js` | 98 / 0 |
+| `verify-jalali.js` | 53 / 0 |
+| **Node static total** | **750 / 0**, every process exit 0 |
+| `Acceptance (Docker WordPress)` GitHub Actions | run `33974539901` on the WIP baseline `7500348`: **450 / 0, PASS, cleanup verified** (first-ever real-WordPress runtime evidence for Phase 2D + launch WIP). |
+| `Acceptance (Docker WordPress)` GitHub Actions | run `33975445108` on `046bd31` (feat commit): **489 / 0, PASS** (+39 = `docker/wp-tests/test-phase-3.php`); run `33976122273` on `6c9bdac` and the current tip: **491 / 0, PASS, cleanup verified** (+2 = the duplicate-phone / orphan-row guard). |
+| PHP lint | Local PHP 8.3: changed account-security and staff-portal files pass. |
+| Real local WordPress browser review | Desktop/mobile, RTL, light/dark: public pages, all account views, panel home/run, and forced-password screen reviewed on genuine HTTP responses; no page-level horizontal overflow. WordPress admin toolbar defect found and fixed for panel/forced flows. |
+| Live staging / production | NOT CONTACTED. |
+
+`test-phase-3.php` runtime coverage: temp-password generation (length ≥ 16, entropy classes,
+uniqueness); reception-create → `must_change` marker set + `user_pass` stored only as a WP hash +
+one-shot staff notice consumed exactly once + `account.created` audit (actor = reception, no
+password/phone/id in the note); the full forced-change handler (too-short / mismatch /
+missing-nonce all rejected with the marker intact; a valid change clears the marker, the new
+password authenticates via `wp_authenticate()`, `account.password_changed` is audited without the
+value; a post-change call with no marker leaves the password untouched); `hedayati_create_students`
+role matrix (student/teacher/TA false, reception/manager/admin true); manager
+course/category/settings capability resolution against real `map_meta_cap()`. `test-launch.php`
+(from the WIP) also passes on CI: full role × {course, category, settings} matrix, staff privacy,
+public opt-in defaults, cross-user denial.
+
+**Not merged, not deployed, no `mystik.ir`/`drhedayati.com` contact.** Interceptor/guard
+`template_redirect` behaviour and real multipart upload remain Phase 4 staging-acceptance items
+(documented in the test file headers, same class as Phase 2C/2D).
+
+---
+
 # Test results — 2026-09-04
 
+**Reconciliation note (2026-09-05):** everything below is preserved as an accurate historical
+record of this specific review session (branch `feature/phase-2b-academic-operations`, HEAD
+`345e368`) — do not edit the narrative itself. Since this was written, that branch and
+`feature/phase-2c-student-portal` (Phase 2C) were both merged into `main` via a single `--no-ff`
+merge commit, `32640e4` (2026-09-05). The assertion counts below (449 Node, then 458 after HD-006)
+are superseded by `main`'s current 565/0 Node total and the Phase 2C Docker acceptance suite's
+335/0 result — see `docs/agent/STATUS.md` for current figures. Phase 2C staging acceptance remains
+NOT RUN regardless of the merge.
+
 Repository: C:/Projects/drhedayati-wordpress
-Branch: feature/phase-2b-academic-operations
+Branch: feature/phase-2b-academic-operations (historical — see reconciliation note above)
 Reviewed HEAD: 345e368bfa1a17079c7436c085e9514f441aee5e
 Initial git status: clean. Changes from this review are documentation only, uncommitted.
 

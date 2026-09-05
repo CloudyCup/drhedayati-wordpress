@@ -111,14 +111,14 @@ assert("no hardcoded 'wp_hedayati_' literal", !db.includes('wp_hedayati_'));
 
 console.log('\n5. Roles schema 2.2.0 (class-roles.php):');
 const roles = read('includes/class-roles.php');
-assert("ROLES_VERSION bumped to 2.2.0", roles.includes("ROLES_VERSION = '2.2.0'"));
+assert("ROLES_VERSION includes launch reception-account capability", roles.includes("ROLES_VERSION = '2.3.0'"));
 assert("new capability hedayati_upload_student_documents registered", roles.includes("'hedayati_upload_student_documents'"));
 {
 	const capListMatch = roles.match(/get_all_hedayati_capabilities\(\): array \{\s*return \[([\s\S]*?)\];/);
 	assert("get_all_hedayati_capabilities() present", !!capListMatch);
 	if (capListMatch) {
 		const count = (capListMatch[1].match(/'hedayati_[a-z_]+'/g) || []).length;
-		assert("managed capability count is exactly 23", count === 23);
+		assert("managed capability count is exactly 24", count === 24);
 	}
 }
 assert("reception grants hedayati_upload_student_documents", /'reception'\s*=>[\s\S]*?'hedayati_upload_student_documents'\s*=>\s*true/.test(roles));
@@ -234,8 +234,12 @@ assert("requires class-student-admin.php", boot.includes('includes/class-student
 assert("boots Hedayati_Verification_Service::init()", boot.includes('Hedayati_Verification_Service::init()'));
 assert("boots Hedayati_Document_Service::init()", boot.includes('Hedayati_Document_Service::init()'));
 assert("boots Hedayati_Student_Admin::init()", boot.includes('Hedayati_Student_Admin::init()'));
-assert("plugin version bumped to 1.6.0", boot.includes("HEDAYATI_CORE_VERSION', '1.6.0'"));
-assert("plugin header 'Version:' matches HEDAYATI_CORE_VERSION (build-packages.ps1 enforces this at package time)", boot.includes('Version:           1.6.0'));
+assert("plugin version >= 1.6.0 (Phase 2C baseline retained; later phases may bump further)", /HEDAYATI_CORE_VERSION', '1\.\d+\.\d+'/.test(boot) && !boot.includes("HEDAYATI_CORE_VERSION', '1.5.") && !/HEDAYATI_CORE_VERSION', '1\.[0-4]\./.test(boot));
+{
+	const versionMatch = boot.match(/HEDAYATI_CORE_VERSION', '([0-9.]+)'/);
+	const headerMatch  = boot.match(/Version:\s+([0-9.]+)/);
+	assert("plugin header 'Version:' matches HEDAYATI_CORE_VERSION (build-packages.ps1 enforces this at package time)", !!versionMatch && !!headerMatch && versionMatch[1] === headerMatch[1]);
+}
 
 console.log(`\n========================================`);
 console.log(`PHASE 2C SUMMARY: ${passed} PASSED, ${failed} FAILED`);
