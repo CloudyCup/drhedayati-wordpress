@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_VERSION', '1.0.0' );
+define( 'HEDAYATI_VERSION', '1.1.0' );
 define( 'HEDAYATI_DIR', get_template_directory() );
 define( 'HEDAYATI_URI', get_template_directory_uri() );
 
@@ -123,6 +123,30 @@ function hedayati_enqueue_assets(): void {
 		HEDAYATI_VERSION,
 		[ 'strategy' => 'defer', 'in_footer' => true ]
 	);
+
+	// Phase 2D — account portal assets, loaded only on the account page (its
+	// page ID is resolved via Hedayati_Student_Portal, never a hardcoded slug
+	// check, so a staff rename of the page slug can't silently break this).
+	if (
+		class_exists( 'Hedayati_Student_Portal' )
+		&& is_page( Hedayati_Student_Portal::get_account_page_id() )
+		&& Hedayati_Student_Portal::get_account_page_id() > 0
+	) {
+		wp_enqueue_style(
+			'hedayati-account',
+			HEDAYATI_URI . '/assets/css/account.css',
+			[ 'hedayati-main' ],
+			HEDAYATI_VERSION
+		);
+
+		wp_enqueue_script(
+			'hedayati-account',
+			HEDAYATI_URI . '/assets/js/account.js',
+			[],
+			HEDAYATI_VERSION,
+			[ 'strategy' => 'defer', 'in_footer' => true ]
+		);
+	}
 }
 
 // ── Body Classes ──────────────────────────────────────────────────────────────

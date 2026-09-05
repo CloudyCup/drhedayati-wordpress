@@ -234,8 +234,12 @@ assert("requires class-student-admin.php", boot.includes('includes/class-student
 assert("boots Hedayati_Verification_Service::init()", boot.includes('Hedayati_Verification_Service::init()'));
 assert("boots Hedayati_Document_Service::init()", boot.includes('Hedayati_Document_Service::init()'));
 assert("boots Hedayati_Student_Admin::init()", boot.includes('Hedayati_Student_Admin::init()'));
-assert("plugin version bumped to 1.6.0", boot.includes("HEDAYATI_CORE_VERSION', '1.6.0'"));
-assert("plugin header 'Version:' matches HEDAYATI_CORE_VERSION (build-packages.ps1 enforces this at package time)", boot.includes('Version:           1.6.0'));
+assert("plugin version >= 1.6.0 (Phase 2C baseline retained; later phases may bump further)", /HEDAYATI_CORE_VERSION', '1\.\d+\.\d+'/.test(boot) && !boot.includes("HEDAYATI_CORE_VERSION', '1.5.") && !/HEDAYATI_CORE_VERSION', '1\.[0-4]\./.test(boot));
+{
+	const versionMatch = boot.match(/HEDAYATI_CORE_VERSION', '([0-9.]+)'/);
+	const headerMatch  = boot.match(/Version:\s+([0-9.]+)/);
+	assert("plugin header 'Version:' matches HEDAYATI_CORE_VERSION (build-packages.ps1 enforces this at package time)", !!versionMatch && !!headerMatch && versionMatch[1] === headerMatch[1]);
+}
 
 console.log(`\n========================================`);
 console.log(`PHASE 2C SUMMARY: ${passed} PASSED, ${failed} FAILED`);
