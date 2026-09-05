@@ -33,11 +33,14 @@ Earlier phase documents preserve design/history; the current authoritative statu
 - [x] Self-hosted Vazirmatn WOFF2 (login + public pages, no CDN).
 - [x] `page.php` regression handling (keeps `.entry-content`, adds `role=main`).
 - [x] Split the WIP's dense one-line PHP (staff portal, public content) into readable form.
-- [x] Static + runtime regression suites (Node 732/0; Docker 489/0) + docs reconciliation.
+- [x] Static + runtime regression suites (Node 750/0; Docker 491/0) + docs reconciliation.
 - [x] **Visual/RTL/dark-mode review** of `/panel/`, `/account/`, the forced-change screen, and the
       four public pages — done 2026-09-05 via a real-theme-CSS static render (no local
       WordPress/Docker), desktop + mobile, light + dark. Fixes in commit `3e274d9`. A final check
       on real hardware is folded into Phase 4 staging acceptance.
+- [x] Follow-up real local WordPress browser review (desktop/mobile, RTL, light/dark) confirmed the
+      Phase 3 templates on genuine HTTP responses; removed the WordPress admin toolbar from the
+      staff panel and forced password screen after it appeared as unexplained mobile chrome.
 - [ ] Merge Phase 3 → `main` once the review is done and CI is green on the merge HEAD.
 - [ ] **Phase 4 — integrated staging** (`mystik.ir`, once): provision `HEDAYATI_DATA_ENCRYPTION_KEY`
       / `HEDAYATI_DATA_HMAC_KEY` / `HEDAYATI_PRIVATE_UPLOADS_DIR` + private uploads dir, deploy the

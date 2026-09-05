@@ -42,6 +42,16 @@ class Hedayati_Account_Security {
 		add_action( 'template_redirect', [ self::class, 'intercept' ], 1 );
 		add_action( 'admin_post_' . self::NONCE_ACTION, [ self::class, 'handle_change' ] );
 		add_filter( 'body_class', [ self::class, 'body_class' ] );
+		add_filter( 'show_admin_bar', [ self::class, 'hide_admin_bar_while_forced' ] );
+	}
+
+	/** The mandatory password screen is a focused front-end flow, not wp-admin. */
+	public static function hide_admin_bar_while_forced( bool $show ): bool {
+		if ( is_user_logged_in() && self::must_change( get_current_user_id() ) ) {
+			return false;
+		}
+
+		return $show;
 	}
 
 	/**

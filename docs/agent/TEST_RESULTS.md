@@ -11,13 +11,14 @@ Branch `feature/phase-3-launch-completion`. Baseline = the preserved Codex/ChatG
 | `verify-phase2b.js` | 208 / 0 |
 | `verify-phase2c.js` | 132 / 0 |
 | `verify-phase2d.js` | 82 / 0 |
-| `verify-phase3.js` (new) | 101 / 0 (85 + 16 visual-completion assertions) |
+| `verify-phase3.js` (new) | 103 / 0 (85 + 16 visual-completion assertions + 2 admin-toolbar regression assertions) |
 | `verify-audit-log.js` | 98 / 0 |
 | `verify-jalali.js` | 53 / 0 |
-| **Node static total** | **748 / 0**, every process exit 0 |
+| **Node static total** | **750 / 0**, every process exit 0 |
 | `Acceptance (Docker WordPress)` GitHub Actions | run `33974539901` on the WIP baseline `7500348`: **450 / 0, PASS, cleanup verified** (first-ever real-WordPress runtime evidence for Phase 2D + launch WIP). |
 | `Acceptance (Docker WordPress)` GitHub Actions | run `33975445108` on `046bd31` (feat commit): **489 / 0, PASS** (+39 = `docker/wp-tests/test-phase-3.php`); run `33976122273` on `6c9bdac` and the current tip: **491 / 0, PASS, cleanup verified** (+2 = the duplicate-phone / orphan-row guard). |
-| PHP lint / isolated PHP suites | NOT RUN locally — no PHP in this environment; covered by the Docker runtime suite on CI. |
+| PHP lint | Local PHP 8.3: changed account-security and staff-portal files pass. |
+| Real local WordPress browser review | Desktop/mobile, RTL, light/dark: public pages, all account views, panel home/run, and forced-password screen reviewed on genuine HTTP responses; no page-level horizontal overflow. WordPress admin toolbar defect found and fixed for panel/forced flows. |
 | Live staging / production | NOT CONTACTED. |
 
 `test-phase-3.php` runtime coverage: temp-password generation (length ≥ 16, entropy classes,

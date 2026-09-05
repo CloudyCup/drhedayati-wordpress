@@ -1,7 +1,7 @@
 # CURRENT_STATE.md
 
 **Last documentation update:** 2026-09-05 (Phase 3) — **Phase 3 "launch completion" is implemented
-on `feature/phase-3-launch-completion` (off Phase 2D @ `01c4e1c`), with GREEN GitHub Actions runtime acceptance (491/0) and GREEN Node static suites (732/0). NOT merged, NOT staging-tested,
+on `feature/phase-3-launch-completion` (off Phase 2D @ `01c4e1c`), with GREEN GitHub Actions runtime acceptance (491/0) and GREEN Node static suites (750/0). NOT merged, NOT staging-tested,
 NOT deployed.** `main` is unchanged at `32640e4`. Phase 3 absorbs the prior Codex/ChatGPT
 "launch-completion" working-tree WIP (preserved verbatim at commit `7500348` and on
 `snapshot/codex-launch-completion-wip-2026-09-05`) plus: forced first-login password change +
@@ -538,7 +538,8 @@ re-tested (unchanged by the subsequent merge to `main` — merging code is not s
   `hedayati_must_change_password`; postmeta `_hedayati_public_teacher`,
   `_hedayati_public_catalog_details`, `_hedayati_public_run_ids` (array). New audit object type
   `account`; new actions `account.created`, `account.password_changed`.
-- **Tests:** `tests/verify-phase3.js` — **85 passed, 0 failed**.
+- **Tests:** `tests/verify-phase3.js` — **103 passed, 0 failed** after the visual-completion and
+  live-browser toolbar regression checks.
   `docker/wp-tests/test-phase-3.php` — real-WordPress runtime: temp-password generation
   (length/entropy/uniqueness), reception-create → marker set + password stored only as a WP hash +
   one-shot staff notice consumed once + `account.created` audit (actor correct, PII-free), the

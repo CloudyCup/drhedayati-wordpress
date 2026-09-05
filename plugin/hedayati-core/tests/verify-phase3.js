@@ -179,6 +179,7 @@ for (const f of ['includes/class-account-security.php', 'includes/class-staff-po
 // ── 10. Phase 3 visual-completion pass ────────────────────────────────────
 console.log('\n10. visual completion (portal/panel/public polish):');
 assert('forced-change screen strips site nav via a body_class filter', sec.includes("add_filter( 'body_class'") && sec.includes("'hd-force-password'"));
+assert('forced-change screen hides the WordPress admin bar', sec.includes("'show_admin_bar'") && sec.includes('hide_admin_bar_while_forced'));
 const acctCss = readTheme('assets/css/account.css');
 assert('account.css: sidebar has min-width:0 (no mobile horizontal overflow)', /\.hd-portal-sidebar\s*\{[^}]*min-width:\s*0/.test(acctCss));
 assert('account.css: nav-link cards (a.hd-portal-card) have their own actionable treatment', acctCss.includes('a.hd-portal-card'));
@@ -194,6 +195,7 @@ assert('public-pages.css: run-status pill classes exist', pubCss.includes('.hd-r
 assert('public-pages.css: card CTAs bottom-align for a tidy row', /margin-block-start:\s*auto/.test(pubCss));
 assert('public-runs.php: uses a section-heading + status pill', runsPart.includes('section-heading') && runsPart.includes('hd-run-status'));
 assert('staff-portal: styled result lists + attendance form class + empty states', staff.includes('hd-portal-result-list') && staff.includes("'hd-portal-attendance'") && staff.includes('هنوز دانشجویی در این کلاس'));
+assert('staff panel hides the WordPress admin bar', staff.includes("'show_admin_bar'") && staff.includes('hide_admin_bar_on_panel'));
 const sp = readPlugin('includes/class-student-portal.php');
 assert('student-portal: documents upload has real <label>s', /<label class="hd-portal-field">\s*<span><\?php esc_html_e\( 'نوع مدرک'/.test(sp) && sp.includes("'فایل مدرک"));
 assert('student-portal: dashboard has a welcome line + quick-access links', sp.includes('خوش آمدید') && sp.includes('دسترسی سریع'));

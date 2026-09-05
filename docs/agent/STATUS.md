@@ -62,6 +62,12 @@ wp-admin (no separate front-end manager dashboard); students never see verificat
   alignment + avatar, empty `.hd-page-copy`, forced-change screen chrome, a thin student dashboard,
   and missing document-upload labels. `verify-phase3.js` 85 → 101; Node total **748/0**. A final
   visual check on real hardware is folded into Phase 4 staging acceptance.
+- **Real local WordPress visual follow-up (2026-09-05).** The current feature branch was served
+  through a disposable local WordPress/PHP/MariaDB runtime and reviewed in a browser at desktop
+  and mobile widths, Persian RTL, and light/dark modes. Public pages, every student-account view,
+  `/panel/` home/run, and the forced password screen rendered without page-level horizontal
+  overflow. This exposed WordPress's admin toolbar above the staff and forced-password journeys;
+  both flows now suppress it. `verify-phase3.js` is **103/0**; Node total **750/0**.
 
 ## Phase 2D — account shell & student self-service portal (2026-09-05) — IMPLEMENTED, NOT MERGED, NOT STAGING-TESTED
 

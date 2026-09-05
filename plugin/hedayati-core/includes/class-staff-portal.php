@@ -64,10 +64,16 @@ class Hedayati_Staff_Portal {
 		add_action( 'admin_init', [ self::class, 'maybe_ensure_page' ] );
 		add_action( 'template_redirect', [ self::class, 'guard' ] );
 		add_filter( 'login_redirect', [ self::class, 'login_redirect' ], 20, 3 );
+		add_filter( 'show_admin_bar', [ self::class, 'hide_admin_bar_on_panel' ] );
 
 		foreach ( array_keys( self::ACTIONS ) as $action ) {
 			add_action( 'admin_post_hedayati_staff_' . $action, [ self::class, 'handle_' . $action ] );
 		}
+	}
+
+	/** Keep the front-end staff workspace visually separate from wp-admin. */
+	public static function hide_admin_bar_on_panel( bool $show ): bool {
+		return is_page( self::PAGE_SLUG ) ? false : $show;
 	}
 
 	/** Ensures the `panel` Page exists. Safe to call with no user (activation). */
