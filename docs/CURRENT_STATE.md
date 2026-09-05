@@ -1,8 +1,7 @@
 # CURRENT_STATE.md
 
 **Last documentation update:** 2026-09-05 (Phase 3) — **Phase 3 "launch completion" is implemented
-on `feature/phase-3-launch-completion` (off Phase 2D @ `01c4e1c`), with GREEN GitHub Actions
-runtime acceptance (489/0) and GREEN Node static suites (732/0). NOT merged, NOT staging-tested,
+on `feature/phase-3-launch-completion` (off Phase 2D @ `01c4e1c`), with GREEN GitHub Actions runtime acceptance (491/0) and GREEN Node static suites (732/0). NOT merged, NOT staging-tested,
 NOT deployed.** `main` is unchanged at `32640e4`. Phase 3 absorbs the prior Codex/ChatGPT
 "launch-completion" working-tree WIP (preserved verbatim at commit `7500348` and on
 `snapshot/codex-launch-completion-wip-2026-09-05`) plus: forced first-login password change +
@@ -483,8 +482,7 @@ re-tested (unchanged by the subsequent merge to `main` — merging code is not s
 
 ### Plugin/theme — launch completion (Phase 3) — branch `feature/phase-3-launch-completion`, runtime-CI GREEN, NOT merged, NOT staging-tested
 
-> Node static **732/0** · `Acceptance (Docker WordPress)` on the exact HEAD **489/0, cleanup
-> verified, RESULT: PASS** (run `33975445108`). Absorbs the preserved Codex/ChatGPT WIP (commit
+> Node static **732/0** · `Acceptance (Docker WordPress)` on the exact HEAD **491/0, cleanup verified, RESULT: PASS** (run `33976122273`, HEAD `6c9bdac`). Absorbs the preserved Codex/ChatGPT WIP (commit
 > `7500348`). **Not merged to `main`, not deployed, no `mystik.ir`/`drhedayati.com` contact.**
 
 - **`Hedayati_Account_Security`** (`class-account-security.php`): forced first-login password

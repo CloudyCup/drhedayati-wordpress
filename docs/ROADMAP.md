@@ -94,8 +94,7 @@ several items still need institute decisions (marked ❓, see the bottom of this
      (`Hedayati_Account_Security`, D41); public About/Contact/Consult/Teachers pages + per-run
      publication opt-in (D43); course/taxonomy/settings capability-consistency fixes (D42);
      `page.php`; self-hosted Vazirmatn; Shamsi on the course page. Plugin `1.8.0`, theme `1.2.0`,
-     no DB change. Node static **732/0**; `Acceptance (Docker WordPress)` **489/0, PASS** on the
-     exact HEAD. **NOT merged, NOT staging-tested, NOT deployed.**
+     no DB change. Node static **732/0**; `Acceptance (Docker WordPress)` **491/0, PASS** on the exact HEAD. **NOT merged, NOT staging-tested, NOT deployed.**
    - **Phase 4 — integrated staging** (`mystik.ir`, once, end to end) and **Phase 5 — production
      cutover** (`drhedayati.com`) remain the only steps after Phase 3 merges to `main`.
 4. **Public content & pages.** Create About, Contact, and consultation pages (templates + a

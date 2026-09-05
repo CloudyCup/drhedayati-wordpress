@@ -37,7 +37,7 @@ wp-admin (no separate front-end manager dashboard); students never see verificat
 - **Tests — GREEN:** Node static suites **732 passed, 0 failed** (`verify-phase2a` 74,
   `verify-phase2b` 208, `verify-phase2c` 132, `verify-phase2d` 82, **`verify-phase3` 85 new**,
   `verify-audit-log` 98, `verify-jalali` 53). `Acceptance (Docker WordPress)` GitHub Actions on the
-  exact Phase 3 HEAD (`046bd31`, run `33975445108`): **489 passed, 0 failed, cleanup verified,
+  Phase 3 HEAD (`6c9bdac`, run `33976122273`): **491 passed, 0 failed, cleanup verified,
   RESULT: PASS** (up from the Codex-WIP baseline's 450 — `docker/wp-tests/test-phase-3.php` adds
   the temp-password / forced-change / capability-matrix runtime coverage). This is the first
   real-WordPress runtime evidence for Phase 2D **and** the launch-completion work — it is green.
