@@ -16,7 +16,7 @@ Branch `feature/phase-3-launch-completion`. Baseline = the preserved Codex/ChatG
 | `verify-jalali.js` | 53 / 0 |
 | **Node static total** | **732 / 0**, every process exit 0 |
 | `Acceptance (Docker WordPress)` GitHub Actions | run `33974539901` on the WIP baseline `7500348`: **450 / 0, PASS, cleanup verified** (first-ever real-WordPress runtime evidence for Phase 2D + launch WIP). |
-| `Acceptance (Docker WordPress)` GitHub Actions | run `33975445108` on Phase 3 HEAD `046bd31`: **489 / 0, PASS, cleanup verified** (+39 = `docker/wp-tests/test-phase-3.php`). |
+| `Acceptance (Docker WordPress)` GitHub Actions | run `33975445108` on `046bd31` (feat commit): **489 / 0, PASS** (+39 = `docker/wp-tests/test-phase-3.php`); run `33976122273` on `6c9bdac` and the current tip: **491 / 0, PASS, cleanup verified** (+2 = the duplicate-phone / orphan-row guard). |
 | PHP lint / isolated PHP suites | NOT RUN locally — no PHP in this environment; covered by the Docker runtime suite on CI. |
 | Live staging / production | NOT CONTACTED. |
 
