@@ -96,6 +96,72 @@ Verify before relying on the feature: `wp eval 'var_export( Hedayati_Crypto::is_
 can write outside `public_html`; if not, the protected in-webroot fallback pattern from D14 would
 need to be revisited as a deliberate, documented exception before production use — do not assume.
 
+### Where to add the constants
+
+Add them to `wp-config.php` alongside the other `define()` calls, **before** the
+`/* That's all, stop editing! */` line — never inside `wp-settings.php` or a plugin file:
+
+```php
+// ── Hedayati Core — Phase 2C identity/document encryption (D36/D38) ──────────
+// Provisioned outside Git. Never commit real values here or anywhere else.
+define( 'HEDAYATI_DATA_ENCRYPTION_KEY', '<PLACEHOLDER — base64, 32 bytes>' );
+define( 'HEDAYATI_DATA_HMAC_KEY',       '<PLACEHOLDER — base64, 32 bytes, independent>' );
+define( 'HEDAYATI_PRIVATE_UPLOADS_DIR', '<PLACEHOLDER — confirmed absolute path outside public_html>' );
+```
+
+### Confirming the cPanel home path before choosing `HEDAYATI_PRIVATE_UPLOADS_DIR`
+
+Do not guess this path. Before setting it, confirm in cPanel:
+
+1. cPanel dashboard → **General Information** panel (left sidebar) shows the account's **Home
+   Directory** — this is the absolute path one level above `public_html` on typical ParsPack/cPanel
+   layouts (commonly `/home/<cpanel_username>`, but confirm rather than assume the exact prefix).
+2. Or, via **File Manager**, navigate to the account root (one level up from where `public_html`
+   sits) and read the path shown in File Manager's address/breadcrumb bar.
+3. Or, once WP-CLI/`wp eval` access exists, `wp eval 'echo ABSPATH;'` prints the WordPress root
+   (inside `public_html`); the private directory should be a **sibling** of `public_html`, not a
+   child of it — e.g. if `ABSPATH` is `/home/example/public_html/`, the candidate private path is
+   `/home/example/hedayati-private-storage` (confirm the exact home segment from step 1/2 first;
+   do not assume `example` or any other literal segment).
+
+Only after confirming the real home path, create the directory (via File Manager or SSH if
+available) and set `HEDAYATI_PRIVATE_UPLOADS_DIR` to its exact absolute path.
+
+### Filesystem permissions (conservative — never `777`)
+
+- Directory: `750` (owner rwx, group rx, no world access) if PHP runs as the cPanel account owner
+  (the normal case on shared hosting with suPHP/PHP-FPM-per-account) — this lets PHP read/write/
+  traverse while blocking every other account on the box. If a hosting-specific reason requires the
+  web server's own group to write here (verify with hosting support rather than assuming), `770`
+  is the next-most-conservative step up — still never world-writable.
+- Files written by the plugin get `640` automatically (`Hedayati_Document_Storage::save()` calls
+  `chmod( $dest_path, 0640 )`) — no manual action needed for files it creates itself.
+- Never `777` on the directory or its contents. If something only works at `777`, that is a signal
+  the actual owner/group is wrong, not that permissions should be loosened — fix the ownership
+  instead (`chown` to the PHP-executing user via cPanel's File Manager "Change Permissions"/SSH,
+  whichever hosting support recommends for this account).
+
+### Verification steps after configuring (read-only / harmless)
+
+1. **Crypto configuration recognized:** `wp eval 'var_export( Hedayati_Crypto::is_configured() );'`
+   → must print `true`. Reads the two constants and validates their format; writes nothing.
+2. **Private directory recognized and outside webroot:**
+   `wp eval 'var_export( Hedayati_Document_Storage::resolve_root() );'` → must print the exact
+   configured path as a string (not a `WP_Error` array). Note: this call creates the directory via
+   `wp_mkdir_p()` if it does not already exist yet — a harmless, idempotent side effect (no data is
+   written into it), not a silent no-op; run step 4 (create the directory) first if you'd rather
+   this call find it already present.
+3. **Plugin refuses to expose secret values:** do **not** attempt this by reading `wp-config.php`
+   contents back or grepping logs for the key — that risks the exact exposure being tested for.
+   Instead, confirm the two structural guarantees that make exposure impossible by design: (a)
+   `WP_DEBUG_DISPLAY` is `false` and PHP's `display_errors` is off on this environment (prevents an
+   unrelated fatal from ever echoing a variable containing key material), and (b) attempt the
+   privileged "نمایش شناسه ملی" reveal action as a **non**-`hedayati_verify_students` account (e.g.
+   a disposable `reception` QA user) against a disposable QA student with a fabricated national ID
+   on file — it must return a 403, never a value. A PASS here is a read-only confirmation that the
+   one plaintext-rendering code path is correctly gated; it does not touch the encryption keys
+   themselves.
+
 ---
 
 ## Deploy workflow (staging)
