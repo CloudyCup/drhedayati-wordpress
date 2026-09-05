@@ -17,6 +17,9 @@
  * @package Hedayati
  */
 
+if ( ! class_exists( 'Hedayati_Student_Portal' ) ) {
+	status_header( 503 ); get_header(); echo '<main id="site-main" class="section container"><p>حساب کاربری موقتاً در دسترس نیست.</p></main>'; get_footer(); return;
+}
 get_header();
 
 $hd_current_view = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( $_GET['view'] ) ) : 'dashboard';

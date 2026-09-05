@@ -78,6 +78,8 @@ class Hedayati_Auth_UI {
 		// Password-reset enumeration hardening — NOT a lostpassword_errors
 		// filter (see the class docblock for why that approach is unsafe).
 		add_action( 'login_form_lostpassword', [ self::class, 'handle_lostpassword_request' ] );
+		add_action( 'login_form_retrievepassword', [ self::class, 'handle_lostpassword_request' ] );
+		add_filter( 'authenticate', [ self::class, 'generic_login_error' ], 99, 3 );
 
 		// Role-aware post-login routing.
 		add_filter( 'login_redirect', [ self::class, 'student_login_redirect' ], 10, 3 );
@@ -135,7 +137,7 @@ class Hedayati_Auth_UI {
 			return;
 		}
 
-		$login = isset( $_POST['user_login'] ) ? trim( (string) wp_unslash( $_POST['user_login'] ) ) : '';
+		$login = isset( $_POST['user_login'] ) && is_string( $_POST['user_login'] ) ? trim( wp_unslash( $_POST['user_login'] ) ) : '';
 
 		if ( '' === $login ) {
 			// Nothing submitted — real WordPress validation feedback, not an
@@ -148,10 +150,23 @@ class Hedayati_Auth_UI {
 		// real account. Its return value is deliberately never inspected —
 		// that is exactly the branch point that used to leak account
 		// existence.
-		retrieve_password();
+		// Separate abuse buckets from login; successful and unknown requests count equally.
+		$identifier = 'reset:' . strtolower( $login );
+		$ip_bucket = 'reset:' . Hedayati_Rate_Limiter::get_client_ip();
+		if ( ! Hedayati_Rate_Limiter::is_rate_limited( $identifier, $ip_bucket ) ) {
+			Hedayati_Rate_Limiter::record_failure( $identifier, $ip_bucket );
+			retrieve_password();
+		}
 
 		wp_safe_redirect( 'wp-login.php?checkemail=confirm' );
 		exit;
+	}
+
+	public static function generic_login_error( $user, string $username, string $password ) {
+		if ( '' !== $username && '' !== $password && is_wp_error( $user ) && array_intersect( $user->get_error_codes(), [ 'invalid_username', 'invalid_email', 'incorrect_password' ] ) ) {
+			return new WP_Error( 'invalid_credentials', __( 'نام کاربری یا رمز عبور صحیح نیست.', 'hedayati-core' ) );
+		}
+		return $user;
 	}
 
 	// ── Role-aware routing ───────────────────────────────────────────────────

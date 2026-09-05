@@ -86,6 +86,7 @@ function hedayati_setup(): void {
 add_action( 'wp_enqueue_scripts', 'hedayati_enqueue_assets' );
 
 function hedayati_enqueue_assets(): void {
+	wp_enqueue_style( 'hedayati-public-pages', HEDAYATI_URI . '/assets/css/public-pages.css', [ 'hedayati-main' ], HEDAYATI_VERSION );
 	/*
 	 * Font loading policy:
 	 *   - Do NOT @import Google Fonts in CSS.
@@ -129,7 +130,7 @@ function hedayati_enqueue_assets(): void {
 	// check, so a staff rename of the page slug can't silently break this).
 	if (
 		class_exists( 'Hedayati_Student_Portal' )
-		&& is_page( Hedayati_Student_Portal::get_account_page_id() )
+		&& ( is_page( Hedayati_Student_Portal::get_account_page_id() ) || is_page( 'panel' ) )
 		&& Hedayati_Student_Portal::get_account_page_id() > 0
 	) {
 		wp_enqueue_style(

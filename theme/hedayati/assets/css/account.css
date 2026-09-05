@@ -11,6 +11,8 @@
 	padding-block: 40px 64px;
 }
 
+.hd-staff-section { border-block-end: 1px solid var(--hd-line); padding-block: 20px; }
+
 .hd-portal-shell {
 	display: grid;
 	grid-template-columns: 220px 1fr;

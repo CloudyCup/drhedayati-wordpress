@@ -31,10 +31,10 @@ function hdit_run_phase_2a(): void {
 		Hedayati_Roles::ROLES_VERSION,
 		get_option( Hedayati_Roles::OPTION_ROLES_VERSION )
 	);
-	HDIT::eq( 'roles schema version is 2.2.0', '2.2.0', get_option( Hedayati_Roles::OPTION_ROLES_VERSION ) );
+	HDIT::eq( 'roles schema version is current', Hedayati_Roles::ROLES_VERSION, get_option( Hedayati_Roles::OPTION_ROLES_VERSION ) );
 	HDIT::eq(
-		'managed-capability list has 23 entries',
-		23,
+		'managed-capability list has 24 entries',
+		24,
 		count( (array) get_option( Hedayati_Roles::OPTION_MANAGED_CAPS ) )
 	);
 	HDIT::eq( 'no migration lock is held after a completed run', false, (bool) get_option( Hedayati_DB_Schema::LOCK_OPTION ) );

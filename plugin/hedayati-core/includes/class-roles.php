@@ -29,7 +29,7 @@ class Hedayati_Roles {
 	/**
 	 * Version tracker for roles/capabilities synchronization.
 	 */
-	public const ROLES_VERSION = '2.2.0';
+	public const ROLES_VERSION = '2.3.0';
 	public const OPTION_ROLES_VERSION = 'hedayati_core_roles_version';
 
 	/**
@@ -94,6 +94,7 @@ class Hedayati_Roles {
 			'reception' => [
 				'display_name' => 'پذیرش و ثبت‌نام',
 				'capabilities' => [
+					'hedayati_create_students'               => true,
 					'read'                                   => true,
 					'hedayati_lookup_students'               => true,
 					'hedayati_create_enrollments'            => true,
@@ -106,6 +107,7 @@ class Hedayati_Roles {
 			'hedayati_manager' => [
 				'display_name' => 'مدیر آموزش مجتمع',
 				'capabilities' => [
+					'hedayati_create_students'               => true,
 					'read'                                   => true,
 					'hedayati_lookup_students'               => true,
 					'hedayati_create_enrollments'            => true,
@@ -134,6 +136,7 @@ class Hedayati_Roles {
 	 */
 	public static function get_all_hedayati_capabilities(): array {
 		return [
+			'hedayati_create_students',
 			'hedayati_view_own_portal',
 			'hedayati_edit_own_profile',
 			'hedayati_view_own_enrollments',

@@ -69,6 +69,8 @@ require_once HEDAYATI_CORE_DIR . 'includes/class-student-admin.php';
 // Phase 2D — account shell, front-end auth/routing, student self-service portal
 require_once HEDAYATI_CORE_DIR . 'includes/class-auth-ui.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-student-portal.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-staff-portal.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-public-content.php';
 
 // ── Hook Registration ─────────────────────────────────────────────────────────
 
@@ -109,6 +111,8 @@ Hedayati_Student_Admin::init();
 // Phase 2D — account shell, front-end auth/routing, student self-service portal
 Hedayati_Auth_UI::init();
 Hedayati_Student_Portal::init();
+Hedayati_Staff_Portal::init();
+Hedayati_Public_Content::init();
 
 // ── Shared helpers (callable from theme without knowing internals) ─────────────
 
@@ -176,6 +180,7 @@ register_activation_hook( __FILE__, function (): void {
 	Hedayati_DB_Schema::migrate();
 	Hedayati_Roles::register_roles();
 	Hedayati_Student_Portal::maybe_create_account_page();
+	Hedayati_Staff_Portal::ensure_page();
 	flush_rewrite_rules();
 } );
 

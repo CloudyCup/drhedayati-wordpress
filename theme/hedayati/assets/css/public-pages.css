@@ -1,0 +1,12 @@
+@font-face { font-family: Vazirmatn; src: url('../fonts/Vazirmatn-variable.woff2') format('woff2'); font-style: normal; font-weight: 100 900; font-display: swap; }
+.hd-public-page { min-height: 60vh; }
+.hd-page-copy { max-width: 780px; margin-block: 24px; }
+.hd-page-lead { max-width: 700px; font-size: 1.15rem; margin-block-end: 32px; }
+.hd-public-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 24px; }
+.hd-public-card { padding: 28px; background: var(--hd-surface); border: 1px solid var(--hd-line); border-radius: var(--hd-radius); }
+.hd-public-card h2, .hd-public-card h3 { margin-block-end: 14px; }
+.hd-public-card p { margin-block-end: 22px; }
+.hd-public-card address { font-style: normal; line-height: 2; }
+.hd-public-card img { border-radius: var(--hd-radius-sm); max-width: 100%; height: auto; }
+.hd-contact-phone { color: var(--hd-red); font-size: clamp(20px, 3vw, 30px); font-weight: 700; display: inline-block; }
+@media (max-width: 420px) { .hd-account-link { padding: 7px 9px; font-size: 12px; } }

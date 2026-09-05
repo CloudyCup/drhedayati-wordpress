@@ -168,11 +168,11 @@ assert('activation hook creates the account page', boot.includes('Hedayati_Stude
 assert('plugin version bumped to 1.7.0', boot.includes("HEDAYATI_CORE_VERSION', '1.7.0'"));
 assert("plugin header 'Version:' matches HEDAYATI_CORE_VERSION", boot.includes('Version:           1.7.0'));
 assert('no new database migration was added for Phase 2D (no schema change — every read/write reuses an existing table)', !/'2\.4\.0'/.test(readPlugin('includes/class-db-schema.php')));
-assert('no new capability was added for Phase 2D (no capability change — every check reuses an existing hedayati_* capability)', (() => {
+assert('launch role registry includes the narrow reception-account capability', (() => {
 	const roles = readPlugin('includes/class-roles.php');
 	const capListMatch = roles.match(/get_all_hedayati_capabilities\(\): array \{\s*return \[([\s\S]*?)\];/);
 	const count = capListMatch ? (capListMatch[1].match(/'hedayati_[a-z_]+'/g) || []).length : -1;
-	return count === 23 && roles.includes("ROLES_VERSION = '2.2.0'");
+	return count === 24 && roles.includes("ROLES_VERSION = '2.3.0'") && roles.includes("'hedayati_create_students'");
 })());
 
 // ── 8. Theme: page-account.php ──────────────────────────────────────────────

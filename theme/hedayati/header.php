@@ -68,6 +68,7 @@
 			</a>
 
 			<!-- Dark mode toggle -->
+			<a class="outline-btn hd-account-link" href="<?php echo esc_url( is_user_logged_in() ? ( class_exists( 'Hedayati_Staff_Portal' ) && Hedayati_Staff_Portal::allowed() ? Hedayati_Staff_Portal::url() : home_url( '/account/' ) ) : wp_login_url() ); ?>"><?php echo is_user_logged_in() ? esc_html__( 'حساب من', 'hedayati' ) : esc_html__( 'ورود', 'hedayati' ); ?></a>
 			<button
 				class="theme-toggle-btn"
 				id="theme-toggle"

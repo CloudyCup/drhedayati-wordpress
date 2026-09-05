@@ -26,6 +26,11 @@ $prerequisites = (string) get_post_meta( $post_id, '_course_prerequisites', true
 $price         = (string) get_post_meta( $post_id, '_course_price', true );
 $reg_state_raw = (string) get_post_meta( $post_id, '_course_registration_state', true ) ?: 'soon';
 $start_date    = (string) get_post_meta( $post_id, '_course_next_start_date', true );
+// Explicit staff publication is required for catalog teacher/date/fee fields.
+if ( '1' !== get_post_meta( $post_id, '_hedayati_public_catalog_details', true ) ) {
+	$teacher = ''; $price = ''; $start_date = '';
+}
+$start_display = $start_date && class_exists( 'Hedayati_Jalali' ) ? Hedayati_Jalali::format( $start_date ) : $start_date;
 $terms         = get_the_terms( $post_id, 'course-category' );
 $reg_display   = hedayati_registration_state_display( $reg_state_raw );
 $monogram      = hedayati_course_monogram( $post_id );
@@ -192,7 +197,7 @@ $related_query = class_exists( 'Hedayati_Query' ) ? Hedayati_Query::get_related_
 						</span>
 						<div class="fact-data">
 							<span class="fact-label"><?php esc_html_e( 'شروع دوره بعدی', 'hedayati' ); ?></span>
-							<strong class="fact-value" dir="ltr"><time datetime="<?php echo esc_attr( $start_date ); ?>"><?php echo esc_html( $start_date ); ?></time></strong>
+							<strong class="fact-value" dir="ltr"><time datetime="<?php echo esc_attr( $start_date ); ?>"><?php echo esc_html( $start_display ); ?></time></strong>
 						</div>
 					</div>
 				<?php endif; ?>
@@ -339,7 +344,7 @@ $related_query = class_exists( 'Hedayati_Query' ) ? Hedayati_Query::get_related_
 						<?php if ( '' !== $start_date ) : ?>
 							<div class="sticky-card-date">
 								<span class="date-label"><?php esc_html_e( 'تاریخ برگزاری:', 'hedayati' ); ?></span>
-								<strong class="date-value" dir="ltr"><?php echo esc_html( $start_date ); ?></strong>
+								<strong class="date-value" dir="ltr"><?php echo esc_html( $start_display ); ?></strong>
 							</div>
 						<?php endif; ?>
 
@@ -410,6 +415,7 @@ $related_query = class_exists( 'Hedayati_Query' ) ? Hedayati_Query::get_related_
 		</section>
 	<?php endif; ?>
 
+	<?php get_template_part( 'template-parts/public-runs' ); ?>
 </main>
 
 <?php get_footer(); ?>
