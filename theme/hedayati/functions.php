@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_VERSION', '1.1.0' );
+define( 'HEDAYATI_VERSION', '1.2.0' );
 define( 'HEDAYATI_DIR', get_template_directory() );
 define( 'HEDAYATI_URI', get_template_directory_uri() );
 
@@ -125,14 +125,21 @@ function hedayati_enqueue_assets(): void {
 		[ 'strategy' => 'defer', 'in_footer' => true ]
 	);
 
-	// Phase 2D — account portal assets, loaded only on the account page (its
-	// page ID is resolved via Hedayati_Student_Portal, never a hardcoded slug
-	// check, so a staff rename of the page slug can't silently break this).
-	if (
-		class_exists( 'Hedayati_Student_Portal' )
-		&& ( is_page( Hedayati_Student_Portal::get_account_page_id() ) || is_page( 'panel' ) )
-		&& Hedayati_Student_Portal::get_account_page_id() > 0
-	) {
+	// Phase 2D/3 — account + staff portal assets. Loaded on the student account
+	// page (ID resolved via the plugin, never a hardcoded slug), the staff
+	// `/panel/` page, and any page while a logged-in user is being forced
+	// through the first-login password change (that screen can render on top of
+	// any request). Cheap boolean checks only — no queries.
+	$hd_account_id  = class_exists( 'Hedayati_Student_Portal' ) ? Hedayati_Student_Portal::get_account_page_id() : 0;
+	$hd_needs_portal = ( $hd_account_id > 0 && is_page( $hd_account_id ) )
+		|| is_page( 'panel' )
+		|| (
+			class_exists( 'Hedayati_Account_Security' )
+			&& is_user_logged_in()
+			&& Hedayati_Account_Security::must_change( get_current_user_id() )
+		);
+
+	if ( $hd_needs_portal ) {
 		wp_enqueue_style(
 			'hedayati-account',
 			HEDAYATI_URI . '/assets/css/account.css',

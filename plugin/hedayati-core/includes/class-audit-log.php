@@ -49,6 +49,7 @@ class Hedayati_Audit_Log {
 			'attendance',
 			'teacher',
 			'user',
+			'account',
 			'student_identity',
 			'document',
 		] );
@@ -62,6 +63,8 @@ class Hedayati_Audit_Log {
 	 */
 	public static function actions(): array {
 		return (array) apply_filters( 'hedayati_audit_actions', [
+			'account.created',
+			'account.password_changed',
 			'course.deleted',
 			'teacher.unlinked',
 			'course_run.created',

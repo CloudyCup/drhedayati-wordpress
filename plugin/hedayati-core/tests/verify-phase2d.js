@@ -165,9 +165,18 @@ assert('requires class-student-portal.php', boot.includes('includes/class-studen
 assert('boots Hedayati_Auth_UI::init()', boot.includes('Hedayati_Auth_UI::init()'));
 assert('boots Hedayati_Student_Portal::init()', boot.includes('Hedayati_Student_Portal::init()'));
 assert('activation hook creates the account page', boot.includes('Hedayati_Student_Portal::maybe_create_account_page()'));
-assert('plugin version bumped to 1.7.0', boot.includes("HEDAYATI_CORE_VERSION', '1.7.0'"));
-assert("plugin header 'Version:' matches HEDAYATI_CORE_VERSION", boot.includes('Version:           1.7.0'));
-assert('no new database migration was added for Phase 2D (no schema change — every read/write reuses an existing table)', !/'2\.4\.0'/.test(readPlugin('includes/class-db-schema.php')));
+assert('plugin version >= 1.7.0 (Phase 2D baseline; later phases may bump further)', (() => {
+	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.\d+'/);
+	if (!m) return false;
+	const [maj, min] = [Number(m[1]), Number(m[2])];
+	return maj > 1 || (maj === 1 && min >= 7);
+})());
+assert("plugin header 'Version:' matches HEDAYATI_CORE_VERSION", (() => {
+	const v = boot.match(/HEDAYATI_CORE_VERSION', '([0-9.]+)'/);
+	const h = boot.match(/\*\s*Version:\s+([0-9.]+)/);
+	return !!v && !!h && v[1] === h[1];
+})());
+assert('no student-identity schema change in the account/portal work (CURRENT_DB_VERSION unchanged at 2.3.0)', readPlugin('includes/class-db-schema.php').includes("CURRENT_DB_VERSION = '2.3.0'") && !/'2\.4\.0'/.test(readPlugin('includes/class-db-schema.php')));
 assert('launch role registry includes the narrow reception-account capability', (() => {
 	const roles = readPlugin('includes/class-roles.php');
 	const capListMatch = roles.match(/get_all_hedayati_capabilities\(\): array \{\s*return \[([\s\S]*?)\];/);
