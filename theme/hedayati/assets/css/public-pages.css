@@ -1,4 +1,4 @@
-@font-face { font-family: Vazirmatn; src: url('../fonts/Vazirmatn-variable.woff2') format('woff2'); font-style: normal; font-weight: 100 900; font-display: swap; }
+/* Vazirmatn @font-face lives in main.css (always enqueued before this file). */
 .hd-public-page { min-height: 60vh; }
 .hd-page-copy { max-width: 780px; margin-block: 24px; }
 .hd-page-lead { max-width: 700px; font-size: 1.15rem; margin-block-end: 32px; }

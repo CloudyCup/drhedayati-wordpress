@@ -49,7 +49,7 @@ merged into `main` — merging code is not staging acceptance and is not a deplo
 | # | Requirement | Status |
 |---|---|---|
 | 3.1 | Brand palette: Dr. Hedayati red `#c52232`, white/warm white, black/charcoal; red controlled for emphasis/CTAs | ✅ |
-| 3.2 | Primary typeface **Vazirmatn**, self-hosted WOFF2, `font-display: swap`; **no Google Fonts / CDN** | 🟡 (Phase 3: variable WOFF2 shipped in `theme/assets/fonts/` + `OFL.txt`, `@font-face` in `login.css` + `public-pages.css`, `font-display: swap`; a full front-end `main.css` `font-family` swap + weight audit is a small remaining task) |
+| 3.2 | Primary typeface **Vazirmatn**, self-hosted WOFF2, `font-display: swap`; **no Google Fonts / CDN** | ✅ (Phase 3, not merged/staging-tested: variable WOFF2 `theme/assets/fonts/Vazirmatn-variable.woff2` + `OFL.txt`; `@font-face` weight `100 900` / `font-display: swap` at the top of `main.css` — enqueued site-wide — and in `login.css` for `wp-login.php`; `--hd-font` stack leads with `'Vazirmatn'`; no `@import`, no CDN) |
 | 3.3 | Monospace only for genuinely technical Latin/code content | ✅ |
 | 3.4 | Cards, buttons with clear primary/secondary hierarchy and visible hover/focus/disabled states | ✅ |
 | 3.5 | Subtle, functional motion; respect `prefers-reduced-motion` | ✅ |

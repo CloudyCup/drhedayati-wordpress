@@ -88,16 +88,11 @@ add_action( 'wp_enqueue_scripts', 'hedayati_enqueue_assets' );
 function hedayati_enqueue_assets(): void {
 	wp_enqueue_style( 'hedayati-public-pages', HEDAYATI_URI . '/assets/css/public-pages.css', [ 'hedayati-main' ], HEDAYATI_VERSION );
 	/*
-	 * Font loading policy:
-	 *   - Do NOT @import Google Fonts in CSS.
-	 *   - Do NOT enqueue from an external CDN in Phase 1.
-	 *   - Vazirmatn will be self-hosted and enqueued here once the final
-	 *     approved font files are available.
-	 *   - For now the CSS font stack falls back to system Persian fonts.
-	 *
-	 * When ready, add:
-	 *   wp_enqueue_style( 'hedayati-font-vazirmatn', HEDAYATI_URI . '/assets/fonts/vazirmatn.css', [], '4.5.1' );
-	 * and update the font-family declaration in main.css.
+	 * Font loading policy (Phase 3): Vazirmatn is self-hosted — the variable
+	 * WOFF2 in assets/fonts/ (SIL OFL) is declared with @font-face at the top of
+	 * main.css, which is enqueued below and site-wide, so no separate font
+	 * stylesheet is needed. Never @import Google Fonts; never load from a CDN.
+	 * wp-login.php gets its own copy in login.css (main.css is not loaded there).
 	 */
 
 	// Main stylesheet
