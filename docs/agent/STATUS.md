@@ -6,9 +6,10 @@ independent local review recorded separately in TEST_RESULTS.md. Read this first
 update these concise files as work progresses. Code establishes what exists; the owner's handoff
 establishes intent. Older conflicting status prose is superseded by this file.
 
-## Phase 2C — student identity, verification, private documents (2026-09-05)
+## Phase 2C — student identity, verification, private documents (2026-09-05) — MERGED TO `main`
 
-**Branch `feature/phase-2c-student-portal`, off `main` (Phase 2B already merged).** Owner
+**Built on `feature/phase-2c-student-portal` (kept, superseded), off `main` (Phase 2B already
+merged); now itself merged into `main` (`--no-ff` commit `32640e4`).** Owner
 resolved `docs/OPEN_QUESTIONS.md` Q10–Q13 (see `docs/DECISIONS.md` D36–D40) and Phase 2C was
 implemented per an approved, 3-times-revised plan (national-ID encryption + strict key format +
 defense-in-depth decrypt authorization; an enforced verification-state machine; environment-gated
@@ -37,14 +38,16 @@ no other plaintext path anywhere).
   **GREEN on the final Phase 2C HEAD, commit `20d5fd4` (run id `33954971036`): 335 passed, 0
   failed, cleanup verified.** Node static suites on the same HEAD: 565/0
   (`verify-phase2a.js` 74, `verify-phase2b.js` 208, `verify-phase2c.js` 132, `verify-audit-log.js`
-  98, `verify-jalali.js` 53). No known open Phase 2C product defect — ready to merge to `main`.
+  98, `verify-jalali.js` 53). No known open Phase 2C product defect.
+  **Merged into `main` 2026-09-05 (`--no-ff` commit `32640e4`, together with Phase 2B).**
   Staging deployment (`mystik.ir`) and production contact (`drhedayati.com`) remain untouched and
   deliberately deferred — see `docs/PHASE_2C_STAGING_DEPLOY_CHECKLIST.md` for what remains before
   that step, and `docs/DEPLOYMENT.md` for the required `wp-config.php` constants that are **not
-  yet provisioned anywhere**. Phase 2D is explicitly out of scope until further instruction.
+  yet provisioned anywhere**. Phase 2D+ planning is recorded in `docs/PHASE_2D_PLANNING.md`;
+  implementation has not started.
 - `docs/PHASE_2C_ACCEPTANCE.md` (staging smoke-test matrix) is authored but **NOT executed** —
-  staging execution and any deploy remain separate, explicit, owner-approved steps. Not merged to
-  `main`. No production or staging contact occurred while building this.
+  staging execution and any deploy remain separate, explicit, owner-approved steps, unaffected by
+  the `main` merge. No production or staging contact has occurred at any point in this project.
 - Known, documented gap: the Docker/WP-CLI test harness cannot fabricate a real HTTP file upload
   (`is_uploaded_file()` is only ever true for one), so `Hedayati_Document_Storage::save()`'s
   upload-origin gate is asserted statically (source inspection) rather than exercised end-to-end
@@ -108,17 +111,22 @@ no other plaintext path anywhere).
 - **GitHub Actions run #3 (commit cbcb4da) is GREEN: 228 passed, 0 failed, cleanup verified, result PASS.** This is the actual runtime proof this section used to be waiting on — obtained via CI, not this machine. See TEST_RESULTS.md and DEFECTS.md for exactly what that run verifies (HD-002, HD-004, HD-005, HD-006) versus what remains explicitly open (HD-003's documented gaps; the staging retest of 1.5.3).
 - Next action: staging (`mystik.ir`) retest of plugin 1.5.3 (Teacher edit/delete authorization, T1) is DONE and PASSED (2026-09-04, see above). Broaden HD-003's still-open runtime coverage (R5 full matrix, B5/J9 real second dbDelta pass, J1/J4 exhaustive assertions) as separate, non-blocking follow-up work.
 
-## Merge gate — Phase 2B (2026-09-04)
+## Merge gate — Phase 2B (2026-09-04) — SATISFIED, MERGED 2026-09-05
 
-**READY TO MERGE, not yet merged.** Evidence: Node static suites 458/0; local Docker CI runtime
-suite 228/0 with verified cleanup (GitHub Actions run #3, commit `cbcb4da`); staging smoke test of
-plugin 1.5.3 PASSED on `mystik.ir` covering the branch's own defect (Teacher CPT object-level
-authorization, HD-006) plus core admin flows (menu, create/edit/delete, capability resolution);
-`CURRENT_DB_VERSION` `2.2.0` and `ROLES_VERSION` `2.1.0` stable and correct; no known open product
-defect. Deferred-but-not-blocking, mirroring how Phase 2A's Category 4 was treated: HD-003's
-documented coverage gaps (R5/B5/J9/J1/J4/index-engine-charset), the staging low-privilege negative
-matrix, and the unexplained historical phone-row observation. `docs/ROADMAP.md`'s older "theme-side
-Course Run fallback wiring" bullet under Phase 2B's "remaining before merge" is stale — CURRENT_STATE.md
-scopes that work to Phase 2D, and it is not part of `docs/PHASE_2B_ACCEPTANCE.md`'s own matrix;
-ROADMAP.md has been corrected accordingly. No merge, deploy, or production contact performed in
-this session — a human decision is still required to actually merge.
+Evidence at the time: Node static suites 458/0; local Docker CI runtime suite 228/0 with verified
+cleanup (GitHub Actions run #3, commit `cbcb4da`); staging smoke test of plugin 1.5.3 PASSED on
+`mystik.ir` covering the branch's own defect (Teacher CPT object-level authorization, HD-006) plus
+core admin flows (menu, create/edit/delete, capability resolution); `CURRENT_DB_VERSION` `2.2.0`
+and `ROLES_VERSION` `2.1.0` stable and correct; no known open product defect. Deferred-but-not-
+blocking, mirroring how Phase 2A's Category 4 was treated: HD-003's documented coverage gaps
+(R5/B5/J9/J1/J4/index-engine-charset), the staging low-privilege negative matrix, and the
+unexplained historical phone-row observation — **all three remain open today, unchanged by the
+merge below.** `docs/ROADMAP.md`'s older "theme-side Course Run fallback wiring" bullet under
+Phase 2B's "remaining before merge" was stale — `CURRENT_STATE.md` scopes that work to Phase 2F,
+and it is not part of `docs/PHASE_2B_ACCEPTANCE.md`'s own matrix; `ROADMAP.md` has been corrected
+accordingly.
+
+**Merged 2026-09-05:** `feature/phase-2b-academic-operations` and `feature/phase-2c-student-portal`
+were merged into `main` together via a single `--no-ff` merge commit, `32640e4`, after Phase 2C's
+own Docker acceptance suite (below) ran green on the exact HEAD merged. No deploy, staging
+provisioning, or production contact occurred as part of this merge.

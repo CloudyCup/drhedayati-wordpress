@@ -1,7 +1,16 @@
 # Test results — 2026-09-04
 
+**Reconciliation note (2026-09-05):** everything below is preserved as an accurate historical
+record of this specific review session (branch `feature/phase-2b-academic-operations`, HEAD
+`345e368`) — do not edit the narrative itself. Since this was written, that branch and
+`feature/phase-2c-student-portal` (Phase 2C) were both merged into `main` via a single `--no-ff`
+merge commit, `32640e4` (2026-09-05). The assertion counts below (449 Node, then 458 after HD-006)
+are superseded by `main`'s current 565/0 Node total and the Phase 2C Docker acceptance suite's
+335/0 result — see `docs/agent/STATUS.md` for current figures. Phase 2C staging acceptance remains
+NOT RUN regardless of the merge.
+
 Repository: C:/Projects/drhedayati-wordpress
-Branch: feature/phase-2b-academic-operations
+Branch: feature/phase-2b-academic-operations (historical — see reconciliation note above)
 Reviewed HEAD: 345e368bfa1a17079c7436c085e9514f441aee5e
 Initial git status: clean. Changes from this review are documentation only, uncommitted.
 

@@ -1,15 +1,45 @@
 # CURRENT_STATE.md
 
-**Last documentation update:** 2026-09-05 — Phase 2C (student identity, verification, private
-documents) implemented on `feature/phase-2c-student-portal`, branched from `main` after Phase 2B's
-merge. See the new "Plugin — student identity, verification, private documents (Phase 2C)"
-section below and `docs/agent/STATUS.md` for the current merge-gate status. Everything below this
-line before that update describes the pre-Phase-2C state and is superseded where it conflicts.
+**Last documentation update:** 2026-09-05 — Phase 2B **and** Phase 2C are both merged into `main`
+(merge commit `32640e4`, `--no-ff`, after `feature/phase-2c-student-portal`'s Docker acceptance
+suite ran green on the exact merged HEAD). This reconciliation pass corrects every place below that
+still described Phase 2B/2C as unmerged, branch-only, or "not on `main`" — those statements were
+accurate when written and are now stale. `feature/phase-2c-student-portal` is kept (not deleted)
+per the owner's instruction but no longer carries anything `main` doesn't already have.
+
+**Current canonical state, `main` @ `32640e4`:** theme `hedayati` `1.0.0` · plugin `hedayati-core`
+**`1.6.0`** · DB schema **`2.3.0`** · roles schema **`2.2.0`** · **23** managed `hedayati_*`
+capabilities. Node static suites: **565 passed, 0 failed**
+(`verify-phase2a.js` 74, `verify-phase2b.js` 208, `verify-phase2c.js` 132, `verify-audit-log.js`
+98, `verify-jalali.js` 53). The extended `Acceptance (Docker WordPress)` GitHub Actions runtime
+suite (`docker/wp-tests/test-phase-2a/2b/2c.php`) is green on this exact merged HEAD: **335
+passed, 0 failed, cleanup verified**. No known open Phase 2B or Phase 2C product defect.
+
+**What is still explicitly open/deferred (not resolved by the merge):**
+- **Phase 2C staging acceptance on `mystik.ir` remains NOT RUN** — `docs/PHASE_2C_ACCEPTANCE.md`
+  is authored but not executed; the three required `wp-config.php` constants
+  (`HEDAYATI_DATA_ENCRYPTION_KEY` / `HEDAYATI_DATA_HMAC_KEY` / `HEDAYATI_PRIVATE_UPLOADS_DIR`) are
+  **not provisioned anywhere**. No deploy has occurred. See
+  `docs/PHASE_2C_STAGING_DEPLOY_CHECKLIST.md`.
+- **Phase 2B's own staging low-privilege negative matrix and HD-003's documented coverage gaps**
+  (R5 full 22-cap × 6-role matrix, B5/J9 second `dbDelta` pass, J1/J4 exhaustive mutation/actor
+  coverage, index/engine/charset inspection) remain open exactly as HD-003 describes — merging to
+  `main` did not close them; they were never a merge-gate blocker (see `docs/agent/STATUS.md`'s
+  "Merge gate" note, historical).
+- **HD-002's historical staging phone-row observation stays unexplained, not retroactively
+  resolved.** The `deleted_user` → `delete_phone` *mechanism* is runtime-verified (Docker CI), but
+  that does not explain the one specific orphan row the owner observed on `mystik.ir` before this
+  work — do not read anything below as closing that historical caveat.
+
+The narrative below (staging health checks, the `1.5.2`/`1.5.3` Teacher-CPT fixes, GitHub Actions
+runs #1–#3, the 2026-09-04 staging smoke test) is preserved as an accurate historical record of how
+Phase 2B reached its merge-ready state; only the "not yet merged" / "not on `main`" framing around
+it was stale and is corrected in place below.
 
 **Previous update:** 2026-09-04.
 **Method:** direct inspection of the repository, reconciled against `docs/HANDOFF_LEGACY.md`.
 Phase 2B + the Phase 2C address slice were implemented 2026-09-02/03 on
-`feature/phase-2b-academic-operations`.
+`feature/phase-2b-academic-operations` (since merged to `main`).
 Current status is maintained in [agent/STATUS.md](agent/STATUS.md), with independent local
 results in [agent/TEST_RESULTS.md](agent/TEST_RESULTS.md) and gaps in [agent/DEFECTS.md](agent/DEFECTS.md).
 The 2026-09-04 owner handoff supersedes older status prose below: staging plugin 1.5.2,
@@ -30,13 +60,16 @@ caveat in `docs/agent/DEFECTS.md`. Category 4 remains deferred/not required.
 disposable Teacher create/edit/delete all work, `hedayati_manage_teachers` resolves correctly for
 `administrator`. This is a real staging confirmation of the HD-006 fix (not just local Docker
 CI) — **HD-006 is now CLOSED**. No production (`drhedayati.com`) contact occurred. **Phase 2B's
-canonical merge gate is now satisfied — READY TO MERGE, not yet merged** — see the "Merge gate"
-note in `docs/agent/STATUS.md` for the exact evidence and the explicitly-deferred residual items
-(HD-003's documented coverage gaps, the staging low-privilege negative matrix, and the unexplained
-historical phone-row observation).
+canonical merge gate was satisfied, and Phase 2B has since been merged to `main`** (see the
+"2026-09-05" update above) — see the "Merge gate" note in `docs/agent/STATUS.md` for the exact
+evidence and the explicitly-deferred residual items (HD-003's documented coverage gaps, the
+staging low-privilege negative matrix, and the unexplained historical phone-row observation, all
+still open per the box above).
 
-**Repo versions (`feature/phase-2b-academic-operations`):** theme `hedayati` 1.0.0 · plugin
-`hedayati-core` **1.5.3** · DB schema **2.2.0** · roles schema **2.1.0**.
+**Repo versions at the time Phase 2B was built (`feature/phase-2b-academic-operations`,
+historical):** theme `hedayati` 1.0.0 · plugin `hedayati-core` **1.5.3** · DB schema **2.2.0** ·
+roles schema **2.1.0**. These have since advanced to `1.6.0` / `2.3.0` / `2.2.0` on `main` via the
+Phase 2C merge — see the box at the top of this file for current values.
 **`1.5.2` (2026-09-03)** is a CPT-mapping bug fix only — `includes/class-teacher.php`: the Teacher
 CPT reused the primitive `hedayati_manage_teachers` as the value of the `edit_post`/`read_post`/
 `delete_post` meta caps, so WordPress's `_post_type_meta_capabilities()` + `map_meta_cap()` turned
@@ -59,10 +92,9 @@ GitHub Actions run #3 (commit `cbcb4da`) ran the exact regression assertions for
 and administrator `edit_post`/`delete_post` on both `publish`- and `private`-status Teacher
 profiles — as part of its 228/0 result. **This is local-Docker-CI verification, not a staging
 retest**; the `docs/PHASE_2B_ACCEPTANCE.md` T1 staging row stays open until `mystik.ir` is
-re-tested.
+re-tested (unchanged by the subsequent merge to `main` — merging code is not staging acceptance).
 **No DB schema / `CURRENT_DB_VERSION` / `ROLES_VERSION` / 22-capability-count change in either
-`1.5.2` or `1.5.3`.**
-**`main` versions:** plugin `1.1.0` · DB & roles `2.0.0` (nothing from this branch is merged).
+`1.5.2` or `1.5.3`** (Phase 2C's later merge is what advanced these to `2.3.0` / `2.2.0` / 23).
 
 > The repository is authoritative for "what is implemented". It contains **code only** — no
 > WordPress core, no database, no content. Anything requiring a running WordPress instance
@@ -141,14 +173,16 @@ re-tested.
   registered phone — **never** the shared IP bucket. Generic identical error for unknown
   phone / wrong password (no user enumeration).
 
-### Plugin — academic operations (Phase 2B) — branch `feature/phase-2b-academic-operations`
+### Plugin — academic operations (Phase 2B) — merged to `main`
 
 > Repository verified; staging health and Teacher fix passed per owner handoff (1.5.2 scope), then
 > the `1.5.3` object-level fix passed BOTH local Docker CI (228/0, GitHub Actions run #3) AND a
 > manual staging smoke test on `mystik.ir` (2026-09-04) — see `docs/agent/DEFECTS.md` HD-006.
-> Canonical merge gate satisfied — **READY TO MERGE, not yet merged**. Residual, explicitly
-> deferred items (staging low-privilege negative matrix, HD-003's coverage gaps) — see
-> `docs/PHASE_2B_ACCEPTANCE.md` and `docs/agent/STATUS.md`. Not on `main`.
+> **Merged to `main`** (commit `32640e4`, alongside Phase 2C). Residual, explicitly deferred items
+> (staging low-privilege negative matrix, HD-003's coverage gaps) — see
+> `docs/PHASE_2B_ACCEPTANCE.md` and `docs/agent/STATUS.md`. Originally built on
+> `feature/phase-2b-academic-operations` (that branch has since been merged and superseded by
+> `main`'s history).
 
 - **`teacher` CPT** (`class-teacher.php`): admin-only (`public` / `publicly_queryable` / `show_in_rest`
   all false — D30/D34, classic editor),
@@ -262,7 +296,7 @@ re-tested.
     REPOSITORY VERIFIED only (syntax + isolated logic with a mocked WP shim), **not** WordPress
     runtime, and **not** staging.
 
-### Plugin — student profile (Phase 2C address slice) — branch `feature/phase-2c-student-portal`
+### Plugin — student profile (Phase 2C address slice) — merged to `main`
 
 - **`Hedayati_Student_Profile`** (`class-student-profile.php`): `hedayati_address`,
   `hedayati_city`, `hedayati_postal_code` in `wp_usermeta` (no table, no migration). Fields come
@@ -274,13 +308,16 @@ re-tested.
   `Hedayati_Student_Profile::get( $user_id )`. Unchanged by Phase 2C's identity/document work —
   national ID lives in its own table, not this class (see below).
 
-### Plugin — student identity, verification, private documents (Phase 2C) — branch `feature/phase-2c-student-portal`
+### Plugin — student identity, verification, private documents (Phase 2C) — merged to `main`
 
-> Repository + Node-suite verified (564/0 across all static suites). Real-WordPress-runtime
-> verification is the extended `docker/wp-tests/test-phase-2c.php` suite via the `Acceptance
-> (Docker WordPress)` GitHub Actions workflow — see `docs/agent/STATUS.md` for whether that run is
-> green yet. Staging (`mystik.ir`) acceptance (`docs/PHASE_2C_ACCEPTANCE.md`) and any deploy are
-> separate, not-yet-executed, owner-approved steps. Not merged to `main`.
+> Repository + Node-suite verified (565/0 across all static suites, `main` HEAD `32640e4`).
+> Real-WordPress-runtime verification is the extended `docker/wp-tests/test-phase-2c.php` suite
+> via the `Acceptance (Docker WordPress)` GitHub Actions workflow — **GREEN on the merged HEAD**
+> (335 passed, 0 failed, cleanup verified). **Merged to `main`** (`--no-ff` commit `32640e4`,
+> originally built on `feature/phase-2c-student-portal`, which is kept but superseded). **Staging
+> (`mystik.ir`) acceptance (`docs/PHASE_2C_ACCEPTANCE.md`) and any deploy remain separate,
+> not-yet-executed, owner-approved steps — merging to `main` is not staging acceptance and is not
+> a deploy.** The three required `wp-config.php` constants are not provisioned anywhere yet.
 
 - **`Hedayati_Crypto`** (`class-crypto.php`): AES-256-GCM encryption + a separate keyed-HMAC
   fingerprint, both keys required as base64 strings decoding to exactly 32 raw bytes
@@ -334,12 +371,13 @@ re-tested.
   `verification.initiated|approved|rejected|reset`, `user.identity_purged`,
   `document.uploaded|download_started|archived|purged|purged_for_user`. Still no `ip`/`user_agent`
   column — permanently decided against (D39), not a deferred policy.
-- **Tests:** `tests/verify-phase2c.js` — **131 passed, 0 failed** (extended from the 25-assertion
+- **Tests:** `tests/verify-phase2c.js` — **132 passed, 0 failed** (extended from the 25-assertion
   foundation-slice suite). `tests/test-phase2c.php` — new PHP CLI suite (repository-verified only,
-  no PHP in this Claude Code environment). `docker/wp-tests/test-phase-2c.php` — new ~90-assertion
-  real-WordPress-runtime suite (migration/schema, crypto round-trip, plaintext-never-in-DB,
-  malformed-key fail-closed, checksum/duplicate-detection, the full transition table, the
-  privileged-reveal authorization matrix + service-level denial, the staff-upload capability
+  no PHP in this Claude Code environment). `docker/wp-tests/test-phase-2c.php` — real-WordPress-
+  runtime suite, part of the 335/0 green result on `main`'s merged HEAD (migration/schema, crypto
+  round-trip, plaintext-never-in-DB, malformed-key fail-closed, checksum/duplicate-detection, the
+  full transition table, the privileged-reveal authorization matrix + service-level denial, the
+  staff-upload capability
   matrix, real MIME-spoofing rejection, storage-key traversal rejection, orphan-file cleanup,
   archive/purge lifecycle, `deleted_user` cleanup, audit accuracy) — see `docs/agent/STATUS.md`
   for its actual GitHub Actions result.
@@ -572,6 +610,10 @@ redeploy tests.
   `Version: 1.5.2`, `HEDAYATI_CORE_VERSION` `1.5.2`) and `hedayati.zip` (**29 entries**, top-level
   entry `hedayati/style.css`). This confirms the package source / layout / version assumptions
   only — it does **not** prove WordPress runtime behaviour and nothing has been deployed.
+- **Re-verified (2026-09-05, plugin `1.6.0`, `main` HEAD `32640e4`):** the same script produced a
+  `hedayati-core.zip` with `Version: 1.6.0` / `HEDAYATI_CORE_VERSION` `1.6.0` matching, and
+  independent inspection of the ZIP confirmed `CURRENT_DB_VERSION` `2.3.0` / `ROLES_VERSION`
+  `2.2.0` inside the packaged source. Still not deployed anywhere.
 - `.gitignore` also excludes `node_modules/`, `vendor/`, `.env*`, build dirs, uploads, logs.
 - `reference-react/` — design prototype, visual reference only (never wired into production).
 
