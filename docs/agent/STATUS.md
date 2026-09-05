@@ -22,16 +22,26 @@ no other plaintext path anywhere).
   131, `verify-audit-log.js` 98, `verify-jalali.js` 53).
 - New `docker/wp-tests/test-phase-2c.php` real-WordPress-runtime suite extends the `Acceptance
   (Docker WordPress)` GitHub Actions workflow (triggered on push to
-  `feature/phase-2c-student-portal`). **This is the completion gate for Phase 2C.**
-  **GREEN as of commit `2fc121f` (run #6, run id `33924554909`): 335 passed, 0 failed, cleanup
-  verified.** Two earlier runs on this branch (commits `e24cfca` / `968867a`) failed: a
-  pre-existing `docker/wp-tests/test-phase-2a.php` hardcoded exact-version assertion broke on
-  Phase 2C's legitimate version bump (same category as an earlier Node-suite issue, just missed
-  in this PHP file), and a genuine bug — the `profile_update` hook's `$old_user_data` properties
-  for `first_name`/`last_name` live-query `get_user_meta()` on access rather than freezing a
-  snapshot, so by the time the hook fired the "old" value already equalled the new one and the
+  `feature/phase-2c-student-portal`). **This was the completion gate for Phase 2C — satisfied.**
+  Two early runs on this branch (commits `e24cfca` / `968867a`) failed: a pre-existing
+  `docker/wp-tests/test-phase-2a.php` hardcoded exact-version assertion broke on Phase 2C's
+  legitimate version bump (same category as an earlier Node-suite issue, just missed in this PHP
+  file), and a genuine bug — the `profile_update` hook's `$old_user_data` properties for
+  `first_name`/`last_name` live-query `get_user_meta()` on access rather than freezing a snapshot,
+  so by the time the hook fired the "old" value already equalled the new one and the
   legal-name-change verification reset never triggered. Fixed by hooking `update_user_meta`
-  instead (fires before the `UPDATE` query runs). See the commit `2fc121f` message for full detail.
+  instead (fires before the `UPDATE` query runs) — commit `2fc121f`. A further packaging-time
+  check (before building the staging artifact) caught the plugin's `Version:` docblock header
+  still reading `1.5.3` while `HEDAYATI_CORE_VERSION` said `1.6.0` — fixed in `da77119`, with a
+  new static assertion so the two locations can't silently drift apart again.
+  **GREEN on the final Phase 2C HEAD, commit `20d5fd4` (run id `33954971036`): 335 passed, 0
+  failed, cleanup verified.** Node static suites on the same HEAD: 565/0
+  (`verify-phase2a.js` 74, `verify-phase2b.js` 208, `verify-phase2c.js` 132, `verify-audit-log.js`
+  98, `verify-jalali.js` 53). No known open Phase 2C product defect — ready to merge to `main`.
+  Staging deployment (`mystik.ir`) and production contact (`drhedayati.com`) remain untouched and
+  deliberately deferred — see `docs/PHASE_2C_STAGING_DEPLOY_CHECKLIST.md` for what remains before
+  that step, and `docs/DEPLOYMENT.md` for the required `wp-config.php` constants that are **not
+  yet provisioned anywhere**. Phase 2D is explicitly out of scope until further instruction.
 - `docs/PHASE_2C_ACCEPTANCE.md` (staging smoke-test matrix) is authored but **NOT executed** —
   staging execution and any deploy remain separate, explicit, owner-approved steps. Not merged to
   `main`. No production or staging contact occurred while building this.
