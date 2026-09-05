@@ -95,7 +95,7 @@ merged into `main` — merging code is not staging acceptance and is not a deplo
 | 6.8 | Rate limiting: per-identifier (default 5) and per-IP (default 30), 900s window, filterable; equivalent phone forms share one bucket; successful login clears identifier bucket but not the shared IP bucket | ✅ |
 | 6.9 | Single authoritative failure-count path (`wp_login_failed`), no double counting | ✅ |
 | 6.10 | Deleting a WordPress user cleans up the phone row | ✅ |
-| 6.11 | Branded login / registration / password-reset UI | ⬜ |
+| 6.11 | Branded login / registration / password-reset UI | 🟡 (Phase 2D, `feature/phase-2d-account-shell`, not merged/not staging-tested: branded login + native WordPress password-reset, enumeration-hardened. **No registration UI — deliberately**: the approved account model is reception-created accounts only, `docs/PHASE_2D_PLANNING.md` §4a; public self-registration remains a possible later, separately approved feature) |
 | 6.12 | Future OTP, account recovery, notifications via a provider abstraction | ⬜ / ❓ (provider unknown) |
 
 ## 7. Roles & authorization
@@ -112,11 +112,11 @@ merged into `main` — merging code is not staging acceptance and is not a deplo
 
 | # | Requirement | Status |
 |---|---|---|
-| 8.1 | WordPress user-based student account | 🟡 (role + phone identity + address profile fields + national ID + verification + documents, all backend/admin-only — no student-facing self-service UI yet, Phase 2D) |
-| 8.2 | Profile: phone, email, address, national ID, extensible fields; identity fields normalized server-side before validation/search/storage | ✅ backend (address/city/postal in usermeta with an extensible registry; national ID encrypted at rest in a dedicated table with keyed-HMAC duplicate detection, checksum-validated, digit-normalized — D36, `docs/OPEN_QUESTIONS.md` Q10 resolved) — 🟡 overall: staff-entry only today (`hedayati_upload_student_documents`), no student self-entry UI |
-| 8.3 | Verification state independent of role and of phone verification; conceptual states unverified/pending/verified/rejected | ✅ backend (`Hedayati_Verification_Service`, **enforced** transition table — stricter than "conceptual states", D37, Q11 resolved) — 🟡 overall: no student-facing status view yet (Phase 2D) |
-| 8.4 | Upload national ID card, birth certificate, other requested documents | ✅ backend, staff-assisted only (`Hedayati_Document_Service`/`Hedayati_Document_Storage`, D38, Q12 resolved) — 🟡 overall: student **self**-upload has no UI yet; the service is authorization-ready for it (Phase 2D) |
-| 8.5 | Student sees enrolled courses/runs and sessions | ⬜ (backend data exists via Phase 2B services; no student-facing view — Phase 2D) |
+| 8.1 | WordPress user-based student account | 🟡 (role + phone identity + address profile fields + national ID + verification + documents; self-service front-end now exists on `feature/phase-2d-account-shell` — not merged, not staging-tested) |
+| 8.2 | Profile: phone, email, address, national ID, extensible fields; identity fields normalized server-side before validation/search/storage | 🟡 address/city/postal/email/phone self-service now built (Phase 2D portal, reuses `Hedayati_Student_Profile`/`Hedayati_User_Phone_Service` directly — not merged/staging-tested). National ID stays **staff-entry only, by design** — a student can see presence (`set`/`not set`) only, never enter or view the value themselves (D36, unchanged by Phase 2D) |
+| 8.3 | Verification state independent of role and of phone verification; conceptual states unverified/pending/verified/rejected | ✅ backend (`Hedayati_Verification_Service`, **enforced** transition table, D37). 🟡 Student-facing read-only status view now built (Phase 2D — status + national-ID presence only; `reviewer_id`/`reviewed_at`/`note` deliberately never reach the student) — not merged/staging-tested |
+| 8.4 | Upload national ID card, birth certificate, other requested documents | ✅ backend, staff-assisted (`Hedayati_Document_Service`/`Hedayati_Document_Storage`, D38). 🟡 Student **self**-upload/download now built (Phase 2D, ownership-checked in the new portal controller) — not merged/staging-tested; full end-to-end upload acceptance still needs a real HTTP request (Docker-CI limitation, documented in `docker/wp-tests/test-phase-2d.php`) |
+| 8.5 | Student sees enrolled courses/runs and sessions | 🟡 read-only Shamsi-dated view now built (Phase 2D, reuses `Hedayati_Enrollment_Service`/`Hedayati_Course_Run_Service`/`Hedayati_Session_Service`) — not merged/staging-tested; no self-enrollment |
 | 8.6 | No approved policy that verification unlocks certificates/exams/benefits — requires institute input | ❓ (unchanged — still unresolved, not addressed by Phase 2C) |
 | 8.7 | Decrypted national ID is visible **only** to staff holding `hedayati_verify_students`, through one narrow, audited, POST-only admin action — never the student themselves, never any other role | ✅ (D36; defense-in-depth: checked in both the service and the controller) |
 

@@ -22,12 +22,19 @@ WordPress core (users, passwords, sessions, email, posts/pages/media/menus, REST
     ├── Phase 2C — private document storage/retention (Hedayati_Document_Storage +
     │   Hedayati_Document_Service, hedayati_documents table)
     ├── Phase 2C — staff-only admin UI «دانشجویان و احراز هویت» (Hedayati_Student_Admin)
-    └── (future, Phase 2D+) branded front-end account shell + role-facing panels
+    ├── Phase 2D — branded login/routing (Hedayati_Auth_UI): no public
+    │   self-registration, enumeration-hardened password reset, role-aware
+    │   post-login redirect, students excluded from wp-admin/admin bar
+    ├── Phase 2D — front-end student self-service portal (Hedayati_Student_Portal):
+    │   a real "account" Page + ?view= routing, reusing every Phase 2B/2C
+    │   service — no new table, no new capability
+    └── (future, Phase 2E+) role-facing staff panels + authorization-consistency fixes
 ```
 
-**Merge status:** Phase 2B and Phase 2C are both merged into `main` (`--no-ff` commit `32640e4`).
-Everything in this file describes `main`'s current code, not a feature branch, unless stated
-otherwise.
+**Merge status:** Phase 2B and Phase 2C are merged into `main` (`--no-ff` commit `32640e4`).
+**Phase 2D is implemented on `feature/phase-2d-account-shell`, NOT yet merged, NOT staging-tested.**
+Everything in this file describes the code as of that branch; anything Phase-2D-specific is called
+out explicitly since it is not yet part of `main`.
 
 **Principle:** WordPress authentication and content primitives stay authoritative. Business
 behavior and business data live in the plugin so they survive a theme switch. The theme reads
@@ -41,7 +48,7 @@ explicitly from `hedayati-core.php`.
 
 ---
 
-## Plugin: `hedayati-core` (v1.6.0)
+## Plugin: `hedayati-core` (v1.7.0 on `feature/phase-2d-account-shell`; `main` is still v1.6.0)
 
 ### Bootstrap (`hedayati-core.php`)
 
@@ -154,7 +161,20 @@ via `Hedayati_DB_Schema::get_table_*()`.
 
 ---
 
-## Theme: `hedayati` (v1.0.0)
+### Phase 2D classes (Account Shell & Student Portal) — `feature/phase-2d-account-shell`, not on `main`
+
+| File / class | Responsibility |
+|---|---|
+| `class-auth-ui.php` · `Hedayati_Auth_UI` | Branded `wp-login.php` (theme `login.css`, header url/text). Forces `option_users_can_register` to `false` regardless of the stored option (no public self-registration, ever — the account model is reception-created only, D-series Phase 2D). `lostpassword_errors` filter neutralizes account-existence-revealing error codes (`invalid_email`/`invalidcombo`/`invalid_username`) to the same success path a real account gets — `empty_username` (a real validation message) is left alone. `login_redirect` sends a student to the account URL, everyone else keeps the default. `admin_init` redirects a student (and *only* a user whose sole role is `student`) away from wp-admin, with explicit `wp_doing_ajax()`/`wp_doing_cron()`/`WP_CLI`/`REST_REQUEST`/`admin-post.php`/`admin-ajax.php` exclusions so mutations, cron, CLI, and REST are never affected. `show_admin_bar` hidden for the same portal-only users. |
+| `class-student-portal.php` · `Hedayati_Student_Portal` | Creates a real `account` Page on activation (+ an `admin_init` safety net, mirroring the migration/roles-sync pattern for a manual-file-replace deploy). `template_redirect` guard sends no-cache headers (+ the LiteSpeed Cache plugin's own `litespeed_control_set_nocache` exclusion hook when active) before any login/capability decision. `?view=` routing (`dashboard`/`profile`/`verification`/`enrollments`/`documents`), the same convention `Hedayati_Academic_Admin`/`Hedayati_Student_Admin` already use. Every mutation is an `admin-post.php` action with its own nonce; the owner is **always** `get_current_user_id()` — no method in this file accepts a client-submitted `user_id`, and it deliberately does not reuse `Hedayati_Student_Admin::require_student_scope()` (staff-only, intentionally unscoped). Document download loads the row and checks `$doc['user_id'] === get_current_user_id()` before streaming, since `Hedayati_Document_Service` enforces no ownership itself. Verification display calls only `get_status()`/`get_national_id_masked()` and renders `status` + presence — never `reviewer_id`, `reviewed_at`, `note`, or a decrypted value. |
+
+Authorization boundary (same convention as every prior phase): `Hedayati_Student_Portal` is the
+**only** place capability + ownership checks for the portal live — every `Hedayati_*_Service` call
+it makes stays capability-agnostic. No new capability was added; every check reuses an existing
+`hedayati_*` capability (`hedayati_view_own_portal`, `hedayati_edit_own_profile`,
+`hedayati_upload_own_documents`).
+
+## Theme: `hedayati` (v1.1.0 on `feature/phase-2d-account-shell`; `main` is still v1.0.0)
 
 Classic PHP theme using the WordPress template hierarchy plus a `theme.json` (v3) for editor tokens.
 It is **not** a block theme and has **no** `templates/` or `parts/` HTML directory.
@@ -185,6 +205,7 @@ It is **not** a block theme and has **no** `templates/` or `parts/` HTML directo
 | `/course-category/{slug}` | `taxonomy-course-category.php` → `require archive-course.php` | main (tax) query |
 | Single course | `single-course.php` | post + `_course_*` meta + `course-category` terms + `Hedayati_Query::get_related_courses` + `Hedayati_Settings` |
 | Page / other singular | `singular.php` | post |
+| **Account portal (`/account/`) — Phase 2D, not on `main`** | `page-account.php` (auto-selected by the `page-{slug}.php` hierarchy for the plugin-created `account` Page — no `Template Name:` header) | `Hedayati_Student_Portal::render_current_view()` / `render_notice()`; access/no-cache guard runs earlier, on `template_redirect` |
 | Other archives | `archive.php` | main query |
 | Posts list fallback | `index.php` | main query |
 | 404 | `404.php` | — |
@@ -205,6 +226,11 @@ absent. Icons are inline SVG — no icon font, no external requests.
 - `assets/css/rtl.css` — targeted RTL/bidi corrections for WP-generated markup.
 - `assets/js/main.js` — vanilla IIFE: theme toggle, accessible mobile nav, sticky-header class.
   No dependencies.
+- **Phase 2D, not on `main`:** `assets/css/account.css` (reuses `main.css`'s `--hd-*` tokens, no
+  new palette, no new dark-mode block) + `assets/js/account.js` (single vanilla IIFE, same
+  convention as `main.js`) — both enqueued only on the account page. `assets/css/login.css` —
+  minimal brand-color + RTL override for `wp-login.php`, enqueued only there via
+  `login_enqueue_scripts`.
 
 ### Client-side data flow
 

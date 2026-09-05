@@ -82,8 +82,14 @@ authorization must never depend on hidden UI.
 - **Academic-operations authorization boundary:** the service classes
   (`Hedayati_*_Service`, `Hedayati_Audit_Log`) are a capability-agnostic data layer — exactly like
   `Hedayati_User_Phone_Service` in Phase 2A. Every capability and nonce check lives in the caller
-  (`class-academic-admin.php` / `class-student-admin.php` today; the Phase 2D portals later). A
-  future REST/AJAX/CLI caller MUST repeat those checks. `Hedayati_Audit_Log::current_user_can_view()`
+  (`class-academic-admin.php` / `class-student-admin.php` today; `class-student-portal.php` —
+  Phase 2D, `feature/phase-2d-account-shell`, not merged — for the front-end self-service caller).
+  `Hedayati_Student_Portal` additionally derives the owner from `get_current_user_id()` only, never
+  a request parameter, and performs its own explicit ownership check
+  (`$doc['user_id'] === get_current_user_id()`) before every document action — it deliberately does
+  not reuse `Hedayati_Student_Admin::require_student_scope()`, which is correct only for
+  reception/manager's intentionally unscoped mandate (`docs/PHASE_2D_PLANNING.md` §9). A future
+  REST/AJAX/CLI caller MUST repeat those checks. `Hedayati_Audit_Log::current_user_can_view()`
   (→ `hedayati_view_audit_logs`) is provided for read callers; the shipped viewer calls it.
   **`Hedayati_Verification_Service::get_national_id_decrypted()` is the one deliberate exception**
   to this boundary (D36): it enforces `hedayati_verify_students` inside the service itself, in

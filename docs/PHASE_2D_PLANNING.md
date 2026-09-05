@@ -1,10 +1,13 @@
 # Phase 2D Planning — Account Shell & Student Portal
 
-**Status: planning only. No implementation has started.** This document reshapes the previously
+**Status: Phase 2D is now IMPLEMENTED on `feature/phase-2d-account-shell`, off `main` @ `32640e4`
+— NOT merged, NOT staging-tested, NOT deployed.** See `docs/agent/STATUS.md`'s Phase 2D entry and
+`docs/CURRENT_STATE.md`'s "Plugin/theme — account shell & student self-service portal (Phase 2D)"
+section for the actual shipped classes/routes/tests. This document originally reshaped the
 oversized single "Phase 2D — interfaces" bullet (`docs/ROADMAP.md`, historical) into three smaller,
-sequential phases, defines the minimum planning gate before writing any front-end account code, and
-records the business decisions the owner must make first. Written against `main` @ `32640e4`
-(Phase 2B + Phase 2C merged; plugin `1.6.0`, DB `2.3.0`, roles `2.2.0`, 23 capabilities).
+sequential phases and recorded the business decisions the owner needed to make first (§4a resolved
+the one blocking one). §§1–13 below remain the design record Phase 2D was built against; §14's
+implementation prompt has now been executed.
 
 ---
 

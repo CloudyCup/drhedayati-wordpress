@@ -1,6 +1,12 @@
 # CURRENT_STATE.md
 
-**Last documentation update:** 2026-09-05 — Phase 2B **and** Phase 2C are both merged into `main`
+**Last documentation update:** 2026-09-05 (later same day) — Phase 2D (shared account shell +
+student self-service portal) is **implemented on `feature/phase-2d-account-shell`, off `main` @
+`32640e4`. NOT merged, NOT staging-tested, NOT deployed.** See the new "Plugin/theme — account
+shell & student portal (Phase 2D)" section below. Everything else in this file continues to
+describe `main` unless a line explicitly says otherwise.
+
+**Earlier same-day update:** Phase 2B **and** Phase 2C are both merged into `main`
 (merge commit `32640e4`, `--no-ff`, after `feature/phase-2c-student-portal`'s Docker acceptance
 suite ran green on the exact merged HEAD). This reconciliation pass corrects every place below that
 still described Phase 2B/2C as unmerged, branch-only, or "not on `main`" — those statements were
@@ -382,6 +388,87 @@ re-tested (unchanged by the subsequent merge to `main` — merging code is not s
   archive/purge lifecycle, `deleted_user` cleanup, audit accuracy) — see `docs/agent/STATUS.md`
   for its actual GitHub Actions result.
 - `HEDAYATI_CORE_VERSION` → `1.6.0`.
+
+### Plugin/theme — account shell & student self-service portal (Phase 2D) — branch `feature/phase-2d-account-shell`, NOT merged, NOT staging-tested
+
+> Repository + Node-suite verified only (642/0 across all static suites, including the new
+> `verify-phase2d.js`, 77/0). `docker/wp-tests/test-phase-2d.php` is authored and wired into
+> `docker/wp-tests/run.php`/the `Acceptance (Docker WordPress)` workflow, but **its actual
+> GitHub Actions result is not yet known as of this documentation update** — check
+> `docs/agent/STATUS.md` for the current run result before treating this phase as
+> runtime-verified. **Staging acceptance on `mystik.ir` has not been attempted and stays
+> explicitly NOT RUN** — this phase adds a real front-end login surface and must not be assumed
+> production-ready from static analysis alone.
+
+- **`Hedayati_Auth_UI`** (`class-auth-ui.php`): branded `wp-login.php`; forces
+  `option_users_can_register` to `false` regardless of the stored option — **no public
+  self-registration exists or is planned to be added by this class**; the approved account model
+  is reception-created accounts only (an owner decision recorded in
+  `docs/PHASE_2D_PLANNING.md` §4a). `lostpassword_errors` filter neutralizes the three
+  account-existence-revealing error codes (`invalid_email`/`invalidcombo`/`invalid_username`) to
+  the same success response a real account gets; `empty_username` (an actual empty-form
+  submission, not an existence leak) is left as a real error. `login_redirect` sends a student to
+  `/account/`, everyone else keeps their normal destination. Students (and only a user whose sole
+  role is `student`) are redirected away from wp-admin on `admin_init`, with explicit exclusions
+  for AJAX, cron, WP-CLI, REST, and `admin-post.php`/`admin-ajax.php` so the portal's own
+  mutations, cron jobs, and CLI/REST access are never affected; the admin bar is hidden for the
+  same users. **WordPress remains the sole password/session authority** — this class only brands
+  and routes the existing `wp-login.php` flow; it re-implements no authentication logic itself.
+  Native WordPress username-login enumeration wording (a pre-existing, already-documented
+  limitation predating this phase — see `docs/PHASE_2D_PLANNING.md`) is unchanged; only the
+  phone-login path (Phase 2A) and the new password-reset path are hardened.
+- **`Hedayati_Student_Portal`** (`class-student-portal.php`): creates a real `account` Page on
+  plugin activation (+ an `admin_init` idempotent safety net for a manual-file-replace deploy,
+  mirroring the migration/roles-sync pattern). A single `template_redirect` guard sends no-cache
+  headers (`nocache_headers()` plus the LiteSpeed Cache plugin's own `litespeed_control_set_nocache`
+  exclusion hook, fired only if that plugin is active) before any login/capability decision, so
+  even a redirect response from this guard is never cached. `?view=` routing across five screens
+  (`dashboard`/`profile`/`verification`/`enrollments`/`documents`), the same query-based convention
+  `Hedayati_Academic_Admin`/`Hedayati_Student_Admin` already use — no new rewrite rules. Every
+  mutation is an `admin-post.php` action with its own nonce
+  (`hedayati_portal_profile_save`/`hedayati_portal_phone_save`/`hedayati_portal_document_upload`/
+  `hedayati_portal_document_download`); **the owner is always `get_current_user_id()` — no method
+  in this class accepts or trusts a client-submitted `user_id`**, and it deliberately does not
+  reuse `Hedayati_Student_Admin::require_student_scope()` (staff-only, intentionally unscoped for
+  reception/manager — reusing it here would let one student act on another's data). Document
+  download loads the row and checks `(int) $doc['user_id'] === get_current_user_id()` before
+  streaming, since `Hedayati_Document_Service` enforces no ownership itself (documented, not
+  changed, from Phase 2C). Verification display calls only `get_status()` and
+  `get_national_id_masked()`, rendering `status` and national-ID **presence** only — `reviewer_id`,
+  `reviewed_at`, `note`, and any decrypted value are never read into a template. No self-enrollment,
+  no verification approve/reject exist in this class. Profile editing reuses
+  `Hedayati_Student_Profile::save()` directly (with this controller's own nonce check, since that
+  method's docblock documents it relies on the caller for one); phone updates go through
+  `Hedayati_User_Phone_Service::assign_phone()` only, preserving normalization/uniqueness/
+  reset-on-change; email updates go through `wp_update_user()` directly (immediate change, not
+  WordPress's wp-admin-only pending-confirmation dance — a deliberate scope simplification, not an
+  oversight).
+- **`theme/hedayati/page-account.php`**: the shell template, auto-selected by WordPress's
+  `page-{slug}.php` hierarchy for the `account` Page (no `Template Name:` header needed — this is
+  the theme's first page template). Reuses `get_header()`/`get_footer()` and the same
+  `#site-main`/`.container` convention as every other template — no bespoke wp-admin-like layout.
+- **`assets/css/account.css`, `assets/js/account.js`**: reuse `main.css`'s existing `--hd-*`
+  tokens/dark-mode block/breakpoints and `main.js`'s single-IIFE convention — no new palette, no
+  new framework, no bundler, no jQuery. `assets/css/login.css`: minimal brand-color + RTL override
+  for `wp-login.php`, loaded only there.
+- **No schema change, no new capability.** `CURRENT_DB_VERSION` stays `2.3.0`, `ROLES_VERSION`
+  stays `2.2.0`, managed capability count stays 23 — every read/write in this phase reuses an
+  existing table and an existing `hedayati_*` capability
+  (`hedayati_view_own_portal`/`hedayati_edit_own_profile`/`hedayati_upload_own_documents`).
+  `HEDAYATI_CORE_VERSION` → `1.7.0`; theme `HEDAYATI_VERSION`/`style.css` → `1.1.0`.
+- **Known, documented gaps** (not defects — the same class of limitation already accepted for
+  Phase 2C): (1) a WP-CLI test process cannot fabricate a real HTTP file upload
+  (`is_uploaded_file()`), so the front-end upload gate is tested for correct refusal but not full
+  end-to-end acceptance in Docker CI; (2) the full `template_redirect` → `is_page()` → login/
+  capability guard chain needs a real HTTP request and is not exercised in the Docker suite. Both
+  are explicit staging acceptance items, not claimed as passed.
+- **Tests:** `tests/verify-phase2d.js` — **77 passed, 0 failed**. `docker/wp-tests/test-phase-2d.php`
+  — new real-WordPress-runtime suite (account-page bootstrap/idempotency, role-aware login
+  redirect, no-self-registration, password-reset enumeration hardening, the student-A-cannot-touch-
+  student-B ownership property for profile/phone/documents, phone normalization/uniqueness/reset
+  through the new portal caller, verification-display narrowing, read-only Shamsi-dated
+  enrollments) — wired into `docker/wp-tests/run.php`; its actual GitHub Actions result is
+  recorded in `docs/agent/STATUS.md`, not repeated here since it can go stale.
 
 ### Plugin — tests
 

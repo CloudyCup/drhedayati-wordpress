@@ -83,14 +83,17 @@ several items still need institute decisions (marked ❓, see the bottom of this
    steps — merging to `main` is not staging acceptance and is not a deploy.** The three required
    `wp-config.php` constants are not provisioned anywhere. Benefit linkage (verification unlocking
    certificates/exams) remains unapproved and unbuilt — `docs/REQUIREMENTS.md` 8.6, unchanged.
-3. **Phase 2D/2E/2F — interfaces**, now reshaped into three smaller phases (see
-   `docs/PHASE_2D_PLANNING.md`): **Phase 2D** — shared account/panel shell + student portal;
-   **Phase 2E** — teacher/TA/reception/manager-facing panels + the authorization-consistency fixes
-   this reconciliation surfaced (Course using native post caps, Settings requiring
-   `manage_options`, the student-admin screen's direct-`user_id` scope guard); **Phase 2F** —
-   public completion (About/Contact/Consultation, teacher directory, Course Run display rule,
-   Shamsi/font/logo) + integrated staging readiness. The former single oversized "Phase 2D" bullet
-   is retired in favor of this split — do not plan against the old single-phase framing.
+3. **Phase 2D/2E/2F — interfaces**, reshaped into three smaller phases (see
+   `docs/PHASE_2D_PLANNING.md`). **Phase 2D — shared account/panel shell + student portal: 🟢
+   IMPLEMENTED** on `feature/phase-2d-account-shell` (off `main` @ `32640e4`) — **NOT merged, NOT
+   staging-tested, NOT deployed.** Node static suites 642/0 (incl. new `verify-phase2d.js` 77/0);
+   `docker/wp-tests/test-phase-2d.php` authored and wired in, GitHub Actions result pending a push
+   (see `docs/agent/STATUS.md`). **Phase 2E** — teacher/TA/reception/manager-facing panels + the
+   authorization-consistency fixes this reconciliation surfaced (Course using native post caps,
+   Settings requiring `manage_options`, the student-admin screen's direct-`user_id` scope guard) —
+   not started. **Phase 2F** — public completion (About/Contact/Consultation, teacher directory,
+   Course Run display rule, Shamsi/font/logo) + integrated staging readiness — not started. The
+   former single oversized "Phase 2D" bullet stays retired in favor of this split.
 4. **Public content & pages.** Create About, Contact, and consultation pages (templates + a
    consultation submission handler ❓ UX undecided); teacher directory/profiles; editable
    homepage/footer/navigation content where staff editing is required. Note: `header.php`,

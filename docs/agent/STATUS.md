@@ -1,10 +1,48 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
-Updated 2026-09-05 (Phase 2C section appended below; everything else below is the 2026-09-04
-Phase 2B handoff, unchanged, and still describes `main`). Canonical owner handoff, with
-independent local review recorded separately in TEST_RESULTS.md. Read this first on future work;
-update these concise files as work progresses. Code establishes what exists; the owner's handoff
-establishes intent. Older conflicting status prose is superseded by this file.
+Updated 2026-09-05 (Phase 2D section appended below, above the Phase 2C section; everything else
+below is the 2026-09-04 Phase 2B handoff, unchanged, and still describes `main`). Canonical owner
+handoff, with independent local review recorded separately in TEST_RESULTS.md. Read this first on
+future work; update these concise files as work progresses. Code establishes what exists; the
+owner's handoff establishes intent. Older conflicting status prose is superseded by this file.
+
+## Phase 2D — account shell & student self-service portal (2026-09-05) — IMPLEMENTED, NOT MERGED, NOT STAGING-TESTED
+
+**Branch `feature/phase-2d-account-shell`, off `main` @ `32640e4` (Phase 2B + Phase 2C already
+merged).** Implements `docs/PHASE_2D_PLANNING.md`'s Phase 2D scope: `Hedayati_Auth_UI` (branded
+login, no public self-registration, password-reset enumeration hardening, role-aware routing,
+wp-admin exclusion for students) and `Hedayati_Student_Portal` (a real `account` Page,
+`?view=`-routed dashboard/profile/verification/enrollments/documents, every mutation an
+`admin-post.php` action owned by `get_current_user_id()` only — never a posted `user_id`).
+
+- **Plugin `1.6.0` → `1.7.0`; theme `1.0.0` → `1.1.0`. No DB/roles schema change** —
+  `CURRENT_DB_VERSION` stays `2.3.0`, `ROLES_VERSION` stays `2.2.0`, managed capability count stays
+  23. Every read/write reuses an existing table and an existing `hedayati_*` capability.
+- Node static suites: 642/0 total (`verify-phase2a.js` 74, `verify-phase2b.js` 208,
+  `verify-phase2c.js` 132, `verify-phase2d.js` 77 new, `verify-audit-log.js` 98, `verify-jalali.js`
+  53). `git diff --check` clean throughout.
+- `docker/wp-tests/test-phase-2d.php` authored and wired into `docker/wp-tests/run.php` /
+  the `Acceptance (Docker WordPress)` workflow — covers account-page bootstrap, role-aware login
+  redirect, no-self-registration, password-reset enumeration-hardening filter logic, the central
+  "student A cannot touch student B" ownership property (profile/phone/documents), phone
+  normalization/uniqueness/reset-on-change through the new portal caller, verification-display
+  narrowing, and read-only Shamsi-dated enrollments.
+  **GitHub Actions result: not yet run in this session as of this note — this branch has not been
+  pushed. Update this line with the actual run result once pushed and checked**, mirroring how
+  Phase 2C's STATUS.md entries tracked real CI evidence rather than an assumed pass.
+- Two runtime-testability gaps are explicitly documented (not silently skipped), matching Phase
+  2C's precedent: (1) `is_uploaded_file()` cannot be satisfied by a WP-CLI process, so full
+  end-to-end upload acceptance needs a real HTTP request; (2) the full `template_redirect` →
+  `is_page()` guard chain needs a real HTTP request to exercise. Both are staging acceptance items.
+- Fixed one real bug found while writing the Docker tests:
+  `Hedayati_Student_Portal::handle_document_download()`'s success path ended with a raw `exit()`
+  (not through `wp_die`/`wp_redirect`), which would have killed the WP-CLI test process — the same
+  class of bug Phase 2C's `class-student-admin.php` had; fixed with the same `HDIT_TESTING`-gated
+  `maybe_exit()` seam.
+- **NOT merged to `main`. NOT staging-tested. NOT deployed.** No production or staging contact
+  occurred while building this. `docs/PHASE_2D_STAGING_ACCEPTANCE.md`-equivalent staging status
+  remains explicitly NOT RUN (no such file exists yet — author one before any staging attempt,
+  matching Phase 2C's `docs/PHASE_2C_ACCEPTANCE.md` precedent).
 
 ## Phase 2C — student identity, verification, private documents (2026-09-05) — MERGED TO `main`
 
