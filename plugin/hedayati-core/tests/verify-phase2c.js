@@ -235,6 +235,7 @@ assert("boots Hedayati_Verification_Service::init()", boot.includes('Hedayati_Ve
 assert("boots Hedayati_Document_Service::init()", boot.includes('Hedayati_Document_Service::init()'));
 assert("boots Hedayati_Student_Admin::init()", boot.includes('Hedayati_Student_Admin::init()'));
 assert("plugin version bumped to 1.6.0", boot.includes("HEDAYATI_CORE_VERSION', '1.6.0'"));
+assert("plugin header 'Version:' matches HEDAYATI_CORE_VERSION (build-packages.ps1 enforces this at package time)", boot.includes('Version:           1.6.0'));
 
 console.log(`\n========================================`);
 console.log(`PHASE 2C SUMMARY: ${passed} PASSED, ${failed} FAILED`);
