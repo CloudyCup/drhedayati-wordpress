@@ -176,6 +176,28 @@ for (const f of ['includes/class-account-security.php', 'includes/class-staff-po
 	assert(`${f}: no direct $wpdb in a class that should use services`, f.includes('public-content') || f.includes('account-security') ? !src.includes('$wpdb') : true);
 }
 
+// ── 10. Phase 3 visual-completion pass ────────────────────────────────────
+console.log('\n10. visual completion (portal/panel/public polish):');
+assert('forced-change screen strips site nav via a body_class filter', sec.includes("add_filter( 'body_class'") && sec.includes("'hd-force-password'"));
+const acctCss = readTheme('assets/css/account.css');
+assert('account.css: sidebar has min-width:0 (no mobile horizontal overflow)', /\.hd-portal-sidebar\s*\{[^}]*min-width:\s*0/.test(acctCss));
+assert('account.css: nav-link cards (a.hd-portal-card) have their own actionable treatment', acctCss.includes('a.hd-portal-card'));
+assert('account.css: run/roster/result lists are styled', acctCss.includes('.hd-portal-run-list') && acctCss.includes('.hd-portal-roster') && acctCss.includes('.hd-portal-result-list'));
+assert('account.css: compact attendance rows', acctCss.includes('.hd-portal-attendance'));
+assert('account.css: one-shot secret code block is display:block / centered', /\.hd-portal-secret code\s*\{[^}]*display:\s*block/.test(acctCss));
+assert('account.css: mobile collapses portal cards to one column', /max-width:\s*900px[\s\S]*\.hd-portal-cards\s*\{\s*grid-template-columns:\s*1fr/.test(acctCss));
+assert('account.css: forced-change hides header nav/cta', acctCss.includes('.hd-force-password .header-nav'));
+const pubCss = readTheme('assets/css/public-pages.css');
+assert('public-pages.css: empty page copy is hidden', pubCss.includes('.hd-page-copy:empty'));
+assert('public-pages.css: teacher image has a fixed frame', /\.hd-public-card img\s*\{[^}]*(aspect-ratio|object-fit)/.test(pubCss));
+assert('public-pages.css: run-status pill classes exist', pubCss.includes('.hd-run-status--open') && pubCss.includes('.hd-run-status--soon'));
+assert('public-pages.css: card CTAs bottom-align for a tidy row', /margin-block-start:\s*auto/.test(pubCss));
+assert('public-runs.php: uses a section-heading + status pill', runsPart.includes('section-heading') && runsPart.includes('hd-run-status'));
+assert('staff-portal: styled result lists + attendance form class + empty states', staff.includes('hd-portal-result-list') && staff.includes("'hd-portal-attendance'") && staff.includes('هنوز دانشجویی در این کلاس'));
+const sp = readPlugin('includes/class-student-portal.php');
+assert('student-portal: documents upload has real <label>s', /<label class="hd-portal-field">\s*<span><\?php esc_html_e\( 'نوع مدرک'/.test(sp) && sp.includes("'فایل مدرک"));
+assert('student-portal: dashboard has a welcome line + quick-access links', sp.includes('خوش آمدید') && sp.includes('دسترسی سریع'));
+
 // ── summary ───────────────────────────────────────────────────────────────
 console.log('\n========================================');
 console.log(`PHASE 3 SUMMARY: ${passed} PASSED, ${failed} FAILED`);

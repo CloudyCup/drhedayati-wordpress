@@ -288,9 +288,10 @@ class Hedayati_Staff_Portal {
 
 	// ── Small form-markup helpers ───────────────────────────────────────────
 
-	private static function form_open( string $action, array $hidden = [], bool $multipart = false ): void {
+	private static function form_open( string $action, array $hidden = [], bool $multipart = false, string $extra_class = '' ): void {
 		printf(
-			'<form class="hd-portal-form" method="post" action="%s"%s>',
+			'<form class="hd-portal-form%s" method="post" action="%s"%s>',
+			'' !== $extra_class ? ' ' . esc_attr( $extra_class ) : '',
 			esc_url( admin_url( 'admin-post.php' ) ),
 			$multipart ? ' enctype="multipart/form-data"' : ''
 		);
@@ -417,15 +418,24 @@ class Hedayati_Staff_Portal {
 		echo '<h1 class="hd-portal-title">' . esc_html( get_the_title( $run['course_id'] ) ) . '</h1>';
 		echo '<h2 class="hd-portal-subtitle">' . esc_html__( 'فهرست دانشجویان', 'hedayati-core' ) . '</h2>';
 
-		echo '<ul class="hd-portal-roster">';
+		$roster = [];
 		foreach ( $enrollments as $enrollment ) {
 			$user = get_user_by( 'id', $enrollment['user_id'] );
 			if ( $user ) {
 				// TA and teacher get names only — no email, phone, identity or documents.
-				echo '<li>' . esc_html( $user->display_name ) . '</li>';
+				$roster[] = $user->display_name;
 			}
 		}
-		echo '</ul>';
+
+		if ( empty( $roster ) ) {
+			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز دانشجویی در این کلاس ثبت‌نام نکرده است.', 'hedayati-core' ) . '</p>';
+		} else {
+			echo '<ul class="hd-portal-roster">';
+			foreach ( $roster as $name ) {
+				echo '<li>' . esc_html( $name ) . '</li>';
+			}
+			echo '</ul>';
+		}
 
 		$can_sessions = current_user_can( 'hedayati_manage_assigned_sessions' ) || current_user_can( 'hedayati_manage_course_runs' );
 		if ( ! $can_sessions ) {
@@ -466,8 +476,9 @@ class Hedayati_Staff_Portal {
 			$marks[ (int) $mark['enrollment_id'] ] = $mark['status'];
 		}
 
-		self::form_open( 'attendance', [ 'session_id' => $session['id'] ] );
+		self::form_open( 'attendance', [ 'session_id' => $session['id'] ], false, 'hd-portal-attendance' );
 
+		$rendered = 0;
 		foreach ( $enrollments as $enrollment ) {
 			if ( 'active' !== $enrollment['status'] ) {
 				continue;
@@ -491,6 +502,12 @@ class Hedayati_Staff_Portal {
 				);
 			}
 			echo '</select></label>';
+			$rendered++;
+		}
+
+		if ( 0 === $rendered ) {
+			echo '<p class="hd-portal-note">' . esc_html__( 'دانشجوی فعالی برای ثبت حضور در این کلاس وجود ندارد.', 'hedayati-core' ) . '</p></form>';
+			return;
 		}
 
 		self::submit( __( 'ذخیرهٔ حضور و غیاب', 'hedayati-core' ) );
@@ -539,22 +556,24 @@ class Hedayati_Staff_Portal {
 				'number'         => 50,
 			] );
 
-		$rendered = 0;
+		$rows = [];
 		foreach ( $users as $user ) {
 			if ( ! in_array( 'student', (array) $user->roles, true ) ) {
 				continue;
 			}
-			printf(
-				'<p><a href="%s">%s</a></p>',
+			$rows[] = sprintf(
+				'<li><a href="%s">%s</a></li>',
 				esc_url( self::url( [ 'view' => 'students', 'student_id' => $user->ID ] ) ),
 				esc_html( $user->display_name )
 			);
-			$rendered++;
 		}
 
-		if ( 0 === $rendered ) {
+		if ( empty( $rows ) ) {
 			echo '<p class="hd-portal-note">' . esc_html__( 'دانشجویی یافت نشد.', 'hedayati-core' ) . '</p>';
+			return;
 		}
+
+		echo '<ul class="hd-portal-result-list">' . implode( '', $rows ) . '</ul>';
 	}
 
 	private static function render_create_student_form(): void {
@@ -583,14 +602,17 @@ class Hedayati_Staff_Portal {
 			self::render_enroll_form( $user_id );
 		}
 
-		echo '<h3>' . esc_html__( 'ثبت‌نام‌ها', 'hedayati-core' ) . '</h3><ul>';
+		echo '<h3>' . esc_html__( 'ثبت‌نام‌ها', 'hedayati-core' ) . '</h3>';
+		$rows = [];
 		foreach ( Hedayati_Enrollment_Service::list_for_user( $user_id ) as $enrollment ) {
 			$run = Hedayati_Course_Run_Service::get( (int) $enrollment['run_id'] );
 			if ( $run ) {
-				echo '<li>' . esc_html( get_the_title( $run['course_id'] ) . ' — #' . $run['id'] ) . '</li>';
+				$rows[] = '<li>' . esc_html( get_the_title( $run['course_id'] ) . ' — #' . $run['id'] ) . '</li>';
 			}
 		}
-		echo '</ul>';
+		echo $rows
+			? '<ul class="hd-portal-result-list">' . implode( '', $rows ) . '</ul>'
+			: '<p class="hd-portal-note">' . esc_html__( 'ثبت‌نامی ندارد.', 'hedayati-core' ) . '</p>';
 
 		if ( current_user_can( 'hedayati_upload_student_documents' ) ) {
 			self::render_identity_forms( $user_id );

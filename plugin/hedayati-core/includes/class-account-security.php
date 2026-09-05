@@ -41,6 +41,19 @@ class Hedayati_Account_Security {
 		// front-end screen.
 		add_action( 'template_redirect', [ self::class, 'intercept' ], 1 );
 		add_action( 'admin_post_' . self::NONCE_ACTION, [ self::class, 'handle_change' ] );
+		add_filter( 'body_class', [ self::class, 'body_class' ] );
+	}
+
+	/**
+	 * Marks the page so the theme can strip the site nav / CTAs while a user is
+	 * locked into the forced-change screen (every nav link just bounces back
+	 * here anyway — see intercept()).
+	 */
+	public static function body_class( array $classes ): array {
+		if ( is_user_logged_in() && self::must_change( get_current_user_id() ) ) {
+			$classes[] = 'hd-force-password';
+		}
+		return $classes;
 	}
 
 	// ── Marker helpers ──────────────────────────────────────────────────────

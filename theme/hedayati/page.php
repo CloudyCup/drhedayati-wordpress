@@ -32,7 +32,9 @@ get_header();
 				<div class="entry-thumbnail"><?php the_post_thumbnail( 'course-hero' ); ?></div>
 			<?php endif; ?>
 
-			<div class="hd-page-copy entry-content"><?php the_content(); ?></div>
+			<?php if ( '' !== trim( (string) get_the_content() ) ) : ?>
+				<div class="hd-page-copy entry-content"><?php the_content(); ?></div>
+			<?php endif; ?>
 		</article>
 
 		<?php if ( 'about' === $hd_slug ) : ?>

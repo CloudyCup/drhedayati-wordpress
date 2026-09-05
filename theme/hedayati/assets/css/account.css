@@ -11,6 +11,15 @@
 	padding-block: 40px 64px;
 }
 
+/* Forced first-login password change: keep only the logo + theme toggle so the
+   user isn't offered nav links that all bounce straight back to this screen. */
+.hd-force-password .header-nav,
+.hd-force-password .header-consult-btn,
+.hd-force-password .hd-account-link,
+.hd-force-password .mobile-menu-btn {
+	display: none;
+}
+
 .hd-staff-section { border-block-end: 1px solid var(--hd-line); padding-block: 20px; }
 
 .hd-portal-shell {
@@ -23,6 +32,7 @@
 .hd-portal-sidebar {
 	position: sticky;
 	top: 88px;
+	min-width: 0;
 	background: var(--hd-surface);
 	border: 1px solid var(--hd-line);
 	border-radius: var(--hd-radius);
@@ -91,15 +101,17 @@
 
 .hd-portal-cards {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 	gap: 14px;
-	margin-bottom: 8px;
+	margin-bottom: 20px;
 }
 
+/* Stat tile (student dashboard — a <div>). */
 .hd-portal-card {
 	background: var(--hd-surface2);
+	border: 1px solid var(--hd-line);
 	border-radius: var(--hd-radius-sm);
-	padding: 16px;
+	padding: 18px;
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
@@ -111,8 +123,81 @@
 }
 
 .hd-portal-card-value {
-	font-size: 1.25rem;
+	font-size: 1.35rem;
 	font-weight: 700;
+}
+
+/* Navigation card (staff panel — an <a>). Actionable, not a flat slab. */
+a.hd-portal-card {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	background: var(--hd-surface);
+	color: var(--hd-ink);
+	font-weight: 700;
+	text-decoration: none;
+	min-height: 0;
+	transition: border-color var(--hd-transition), background var(--hd-transition), transform var(--hd-transition);
+}
+
+a.hd-portal-card::after {
+	content: "‹";
+	color: var(--hd-red);
+	font-size: 1.4rem;
+	line-height: 1;
+	transition: transform var(--hd-transition);
+}
+
+a.hd-portal-card:hover,
+a.hd-portal-card:focus-visible {
+	border-color: var(--hd-red-border);
+	background: var(--hd-red-light);
+}
+
+a.hd-portal-card:hover::after,
+a.hd-portal-card:focus-visible::after {
+	transform: translateX(-3px);
+}
+
+/* Plain lists the portals render (run lists, rosters, result rows). */
+.hd-portal-run-list,
+.hd-portal-roster,
+.hd-portal-result-list {
+	list-style: none;
+	margin: 0 0 18px;
+	padding: 0;
+	border: 1px solid var(--hd-line);
+	border-radius: var(--hd-radius-sm);
+	overflow: hidden;
+}
+
+.hd-portal-run-list li,
+.hd-portal-roster li,
+.hd-portal-result-list li,
+.hd-portal-result-list p {
+	margin: 0;
+	padding: 11px 16px;
+	border-block-start: 1px solid var(--hd-line);
+}
+
+.hd-portal-run-list li:first-child,
+.hd-portal-roster li:first-child,
+.hd-portal-result-list li:first-child,
+.hd-portal-result-list p:first-child {
+	border-block-start: 0;
+}
+
+.hd-portal-run-list a,
+.hd-portal-result-list a {
+	color: var(--hd-red-dark);
+	text-decoration: none;
+	font-weight: 600;
+}
+
+.hd-portal-run-list a:hover,
+.hd-portal-result-list a:hover {
+	text-decoration: underline;
 }
 
 .hd-portal-form {
@@ -210,17 +295,90 @@
 
 /* One-shot temporary-password reveal (staff panel, student creation). */
 .hd-portal-secret {
-	background: var(--hd-surface2);
+	background: var(--hd-surface);
 	color: var(--hd-ink);
-	border: 1px dashed var(--hd-red-border);
+	border: 1px solid var(--hd-red-border);
+	border-inline-start: 4px solid var(--hd-red);
 	font-weight: 400;
 }
 
+.hd-portal-secret strong {
+	display: block;
+	margin-bottom: 10px;
+	color: var(--hd-red-dark);
+}
+
 .hd-portal-secret code {
-	font-size: 1.15rem;
+	display: block;
+	direction: ltr;
+	text-align: center;
+	background: var(--hd-surface2);
+	border: 1px solid var(--hd-line);
+	border-radius: var(--hd-radius-sm);
+	padding: 12px 14px;
+	margin-bottom: 10px;
+	font-family: var(--hd-font-mono);
+	font-size: 1.3rem;
 	font-weight: 700;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.06em;
 	user-select: all;
+	-webkit-user-select: all;
+}
+
+.hd-portal-secret p {
+	margin: 0;
+	color: var(--hd-muted);
+	font-size: .9rem;
+}
+
+/* Compact attendance rows — label + control on one line, not stacked. */
+.hd-portal-attendance {
+	max-width: none;
+}
+
+.hd-portal-attendance .hd-portal-field {
+	flex-direction: row;
+	align-items: center;
+	gap: 12px;
+	padding: 8px 0;
+	border-block-start: 1px solid var(--hd-line);
+}
+
+.hd-portal-attendance .hd-portal-field:first-of-type {
+	border-block-start: 0;
+}
+
+.hd-portal-attendance .hd-portal-field > span {
+	flex: 1;
+	min-width: 0;
+}
+
+.hd-portal-attendance .hd-portal-field select {
+	flex: 0 0 auto;
+	min-width: 130px;
+}
+
+.hd-portal-attendance .hd-portal-btn {
+	margin-top: 14px;
+}
+
+/* File input inside a portal form. */
+.hd-portal-form input[type="file"] {
+	padding: 9px 12px;
+	line-height: 1.4;
+	background: var(--hd-surface2);
+	cursor: pointer;
+}
+
+.hd-portal-form input[type="file"]::file-selector-button {
+	font: inherit;
+	margin-inline-end: 12px;
+	padding: 6px 14px;
+	border: 0;
+	border-radius: var(--hd-radius-sm);
+	background: var(--hd-ink);
+	color: var(--hd-bg);
+	cursor: pointer;
 }
 
 /* Single-column shell for the forced password-change screen (no sidebar). */
@@ -230,17 +388,75 @@
 	margin-inline: auto;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
 	.hd-portal-shell {
 		grid-template-columns: 1fr;
+		gap: 16px;
 	}
 
 	.hd-portal-sidebar {
 		position: static;
+		padding: 6px;
 	}
 
+	/* Horizontal scroll strip instead of an awkward wrapped grid. */
 	.hd-portal-nav {
 		flex-direction: row;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		scrollbar-width: none;
+		gap: 4px;
 	}
+
+	.hd-portal-nav::-webkit-scrollbar {
+		display: none;
+	}
+
+	.hd-portal-nav-link {
+		white-space: nowrap;
+		padding: 9px 14px;
+	}
+
+	/* The logout item's vertical-list divider makes no sense in a row. */
+	.hd-portal-nav-logout {
+		margin-top: 0;
+		border-top: 0;
+		border-inline-start: 1px solid var(--hd-line);
+		padding-top: 9px;
+		padding-inline-start: 16px;
+	}
+
+	.hd-portal-content {
+		padding: 20px;
+	}
+
+	.hd-portal-title {
+		font-size: 1.3rem;
+	}
+
+	/* One column — two 180px tracks don't fit a phone content area. */
+	.hd-portal-cards {
+		grid-template-columns: 1fr;
+	}
+
+	/* Stack name over control on a phone — a row would collide. */
+	.hd-portal-attendance .hd-portal-field {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 6px;
+		padding: 12px 0;
+	}
+
+	.hd-portal-attendance .hd-portal-field select {
+		min-width: 0;
+		width: 100%;
+	}
+}
+
+/* Long run/course titles must wrap, never force a horizontal scrollbar. */
+.hd-portal-run-list li,
+.hd-portal-roster li,
+.hd-portal-result-list li,
+.hd-portal-result-list p {
+	overflow-wrap: anywhere;
 }

@@ -186,9 +186,19 @@ class Hedayati_Student_Portal {
 		$documents    = Hedayati_Document_Service::list_for_user( $user_id );
 		$active_count = count( array_filter( $enrollments, static fn( $e ) => 'active' === $e['status'] ) );
 
+		$display_name = wp_get_current_user()->display_name;
+
 		ob_start();
 		?>
 		<h1 class="hd-portal-title"><?php esc_html_e( 'داشبورد', 'hedayati-core' ); ?></h1>
+		<?php if ( '' !== $display_name ) : ?>
+			<p class="hd-portal-note">
+				<?php
+				/* translators: %s: student display name */
+				printf( esc_html__( 'خوش آمدید، %s.', 'hedayati-core' ), esc_html( $display_name ) );
+				?>
+			</p>
+		<?php endif; ?>
 		<div class="hd-portal-cards">
 			<div class="hd-portal-card">
 				<span class="hd-portal-card-label"><?php esc_html_e( 'وضعیت احراز هویت', 'hedayati-core' ); ?></span>
@@ -196,12 +206,19 @@ class Hedayati_Student_Portal {
 			</div>
 			<div class="hd-portal-card">
 				<span class="hd-portal-card-label"><?php esc_html_e( 'دوره‌های فعال', 'hedayati-core' ); ?></span>
-				<span class="hd-portal-card-value"><?php echo esc_html( (string) $active_count ); ?></span>
+				<span class="hd-portal-card-value"><?php echo esc_html( Hedayati_Text::digits_to_persian( (string) $active_count ) ); ?></span>
 			</div>
 			<div class="hd-portal-card">
 				<span class="hd-portal-card-label"><?php esc_html_e( 'مدارک ثبت‌شده', 'hedayati-core' ); ?></span>
-				<span class="hd-portal-card-value"><?php echo esc_html( (string) count( $documents ) ); ?></span>
+				<span class="hd-portal-card-value"><?php echo esc_html( Hedayati_Text::digits_to_persian( (string) count( $documents ) ) ); ?></span>
 			</div>
+		</div>
+
+		<h2 class="hd-portal-subtitle"><?php esc_html_e( 'دسترسی سریع', 'hedayati-core' ); ?></h2>
+		<div class="hd-portal-cards">
+			<a class="hd-portal-card" href="<?php echo esc_url( self::get_account_url( 'enrollments' ) ); ?>"><?php esc_html_e( 'دوره‌ها و جلسات من', 'hedayati-core' ); ?></a>
+			<a class="hd-portal-card" href="<?php echo esc_url( self::get_account_url( 'documents' ) ); ?>"><?php esc_html_e( 'بارگذاری و مشاهدهٔ مدارک', 'hedayati-core' ); ?></a>
+			<a class="hd-portal-card" href="<?php echo esc_url( self::get_account_url( 'profile' ) ); ?>"><?php esc_html_e( 'ویرایش پروفایل و شمارهٔ موبایل', 'hedayati-core' ); ?></a>
 		</div>
 		<?php
 		return (string) ob_get_clean();
@@ -351,12 +368,18 @@ class Hedayati_Student_Portal {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data" class="hd-portal-form">
 			<?php wp_nonce_field( 'hedayati_portal_document_upload' ); ?>
 			<input type="hidden" name="action" value="hedayati_portal_document_upload">
-			<select name="doc_type">
-				<?php foreach ( Hedayati_Document_Service::DOC_TYPES as $type ) : ?>
-					<option value="<?php echo esc_attr( $type ); ?>"><?php echo esc_html( self::doc_type_label( $type ) ); ?></option>
-				<?php endforeach; ?>
-			</select>
-			<input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png">
+			<label class="hd-portal-field">
+				<span><?php esc_html_e( 'نوع مدرک', 'hedayati-core' ); ?></span>
+				<select name="doc_type">
+					<?php foreach ( Hedayati_Document_Service::DOC_TYPES as $type ) : ?>
+						<option value="<?php echo esc_attr( $type ); ?>"><?php echo esc_html( self::doc_type_label( $type ) ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label class="hd-portal-field">
+				<span><?php esc_html_e( 'فایل مدرک (PDF، JPEG یا PNG)', 'hedayati-core' ); ?></span>
+				<input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png">
+			</label>
 			<button type="submit" class="hd-portal-btn"><?php esc_html_e( 'بارگذاری مدرک', 'hedayati-core' ); ?></button>
 		</form>
 
