@@ -1,8 +1,9 @@
 # CURRENT_STATE.md
 
 **Last documentation update:** 2026-09-05 (Phase 3) — **Phase 3 "launch completion" is implemented
-and merged into `main` via `e04c343`, with GREEN GitHub Actions runtime acceptance (491/0) and
-GREEN Node static suites (750/0). NOT staging-tested, NOT deployed.** Phase 3 absorbs the prior Codex/ChatGPT
+and merged into `main`, followed by the plugin `1.8.1` lockout-expiry hotfix, with GREEN local
+WordPress acceptance (492/0) and GREEN Node static suites (752/0). STAGING VALIDATION IN PROGRESS;
+NOT deployed to production.** Phase 3 absorbs the prior Codex/ChatGPT
 "launch-completion" working-tree WIP (preserved verbatim at commit `7500348` and on
 `snapshot/codex-launch-completion-wip-2026-09-05`) plus: forced first-login password change +
 reception-created accounts with one-shot temporary passwords (`Hedayati_Account_Security`,

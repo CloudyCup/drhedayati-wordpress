@@ -179,7 +179,7 @@ available) and set `HEDAYATI_PRIVATE_UPLOADS_DIR` to its exact absolute path.
      `feature/phase-2c-student-portal`: `HEDAYATI_CORE_VERSION` `1.6.0`, `CURRENT_DB_VERSION`
      `2.3.0`, `ROLES_VERSION` `2.2.0`.
      `feature/phase-3-launch-completion` (the integrated 2A+2B+2C+2D+3 staging candidate):
-     `HEDAYATI_CORE_VERSION` `1.8.0`, theme `1.2.0`, `CURRENT_DB_VERSION` **`2.3.0` (unchanged —
+     `HEDAYATI_CORE_VERSION` `1.8.1`, theme `1.2.0`, `CURRENT_DB_VERSION` **`2.3.0` (unchanged —
      no migration)**, `ROLES_VERSION` **`2.3.0`** (24 managed caps).
    - **Phase 3 post-deploy checks (in addition to the migration check):** load any wp-admin page
      as an administrator so the `admin_init` roles sync runs (`2.2.0` → `2.3.0`, adds

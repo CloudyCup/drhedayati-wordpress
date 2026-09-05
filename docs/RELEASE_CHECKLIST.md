@@ -32,7 +32,7 @@ Earlier phase documents preserve design/history; the current authoritative statu
 - [x] Self-hosted Vazirmatn WOFF2 (login + public pages, no CDN).
 - [x] `page.php` regression handling (keeps `.entry-content`, adds `role=main`).
 - [x] Split the WIP's dense one-line PHP (staff portal, public content) into readable form.
-- [x] Static + runtime regression suites (Node 750/0; Docker 491/0) + docs reconciliation.
+- [x] Static + runtime regression suites (Node 752/0; WordPress 492/0) + docs reconciliation.
 - [x] **Visual/RTL/dark-mode review** of `/panel/`, `/account/`, the forced-change screen, and the
       four public pages — done 2026-09-05 via a real-theme-CSS static render (no local
       WordPress/Docker), desktop + mobile, light + dark. Fixes in commit `3e274d9`. A final check
