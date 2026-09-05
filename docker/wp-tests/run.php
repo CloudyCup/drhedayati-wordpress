@@ -34,6 +34,7 @@ require __DIR__ . '/helpers.php';
 require __DIR__ . '/test-phase-2a.php';
 require __DIR__ . '/test-phase-2b.php';
 require __DIR__ . '/test-phase-2c.php';
+require __DIR__ . '/test-phase-2d.php';
 
 global $wpdb;
 
@@ -67,6 +68,7 @@ try {
 		hdit_run_phase_2a();
 		hdit_run_phase_2b();
 		hdit_run_phase_2c();
+		hdit_run_phase_2d();
 		$assertions_exit = HDIT::finish();
 		$suite_completed = true;
 	}

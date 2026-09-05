@@ -498,7 +498,20 @@ class Hedayati_Student_Portal {
 			wp_die( esc_html( $result->get_error_message() ), '', [ 'response' => 404 ] );
 		}
 
-		exit;
+		self::maybe_exit();
+	}
+
+	/**
+	 * exit() after a raw (non wp_die/wp_redirect) streamed response, EXCEPT
+	 * inside the Docker/WP-CLI acceptance harness, which defines HDIT_TESTING
+	 * (docker/wp-tests/helpers.php) so it can assert on the completed response
+	 * instead of having its whole PHP process terminated — same seam already
+	 * established for Hedayati_Student_Admin in Phase 2C.
+	 */
+	private static function maybe_exit(): void {
+		if ( ! defined( 'HDIT_TESTING' ) ) {
+			exit;
+		}
 	}
 
 	// ── Plumbing ─────────────────────────────────────────────────────────────
