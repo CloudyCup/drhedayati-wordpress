@@ -1,10 +1,56 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
-Updated 2026-09-05 (Phase 2D section appended below, above the Phase 2C section; everything else
-below is the 2026-09-04 Phase 2B handoff, unchanged, and still describes `main`). Canonical owner
+Updated 2026-09-05 (Phase 3 section appended below, above Phase 2D). Canonical owner
 handoff, with independent local review recorded separately in TEST_RESULTS.md. Read this first on
 future work; update these concise files as work progresses. Code establishes what exists; the
 owner's handoff establishes intent. Older conflicting status prose is superseded by this file.
+
+## Phase 3 — launch completion (2026-09-05) — IMPLEMENTED, RUNTIME-CI GREEN, NOT MERGED, NOT STAGING-TESTED
+
+**Branch `feature/phase-3-launch-completion`, off `feature/phase-2d-account-shell` @ `01c4e1c`
+(Phase 2D).** `main` is unchanged at `32640e4`. The prior Codex/ChatGPT "launch-completion"
+working-tree WIP was preserved verbatim as the branch's first commit (`7500348`) and also on
+`snapshot/codex-launch-completion-wip-2026-09-05`; nothing was discarded.
+
+Owner decisions applied (see `docs/DECISIONS.md` D41–D43): adopt + finish the WIP; reception (and
+manager/administrator) may create student accounts (`hedayati_create_students`, `ROLES_VERSION`
+`2.3.0`, 24 managed caps); strong random **temporary password** shown once to staff, never
+persisted plaintext, forced first-login change before any portal access; Course Runs public only
+through explicit per-run staff opt-in; consultation page is phone/contact CTA only; manager keeps
+wp-admin (no separate front-end manager dashboard); students never see verification rejection notes.
+
+- **New:** `Hedayati_Account_Security` (forced first-login password change; `template_redirect`
+  priority-1 interceptor; `hedayati_must_change_password` boolean marker; PRG on validation
+  failure; `account.created` / `account.password_changed` PII-free audit). `Hedayati_Staff_Portal`
+  (front-end `/panel/` — teacher/TA scoped runs+roster+sessions+attendance, reception
+  lookup/create-student/enroll/identity/document intake) — rewritten from the WIP's dense
+  one-liners to readable form, logic preserved, every handler re-checks capability + object scope.
+  `Hedayati_Public_Content` (About/Contact/Consult/Teachers pages + course/teacher publication
+  opt-in; run projection limited to `start_date`/`tuition_rial`/`registration_status`).
+- **Capability-consistency fixes (D42):** `course` CPT → dedicated `hedayati_manage_courses` map
+  (HD-006 pattern); `course-category` taxonomy + `Hedayati_Term_Meta` → `hedayati_manage_courses`;
+  `Hedayati_Settings` → `hedayati_manage_settings` (+ `option_page_capability_*` filter).
+- **Theme:** `page.php` (generic Page template — keeps `.entry-content`, adds `role=main`),
+  `page-panel.php`, `template-parts/public-runs.php`, `assets/css/public-pages.css`,
+  self-hosted **Vazirmatn** WOFF2 (login + public pages, no CDN). Plugin `1.7.0`→`1.8.0`, theme
+  `1.1.0`→`1.2.0`. **No DB schema change** (`CURRENT_DB_VERSION` stays `2.3.0`).
+- **Tests — GREEN:** Node static suites **732 passed, 0 failed** (`verify-phase2a` 74,
+  `verify-phase2b` 208, `verify-phase2c` 132, `verify-phase2d` 82, **`verify-phase3` 85 new**,
+  `verify-audit-log` 98, `verify-jalali` 53). `Acceptance (Docker WordPress)` GitHub Actions on the
+  exact Phase 3 HEAD (`046bd31`, run `33975445108`): **489 passed, 0 failed, cleanup verified,
+  RESULT: PASS** (up from the Codex-WIP baseline's 450 — `docker/wp-tests/test-phase-3.php` adds
+  the temp-password / forced-change / capability-matrix runtime coverage). This is the first
+  real-WordPress runtime evidence for Phase 2D **and** the launch-completion work — it is green.
+- **NOT merged to `main`. NOT staging-tested. NOT deployed.** No `mystik.ir` / `drhedayati.com`
+  contact. Staging is Phase 4: provision `HEDAYATI_DATA_ENCRYPTION_KEY` / `HEDAYATI_DATA_HMAC_KEY`
+  / `HEDAYATI_PRIVATE_UPLOADS_DIR`, deploy the integrated 2A+2B+2C+2D+3 build once, run a single
+  consolidated acceptance matrix. On deploy the `admin_init` roles sync must run (2.2.0 → 2.3.0)
+  and the plugin recreates the `account` / `panel` / `about` / `contact` / `consult` / `teachers`
+  Pages if missing.
+- **Known runtime-testability gaps (documented, not skipped — same class as Phase 2C/2D):**
+  `Hedayati_Account_Security::intercept()` and the portal `template_redirect` guard chains need a
+  real HTTP request; real multipart file upload can't be fabricated by WP-CLI. All are explicit
+  Phase 4 staging-acceptance items.
 
 ## Phase 2D — account shell & student self-service portal (2026-09-05) — IMPLEMENTED, NOT MERGED, NOT STAGING-TESTED
 

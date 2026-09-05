@@ -178,6 +178,18 @@ available) and set `HEDAYATI_PRIVATE_UPLOADS_DIR` to its exact absolute path.
      `HEDAYATI_CORE_VERSION` / `HEDAYATI_VERSION` / `CURRENT_DB_VERSION` / `ROLES_VERSION`).
      `feature/phase-2c-student-portal`: `HEDAYATI_CORE_VERSION` `1.6.0`, `CURRENT_DB_VERSION`
      `2.3.0`, `ROLES_VERSION` `2.2.0`.
+     `feature/phase-3-launch-completion` (the integrated 2A+2B+2C+2D+3 staging candidate):
+     `HEDAYATI_CORE_VERSION` `1.8.0`, theme `1.2.0`, `CURRENT_DB_VERSION` **`2.3.0` (unchanged —
+     no migration)**, `ROLES_VERSION` **`2.3.0`** (24 managed caps).
+   - **Phase 3 post-deploy checks (in addition to the migration check):** load any wp-admin page
+     as an administrator so the `admin_init` roles sync runs (`2.2.0` → `2.3.0`, adds
+     `hedayati_create_students` and makes `hedayati_manage_courses` / `hedayati_manage_settings`
+     enforced); confirm `get_option('hedayati_core_roles_version') === '2.3.0'` and the managed-cap
+     count is 24; confirm the plugin (re)created the `account` / `panel` / `about` / `contact` /
+     `consult` / `teachers` Pages (or create them and set the slugs manually if a page cache hid
+     the `admin_init` safety net); confirm a `hedayati_manager` can now edit a course, a
+     course-category, and Settings → Hedayati; confirm LiteSpeed page cache never serves an
+     authenticated `/account/*` or `/panel/*` response.
    - Confirm the three `wp-config.php` constants above are provisioned on the target environment
      **before** deploying, if this deploy is expected to expose the identity/document features.
 2. **Backup first** — take a full cPanel backup (files + database) and download an independent copy

@@ -83,17 +83,21 @@ several items still need institute decisions (marked ❓, see the bottom of this
    steps — merging to `main` is not staging acceptance and is not a deploy.** The three required
    `wp-config.php` constants are not provisioned anywhere. Benefit linkage (verification unlocking
    certificates/exams) remains unapproved and unbuilt — `docs/REQUIREMENTS.md` 8.6, unchanged.
-3. **Phase 2D/2E/2F — interfaces**, reshaped into three smaller phases (see
-   `docs/PHASE_2D_PLANNING.md`). **Phase 2D — shared account/panel shell + student portal: 🟢
-   IMPLEMENTED** on `feature/phase-2d-account-shell` (off `main` @ `32640e4`) — **NOT merged, NOT
-   staging-tested, NOT deployed.** Node static suites 642/0 (incl. new `verify-phase2d.js` 77/0);
-   `docker/wp-tests/test-phase-2d.php` authored and wired in, GitHub Actions result pending a push
-   (see `docs/agent/STATUS.md`). **Phase 2E** — teacher/TA/reception/manager-facing panels + the
-   authorization-consistency fixes this reconciliation surfaced (Course using native post caps,
-   Settings requiring `manage_options`, the student-admin screen's direct-`user_id` scope guard) —
-   not started. **Phase 2F** — public completion (About/Contact/Consultation, teacher directory,
-   Course Run display rule, Shamsi/font/logo) + integrated staging readiness — not started. The
-   former single oversized "Phase 2D" bullet stays retired in favor of this split.
+3. **Interfaces + launch completion.** The old "Phase 2D/2E/2F" split is superseded — Phases 2E
+   and 2F were consolidated into a single **Phase 3 "launch completion"** (the shape the prior
+   Codex working session had already taken, ratified by the owner 2026-09-05). Status:
+   - **Phase 2D — shared account shell + student portal: 🟢 IMPLEMENTED** on
+     `feature/phase-2d-account-shell` (off `main` @ `32640e4`), now the base of the Phase 3 branch.
+   - **Phase 3 — launch completion: 🟢 IMPLEMENTED, runtime-CI GREEN** on
+     `feature/phase-3-launch-completion`. Front-end staff `/panel/` (teacher/TA/reception);
+     reception-created student accounts + one-shot temporary password + forced first-login change
+     (`Hedayati_Account_Security`, D41); public About/Contact/Consult/Teachers pages + per-run
+     publication opt-in (D43); course/taxonomy/settings capability-consistency fixes (D42);
+     `page.php`; self-hosted Vazirmatn; Shamsi on the course page. Plugin `1.8.0`, theme `1.2.0`,
+     no DB change. Node static **732/0**; `Acceptance (Docker WordPress)` **489/0, PASS** on the
+     exact HEAD. **NOT merged, NOT staging-tested, NOT deployed.**
+   - **Phase 4 — integrated staging** (`mystik.ir`, once, end to end) and **Phase 5 — production
+     cutover** (`drhedayati.com`) remain the only steps after Phase 3 merges to `main`.
 4. **Public content & pages.** Create About, Contact, and consultation pages (templates + a
    consultation submission handler ❓ UX undecided); teacher directory/profiles; editable
    homepage/footer/navigation content where staff editing is required. Note: `header.php`,

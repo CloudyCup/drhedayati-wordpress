@@ -1,10 +1,21 @@
 # CURRENT_STATE.md
 
-**Last documentation update:** 2026-09-05 (later same day) — Phase 2D (shared account shell +
-student self-service portal) is **implemented on `feature/phase-2d-account-shell`, off `main` @
-`32640e4`. NOT merged, NOT staging-tested, NOT deployed.** See the new "Plugin/theme — account
-shell & student portal (Phase 2D)" section below. Everything else in this file continues to
-describe `main` unless a line explicitly says otherwise.
+**Last documentation update:** 2026-09-05 (Phase 3) — **Phase 3 "launch completion" is implemented
+on `feature/phase-3-launch-completion` (off Phase 2D @ `01c4e1c`), with GREEN GitHub Actions
+runtime acceptance (489/0) and GREEN Node static suites (732/0). NOT merged, NOT staging-tested,
+NOT deployed.** `main` is unchanged at `32640e4`. Phase 3 absorbs the prior Codex/ChatGPT
+"launch-completion" working-tree WIP (preserved verbatim at commit `7500348` and on
+`snapshot/codex-launch-completion-wip-2026-09-05`) plus: forced first-login password change +
+reception-created accounts with one-shot temporary passwords (`Hedayati_Account_Security`,
+`hedayati_create_students`, `ROLES_VERSION` `2.3.0`, 24 caps — D41); the front-end staff `/panel/`
+(`Hedayati_Staff_Portal`); public About/Contact/Consult/Teachers pages + per-run publication
+opt-in (`Hedayati_Public_Content` — D43); and the course/taxonomy/settings capability-consistency
+fixes (D42). Plugin `1.8.0`, theme `1.2.0`, **no DB schema change** (`CURRENT_DB_VERSION` `2.3.0`).
+See `docs/agent/STATUS.md`'s Phase 3 section for the authoritative summary. Everything below this
+banner still describes `main` unless a line explicitly says otherwise.
+
+**Earlier same day:** Phase 2D (shared account shell + student self-service portal) implemented on
+`feature/phase-2d-account-shell` off `main` @ `32640e4` — now the base of the Phase 3 branch.
 
 **Earlier same-day update:** Phase 2B **and** Phase 2C are both merged into `main`
 (merge commit `32640e4`, `--no-ff`, after `feature/phase-2c-student-portal`'s Docker acceptance
@@ -469,6 +480,76 @@ re-tested (unchanged by the subsequent merge to `main` — merging code is not s
   through the new portal caller, verification-display narrowing, read-only Shamsi-dated
   enrollments) — wired into `docker/wp-tests/run.php`; its actual GitHub Actions result is
   recorded in `docs/agent/STATUS.md`, not repeated here since it can go stale.
+
+### Plugin/theme — launch completion (Phase 3) — branch `feature/phase-3-launch-completion`, runtime-CI GREEN, NOT merged, NOT staging-tested
+
+> Node static **732/0** · `Acceptance (Docker WordPress)` on the exact HEAD **489/0, cleanup
+> verified, RESULT: PASS** (run `33975445108`). Absorbs the preserved Codex/ChatGPT WIP (commit
+> `7500348`). **Not merged to `main`, not deployed, no `mystik.ir`/`drhedayati.com` contact.**
+
+- **`Hedayati_Account_Security`** (`class-account-security.php`): forced first-login password
+  change. `hedayati_must_change_password` usermeta marker (boolean `'1'` only — never a password).
+  `intercept()` on `template_redirect` priority 1 renders a themed mandatory password-change
+  screen for any flagged logged-in user and blocks every other front-end screen until the change
+  succeeds. `handle_change()` (`admin_post_hedayati_account_set_password`): nonce + marker gate,
+  min 12 chars, confirm-match, not-equal-to-login/email; `wp_set_password()` then clear the marker
+  then re-issue the session (guarded by `headers_sent()` for the CLI test harness); PRG (transient
+  + redirect) on validation failure so there is no uncatchable mid-render `exit`. Audits
+  `account.password_changed` (actor explicit, no password in the note). `generate_temp_password()`
+  = `wp_generate_password( 18, true, true )`. See D41.
+- **`Hedayati_Staff_Portal`** (`class-staff-portal.php`): front-end `/panel/` Page + `?view=`
+  routing, `template_redirect` guard (login + `allowed()` + per-view object scope), every mutation
+  an `admin-post.php` action (`hedayati_staff_{session,attendance,student,enroll,identity,verify,upload}`)
+  with its own nonce + capability + object-scope re-check.
+  - Teacher / TA: `/panel/?view=run&run_id=` — roster (names only), sessions, and — teacher only —
+    an attendance grid + "new session" form. Scope via
+    `Hedayati_Run_Staff_Service::user_is_staff_on_run()`; managers bypass.
+  - Reception: `/panel/?view=students` — POST search (PII stays out of access logs),
+    **create student account** (`hedayati_create_students` — D41; generates the one-shot temp
+    password, flags `must_change`, audits `account.created`, compensating `wp_delete_user` only on
+    a phone-assign race), enroll, national-ID intake, document upload, initiate verification.
+  - Rewritten from the WIP's dense single-line style to readable multi-line form; **logic
+    preserved**, no behavior change beyond the temp-password addition.
+- **`Hedayati_Public_Content`** (`class-public-content.php`): provisions the `about` / `contact` /
+  `consult` / `teachers` Pages (staff-editable afterwards); a "انتشار عمومی اطلاعات" meta box on
+  `course` + `teacher` writing `_hedayati_public_teacher` / `_hedayati_public_catalog_details` /
+  `_hedayati_public_run_ids`. `teachers()` returns only published + opted-in profiles;
+  `runs( $course_id )` projects each opted-in, still-active run of a published course down to
+  **exactly** `start_date` / `tuition_rial` / `registration_status` — roster / attendance /
+  capacity / staff / notes are never exposed. See D43 (resolves Q8).
+- **Capability-consistency fixes (D42):** `course` CPT now uses a dedicated
+  `['hedayati_course','hedayati_courses']` + `map_meta_cap => true` map with every primitive and
+  status-conditional key → `hedayati_manage_courses` (HD-006 pattern); `course-category` taxonomy
+  caps + `Hedayati_Term_Meta` save guard → `hedayati_manage_courses`; `Hedayati_Settings` →
+  `hedayati_manage_settings` (+ `option_page_capability_hedayati_institute` filter).
+  `hedayati_manage_courses` and `hedayati_manage_settings` were defined + granted since Phase 2A/2B
+  but **never checked anywhere** before this.
+- **Roles:** `ROLES_VERSION` `2.2.0` → `2.3.0`; new `hedayati_create_students` (24th managed
+  capability) granted to `reception` + `hedayati_manager` (+ `administrator`).
+- **Theme:** `page.php` (first generic Page template — keeps `.entry-content` for block styling,
+  adds `role="main"` + `#site-main`; renders the shared contact/teacher/consult sections for the
+  four provisioned slugs), `page-panel.php` (staff shell), `template-parts/public-runs.php`
+  (Shamsi + Persian-digit fees, links to `/consult/`), `assets/css/public-pages.css`,
+  `assets/css/account.css` (+ `.hd-portal-secret` one-shot reveal, `.hd-portal-shell-single`).
+  `single-course.php` gates teacher/fee/date behind `_hedayati_public_catalog_details`, renders
+  Shamsi start dates, includes the public-runs part. **Self-hosted Vazirmatn** variable WOFF2
+  (`assets/fonts/`, `OFL.txt`) via `@font-face` in `login.css` + `public-pages.css` — no CDN.
+- **Versions:** plugin `HEDAYATI_CORE_VERSION` `1.7.0` → `1.8.0`; theme `1.1.0` → `1.2.0`. **No
+  migration** — `CURRENT_DB_VERSION` stays `2.3.0`; every read/write reuses an existing table.
+- **New meta keys** (all `show_in_rest` false / server-read only): usermeta
+  `hedayati_must_change_password`; postmeta `_hedayati_public_teacher`,
+  `_hedayati_public_catalog_details`, `_hedayati_public_run_ids` (array). New audit object type
+  `account`; new actions `account.created`, `account.password_changed`.
+- **Tests:** `tests/verify-phase3.js` — **85 passed, 0 failed**.
+  `docker/wp-tests/test-phase-3.php` — real-WordPress runtime: temp-password generation
+  (length/entropy/uniqueness), reception-create → marker set + password stored only as a WP hash +
+  one-shot staff notice consumed once + `account.created` audit (actor correct, PII-free), the
+  full forced-change handler (short / mismatch / missing-nonce rejected, marker intact; valid
+  change clears the marker, the new password authenticates, `account.password_changed` audited
+  without the value; a post-change call with no marker is a no-op), `hedayati_create_students`
+  role matrix, manager course/category/settings capability resolution against real
+  `map_meta_cap()`. Wired into `run.php`; `test-launch.php` (from the WIP) also runs — full
+  role × {course, category, settings} matrix + public opt-in defaults.
 
 ### Plugin — tests
 

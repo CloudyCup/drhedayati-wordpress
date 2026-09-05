@@ -99,7 +99,16 @@ add it in `Hedayati_Enrollment_Service::enroll()`. Non-blocking.
 
 ## Q8 — Which Course Run does a public course page display?
 
-**Status:** OPEN — blocks the Phase 2B theme-fallback wiring, not the backend.
+**Status:** RESOLVED (2026-09-05, Phase 3) — see `docs/DECISIONS.md` D43. Instead of an automatic
+"which run" rule, a public course page shows **only** runs a staff member has explicitly ticked
+(`_hedayati_public_run_ids` allow-list on the course), each projected to `start_date` /
+`tuition_rial` / `registration_status` only, and only while `scheduled`/`in_progress` on a
+published course (`Hedayati_Public_Content::runs()`). `_hedayati_public_catalog_details` similarly
+gates the teacher-name / fee / date fields in the course hero. No `tuition_rial` → free-text
+`_course_price` migration was needed; the free-text meta stays the fallback when nothing is opted
+in. Original open text kept below for history.
+
+**Status (historical):** OPEN — blocks the Phase 2B theme-fallback wiring, not the backend.
 **Context:** `docs/DECISIONS.md` D12 says the `_course_teacher` / `_course_next_start_date` /
 `_course_price` / `_course_registration_state` meta become "backward-compatible fallbacks" once
 Course Runs exist. The backend is built and the run layer never writes that meta — but the public

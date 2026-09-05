@@ -1,3 +1,43 @@
+# Test results
+
+## Phase 3 — launch completion (2026-09-05) — GREEN
+
+Branch `feature/phase-3-launch-completion`. Baseline = the preserved Codex/ChatGPT WIP (commit
+`7500348`, also `snapshot/codex-launch-completion-wip-2026-09-05`).
+
+| Check | Result |
+|---|---|
+| `verify-phase2a.js` | 74 / 0 |
+| `verify-phase2b.js` | 208 / 0 |
+| `verify-phase2c.js` | 132 / 0 |
+| `verify-phase2d.js` | 82 / 0 |
+| `verify-phase3.js` (new) | 85 / 0 |
+| `verify-audit-log.js` | 98 / 0 |
+| `verify-jalali.js` | 53 / 0 |
+| **Node static total** | **732 / 0**, every process exit 0 |
+| `Acceptance (Docker WordPress)` GitHub Actions | run `33974539901` on the WIP baseline `7500348`: **450 / 0, PASS, cleanup verified** (first-ever real-WordPress runtime evidence for Phase 2D + launch WIP). |
+| `Acceptance (Docker WordPress)` GitHub Actions | run `33975445108` on Phase 3 HEAD `046bd31`: **489 / 0, PASS, cleanup verified** (+39 = `docker/wp-tests/test-phase-3.php`). |
+| PHP lint / isolated PHP suites | NOT RUN locally — no PHP in this environment; covered by the Docker runtime suite on CI. |
+| Live staging / production | NOT CONTACTED. |
+
+`test-phase-3.php` runtime coverage: temp-password generation (length ≥ 16, entropy classes,
+uniqueness); reception-create → `must_change` marker set + `user_pass` stored only as a WP hash +
+one-shot staff notice consumed exactly once + `account.created` audit (actor = reception, no
+password/phone/id in the note); the full forced-change handler (too-short / mismatch /
+missing-nonce all rejected with the marker intact; a valid change clears the marker, the new
+password authenticates via `wp_authenticate()`, `account.password_changed` is audited without the
+value; a post-change call with no marker leaves the password untouched); `hedayati_create_students`
+role matrix (student/teacher/TA false, reception/manager/admin true); manager
+course/category/settings capability resolution against real `map_meta_cap()`. `test-launch.php`
+(from the WIP) also passes on CI: full role × {course, category, settings} matrix, staff privacy,
+public opt-in defaults, cross-user denial.
+
+**Not merged, not deployed, no `mystik.ir`/`drhedayati.com` contact.** Interceptor/guard
+`template_redirect` behaviour and real multipart upload remain Phase 4 staging-acceptance items
+(documented in the test file headers, same class as Phase 2C/2D).
+
+---
+
 # Test results — 2026-09-04
 
 **Reconciliation note (2026-09-05):** everything below is preserved as an accurate historical

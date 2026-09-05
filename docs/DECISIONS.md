@@ -483,3 +483,72 @@ intake data). Every staff-assisted action additionally requires the target accou
 core `edit_user`, which the review round correctly rejected — reception intentionally lacks
 WordPress user-management capabilities, and granting `edit_user` for this purpose would have been
 a real privilege escalation, not a documentation shortcut.
+
+## D41 — Reception-created student accounts + forced first-login password change (Phase 3)
+
+**Decided (owner, 2026-09-05):** student accounts are created by staff — `reception`,
+`hedayati_manager`, `administrator` — through the front-end `/panel/` (`Hedayati_Staff_Portal`),
+gated on a new dedicated capability **`hedayati_create_students`** (`ROLES_VERSION` `2.2.0` →
+`2.3.0`; managed capability count 23 → 24). There is **no public self-registration** (that stays
+`Hedayati_Auth_UI`'s forced `option_users_can_register => false`, unchanged from Phase 2D).
+
+Temporary-password policy:
+- On creation the plugin generates a strong random password (`wp_generate_password( 18, true, true )`).
+- It is shown to the **creating staff member exactly once** — a 45-second single-use transient
+  (`hedayati_staff_notice_<staff_id>`) that `Hedayati_Staff_Portal::render_notice()` deletes on
+  first render. It is **never persisted in plaintext** anywhere; WordPress hashes it inside
+  `wp_insert_user()`.
+- The account is flagged with a boolean usermeta marker **`hedayati_must_change_password`** (value
+  `'1'` — a flag, never a password).
+- `Hedayati_Account_Security::intercept()` (hooked `template_redirect`, priority 1) redirects a
+  flagged user to a mandatory themed password-change screen on **every** front-end request; no
+  portal/panel screen is reachable until the change succeeds.
+- The marker is cleared **only after** `wp_set_password()` returns; the session is re-issued so the
+  student lands logged in.
+- Audit: `account.created` and `account.password_changed` — metadata only, **never** the password
+  (D33/D39 discipline).
+- **No email/SMS delivery in Phase 3** (owner decision) — the temporary password is handed over in
+  person. SMS/OTP delivery remains a future, separately-approved feature.
+
+**Why:** consistent with how enrollments (Phase 2B) and national-ID/document intake (Phase 2C) are
+already staff-only; avoids building public-registration spam/abuse controls that aren't needed for
+launch; the forced change means a staff member never knows the student's real password and a
+leaked creation-time transient is useless after first login.
+
+## D42 — Course / course-category / Settings use Hedayati capabilities, not core WordPress ones (Phase 3)
+
+**Decided:** three pre-existing capability-consistency gaps surfaced by the Phase 2D/3
+reconciliation are fixed:
+1. The `course` CPT switches from `capability_type => 'post'` to a dedicated
+   `['hedayati_course','hedayati_courses']` map with `map_meta_cap => true`, every primitive and
+   status-conditional key pointed at **`hedayati_manage_courses`** — the exact HD-006 pattern
+   proven on the Teacher CPT. Previously `hedayati_manager` (which holds no native `edit_posts`)
+   **could not create or edit a course at all**; `hedayati_manage_courses` was defined and granted
+   but never checked.
+2. The `course-category` taxonomy's `manage_terms`/`edit_terms`/`delete_terms`/`assign_terms` and
+   `Hedayati_Term_Meta`'s save guard move from core `manage_categories` to `hedayati_manage_courses`.
+3. `Hedayati_Settings` moves from `manage_options` to **`hedayati_manage_settings`** (plus the
+   matching `option_page_capability_hedayati_institute` filter so `options.php` agrees), so
+   `hedayati_manager` can maintain institute contact details without WordPress technical-admin
+   power (D10).
+
+**Why:** these were real defects — a role granted an operational capability that no code path
+consulted. No schema/data change; capability-map edits only. Runtime-verified in
+`docker/wp-tests/test-launch.php` + `test-phase-3.php` (full role × {course, category, settings}
+matrix).
+
+## D43 — Course Run public visibility is explicit per-run staff opt-in (Phase 3, resolves Q8)
+
+**Decided:** a public course page shows Course Run data (start date, tuition, registration status)
+**only** for runs a staff member has explicitly ticked on the course editor's "انتشار عمومی
+اطلاعات" box. Storage: `_hedayati_public_run_ids` (an allow-list array on the `course` post) plus
+`_hedayati_public_catalog_details` (gate for the teacher-name / fee / date fields on the course
+page) and `_hedayati_public_teacher` (per Teacher profile, for `/teachers/`). `Hedayati_Public_Content::runs()`
+projects each approved run down to **exactly** `start_date` / `tuition_rial` / `registration_status`
+and only while the run is `scheduled`/`in_progress` on a published course — roster, attendance,
+capacity, staff assignments and internal notes are never exposed.
+
+**Why:** answers `docs/OPEN_QUESTIONS.md` Q8 without guessing an automatic "which run" rule; the
+privacy-safe default is "nothing public unless a human said so", consistent with D30/D34 (Teacher
+CPT not publicly routed until a deliberate design). A per-run column would have needed a migration;
+a course-level allow-list does not.

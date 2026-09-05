@@ -109,6 +109,20 @@ function hdit_run_phase_3(): void {
 		&& false === strpos( (string) $audit_created['note'], '+9891211' )
 		&& false === strpos( (string) $audit_created['note'], 'p3_created' ) );
 
+	// A duplicate phone must be refused BEFORE any user row is created — no
+	// half-provisioned account, no orphan phone row (HD-002-adjacent guard).
+	$phone_rows_before = (int) $wpdb->get_var( "SELECT COUNT(*) FROM " . Hedayati_DB_Schema::get_table_user_phones() );
+	wp_set_current_user( $reception );
+	$dup_nonce = wp_create_nonce( 'hedayati_staff_student' );
+	HDIT_AdminPost::run( $reception, [
+		'_wpnonce'   => $dup_nonce,
+		'first_name' => 'رضا', 'last_name' => 'کریمی',
+		'user_login' => 'hdit_p3_dupe_phone',
+		'phone'      => '09121112233', // already the created student's number
+	], static fn() => Hedayati_Staff_Portal::handle_student() );
+	HDIT::ok( 'a duplicate phone is rejected with no account created', ! ( get_user_by( 'login', 'hdit_p3_dupe_phone' ) instanceof WP_User ) );
+	HDIT::eq( 'a rejected create left no orphan phone row', $phone_rows_before, (int) $wpdb->get_var( "SELECT COUNT(*) FROM " . Hedayati_DB_Schema::get_table_user_phones() ) );
+
 	// ── 3. Forced first-login password change ──────────────────────────────
 	HDIT::section( 'Phase 3 — forced first-login password change' );
 

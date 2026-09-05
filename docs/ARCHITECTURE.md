@@ -161,6 +161,21 @@ via `Hedayati_DB_Schema::get_table_*()`.
 
 ---
 
+### Phase 3 classes (launch completion) — `feature/phase-3-launch-completion`, not on `main`
+
+| File / class | Responsibility |
+|---|---|
+| `class-account-security.php` · `Hedayati_Account_Security` | Forced first-login password change. `hedayati_must_change_password` usermeta marker (boolean `'1'` — never a password). `intercept()` (`template_redirect`, priority 1) renders a themed mandatory password-change screen for any flagged logged-in user and blocks every other front-end screen. `handle_change()` (`admin_post_hedayati_account_set_password`): nonce + marker gate, min 12 chars, confirm-match, not-equal-to-login/email; `wp_set_password()` → clear marker → re-issue session (`headers_sent()`-guarded for the CLI harness); PRG (transient + redirect) on validation failure. `generate_temp_password()` = `wp_generate_password( 18, true, true )`. Audits `account.created` / `account.password_changed`, PII-free. See D41. |
+| `class-staff-portal.php` · `Hedayati_Staff_Portal` | Front-end `/panel/` Page + `?view=` routing; `template_redirect` guard (login + `allowed()` + per-view object scope); every mutation an `admin-post.php` action (`hedayati_staff_{session,attendance,student,enroll,identity,verify,upload}`) with its own nonce + capability + object-scope re-check. Teacher/TA: run roster (names only), sessions, teacher-only attendance grid, "new session". Reception: POST search, create-student (`hedayati_create_students` — generates the one-shot temp password, flags `must_change`, compensating `wp_delete_user` only on a phone-assign race), enroll, national-ID intake, document upload, initiate verification. Run scope via `Hedayati_Run_Staff_Service::user_is_staff_on_run()`; managers bypass. |
+| `class-public-content.php` · `Hedayati_Public_Content` | Provisions the `about`/`contact`/`consult`/`teachers` Pages (staff-editable). "انتشار عمومی اطلاعات" meta box on `course` + `teacher` → `_hedayati_public_teacher` / `_hedayati_public_catalog_details` / `_hedayati_public_run_ids`. `teachers()` = published + opted-in only. `runs( $course_id )` projects each opted-in, still-active run of a published course to **exactly** `start_date` / `tuition_rial` / `registration_status`. See D43 (resolves Q8). |
+
+Capability-consistency fixes (D42, HD-007/008/009): the `course` CPT, the `course-category`
+taxonomy + `Hedayati_Term_Meta`, and `Hedayati_Settings` now gate on `hedayati_manage_courses` /
+`hedayati_manage_settings` (both previously defined-but-never-checked) instead of core
+`edit_posts` / `manage_categories` / `manage_options` that `hedayati_manager` never holds. New
+capability `hedayati_create_students` (24th; `ROLES_VERSION` `2.3.0`) → reception + manager + admin.
+No DB schema change.
+
 ### Phase 2D classes (Account Shell & Student Portal) — `feature/phase-2d-account-shell`, not on `main`
 
 | File / class | Responsibility |

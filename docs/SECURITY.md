@@ -31,6 +31,26 @@ authorization must never depend on hidden UI.
   - Client IP comes from `REMOTE_ADDR` only, `filter_var`-validated. No `X-Forwarded-For` trust.
 - **Phone verification lifecycle:** changing a user's number **always** resets `is_verified` /
   `verified_at`; re-assigning the identical number preserves state.
+- **No public self-registration** — `Hedayati_Auth_UI` forces `option_users_can_register => false`
+  regardless of the stored option. Student accounts are **staff-created only** (Phase 3, D41):
+  `reception` / `hedayati_manager` / `administrator` via `Hedayati_Staff_Portal`, gated on
+  `hedayati_create_students`.
+- **Temporary passwords & forced first-login change** (`Hedayati_Account_Security`, D41):
+  - On creation the plugin generates a strong random password
+    (`wp_generate_password( 18, true, true )`). WordPress hashes it in `wp_insert_user()`; the
+    **plaintext is never persisted** — it lives only in a 45-second single-use transient shown to
+    the creating staff member once and deleted on first render.
+  - The account carries a boolean `hedayati_must_change_password` usermeta marker (value `'1'` —
+    *never* a password). `intercept()` (hooked `template_redirect`, priority 1) redirects a flagged
+    user to a mandatory themed password-change screen on every front-end request; no portal/panel
+    screen is reachable until the change succeeds.
+  - `handle_change()` (`admin_post_hedayati_account_set_password`): nonce + marker gate; min 12
+    chars; confirmation must match; must not equal the login or email. `wp_set_password()` then
+    clears the marker then re-issues the session. Validation failure is PRG (transient + redirect)
+    — no partial render, no uncatchable `exit`.
+  - Audit: `account.created` + `account.password_changed` — actor explicit, **never** the password
+    or any PII in the note.
+  - No email/SMS delivery in Phase 3 (owner decision) — in-person handoff.
 
 ---
 

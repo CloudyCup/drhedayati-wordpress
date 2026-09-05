@@ -36,9 +36,9 @@ merged into `main` — merging code is not staging acceptance and is not a deplo
 | 2.7 | Featured courses on the homepage, staff-selectable, max 8, deliberate layout for sparse sets | ✅ |
 | 2.8 | Branded Persian 404 page | ✅ |
 | 2.9 | Professional thin custom scrollbar, coherent in both themes, sane touch/Firefox fallback | ✅ |
-| 2.10 | About page (editable institutional content) | ⬜ |
-| 2.11 | Contact page (locations, phones, map/address) | ⬜ (settings data exists; page does not) |
-| 2.12 | Consultation request page + submission handling | ⬜ / ❓ (UX and handler undecided) |
+| 2.10 | About page (editable institutional content) | 🟡 (Phase 3, not merged/not staging-tested: `page.php` + auto-provisioned `about` Page, staff-editable, with course/consult CTA sections) |
+| 2.11 | Contact page (locations, phones, map/address) | 🟡 (Phase 3: auto-provisioned `contact` Page renders `Hedayati_Settings` phones/address; no map — not required for launch) |
+| 2.12 | Consultation request page + submission handling | 🟡 (Phase 3: auto-provisioned `consult` Page is a phone/contact CTA only — owner decision, D-series Phase 3; a submission form remains a later feature) |
 | 2.13 | Blog / articles; inventory and migrate relevant legacy content, preserve SEO | ⬜ |
 | 2.14 | Site search across relevant public content | ⬜ / ❓ (exact UX not finalized) |
 | 2.15 | Real WordPress Custom Logo with controlled sizing / CSS glow (not baked into the image) | ✅ (support + fallback) / ❓ (real asset upload unverified) |
@@ -49,7 +49,7 @@ merged into `main` — merging code is not staging acceptance and is not a deplo
 | # | Requirement | Status |
 |---|---|---|
 | 3.1 | Brand palette: Dr. Hedayati red `#c52232`, white/warm white, black/charcoal; red controlled for emphasis/CTAs | ✅ |
-| 3.2 | Primary typeface **Vazirmatn**, self-hosted WOFF2, `font-display: swap`, weights 400/500/600/700/800; **no Google Fonts / CDN** | 🟡 (stack references it; files not shipped; falls back to system fonts) |
+| 3.2 | Primary typeface **Vazirmatn**, self-hosted WOFF2, `font-display: swap`; **no Google Fonts / CDN** | 🟡 (Phase 3: variable WOFF2 shipped in `theme/assets/fonts/` + `OFL.txt`, `@font-face` in `login.css` + `public-pages.css`, `font-display: swap`; a full front-end `main.css` `font-family` swap + weight audit is a small remaining task) |
 | 3.3 | Monospace only for genuinely technical Latin/code content | ✅ |
 | 3.4 | Cards, buttons with clear primary/secondary hierarchy and visible hover/focus/disabled states | ✅ |
 | 3.5 | Subtle, functional motion; respect `prefers-reduced-motion` | ✅ |
@@ -95,7 +95,7 @@ merged into `main` — merging code is not staging acceptance and is not a deplo
 | 6.8 | Rate limiting: per-identifier (default 5) and per-IP (default 30), 900s window, filterable; equivalent phone forms share one bucket; successful login clears identifier bucket but not the shared IP bucket | ✅ |
 | 6.9 | Single authoritative failure-count path (`wp_login_failed`), no double counting | ✅ |
 | 6.10 | Deleting a WordPress user cleans up the phone row | ✅ |
-| 6.11 | Branded login / registration / password-reset UI | 🟡 (Phase 2D, `feature/phase-2d-account-shell`, not merged/not staging-tested: branded login + native WordPress password-reset, enumeration-hardened. **No registration UI — deliberately**: the approved account model is reception-created accounts only, `docs/PHASE_2D_PLANNING.md` §4a; public self-registration remains a possible later, separately approved feature) |
+| 6.11 | Branded login / password-reset UI + staff account creation | 🟡 (Phase 2D + Phase 3, not merged/not staging-tested: branded login + enumeration-hardened password reset; **no public registration — deliberate** (D41); staff create student accounts via `/panel/` with a one-shot temporary password + forced first-login change, `Hedayati_Account_Security`) |
 | 6.12 | Future OTP, account recovery, notifications via a provider abstraction | ⬜ / ❓ (provider unknown) |
 
 ## 7. Roles & authorization
@@ -104,9 +104,9 @@ merged into `main` — merging code is not staging acceptance and is not a deplo
 |---|---|---|
 | 7.1 | Custom roles: `student`, `teacher`, `teacher_assistant`, `reception`, `hedayati_manager`; native `administrator` for technical/system ownership | ✅ |
 | 7.2 | No custom `super_admin` role (WordPress reserves it for Multisite) | ✅ |
-| 7.3 | Granular capabilities (23 `hedayati_*`), least privilege — TA has no attendance by default; reception/manager lack `manage_options` | ✅ (21 in 2A + `hedayati_manage_teachers` in 2B + `hedayati_upload_student_documents` in 2C) |
+| 7.3 | Granular capabilities (**24** `hedayati_*`), least privilege — TA has no attendance by default; reception/manager lack `manage_options` | ✅ (21 in 2A + `hedayati_manage_teachers` 2B + `hedayati_upload_student_documents` 2C + `hedayati_create_students` 3; `ROLES_VERSION` `2.3.0`) |
 | 7.4 | Versioned, future-safe capability sync; remove only own obsolete caps, never core/third-party | ✅ (schema `2.2.0`) |
-| 7.5 | Roles are necessary but not sufficient — every protected operational action must also verify assignment/ownership scope | 🟡 (enforced for Phase 2B academic-ops admin via `Hedayati_Run_Staff_Service::user_is_staff_on_run()` + `require_run_scope()`; Phase 2C's staff-assisted actions enforce a target-must-be-`student`-role scope check, but — see Phase 2D planning — the check trusts a client-posted `user_id` rather than deriving scope from an assignment record the way Phase 2B does; Phase 2D student/teacher/TA-facing surfaces still to come) |
+| 7.5 | Roles are necessary but not sufficient — every protected operational action must also verify assignment/ownership scope | 🟡→✅ for what's built: Phase 2B admin + Phase 3 `/panel/` teacher/TA actions derive run scope from `Hedayati_Run_Staff_Service::user_is_staff_on_run()` (managers bypass); the Phase 2D student portal owner is **always** `get_current_user_id()` (never a posted id); Phase 3 `Hedayati_Student_Admin::render_student_detail()` now re-checks `hedayati_view_student_profiles_basic` + `require_student_scope()`. Reception/manager student actions remain intentionally unscoped (any student is a valid target — D40). |
 
 ## 8. Students, profiles, verification, documents
 
@@ -142,10 +142,11 @@ staging run — and staging acceptance remains NOT RUN.
 
 | # | Requirement | Status |
 |---|---|---|
-| 10.1 | Reception: student lookup, create/basic-edit enrollments, basic profile view, initiate verification | 🟡 **narrower than originally described.** Reception has, today, via the staff-only wp-admin screen «دانشجویان و احراز هویت» (Phase 2C): student lookup (`hedayati_lookup_students`), national-ID/document intake (`hedayati_upload_student_documents`), and verification initiation (`hedayati_initiate_verification`). Reception does **not** have enrollment creation — «عملیات آموزشی» (Phase 2B) gates its entire screen, including the enrollment form, on `hedayati_manage_course_runs`, which reception lacks; the `hedayati_create_enrollments` capability reception does hold has no reachable UI, since it can't load the screen that would use it. Reception also lacks an integrated basic-profile (address/phone) editing workflow — «دانشجویان و احراز هویت» shows national-ID/verification/documents only; `Hedayati_Student_Profile`'s address fields live on the native WordPress user-edit screen, a separate, unintegrated surface. Enrollment access and integrated basic-profile editing for reception are Phase 2E work, not built. |
-| 10.2 | Teacher: assigned runs, rosters, sessions, attendance | ⬜ front end (backend/admin exists for managers today; no teacher-facing screen — Phase 2E) |
-| 10.3 | TA: assigned runs and rosters only; no attendance by default | ⬜ front end (same as 10.2) |
-| 10.4 | Manager: courses, runs, assignments, enrollments, verification, private documents, settings, audit logs | 🟡 admin-only, and **inconsistently capability-gated**: courses use native WordPress post capabilities (not a dedicated `hedayati_*` cap) and Settings requires core `manage_options` (which `hedayati_manager` deliberately lacks — D10) despite `hedayati_manage_settings` existing and unused; runs/staff/sessions/enrollments (Phase 2B) and verification/documents/audit (Phase 2C) are correctly capability-gated. See Phase 2D/2E planning for the fix. |
+| 10.1 | Reception: student lookup, create/basic-edit enrollments, basic profile view, initiate verification | 🟡 Phase 3 (`feature/phase-3-launch-completion`, not merged/staging-tested): the front-end `/panel/?view=students` (`Hedayati_Staff_Portal`) gives reception a single scoped surface — POST search, **create student account** (`hedayati_create_students`, temp password + forced first-login change, D41), enroll into a scheduled/in-progress run (`hedayati_create_enrollments`), national-ID intake, document upload, initiate verification. Address/phone self-service editing stays with the student portal. Historical note below.  
+**Historical (pre-Phase 3):** Reception has, today, via the staff-only wp-admin screen «دانشجویان و احراز هویت» (Phase 2C): student lookup (`hedayati_lookup_students`), national-ID/document intake (`hedayati_upload_student_documents`), and verification initiation (`hedayati_initiate_verification`). Reception does **not** have enrollment creation — «عملیات آموزشی» (Phase 2B) gates its entire screen, including the enrollment form, on `hedayati_manage_course_runs`, which reception lacks; the `hedayati_create_enrollments` capability reception does hold has no reachable UI, since it can't load the screen that would use it. Reception also lacks an integrated basic-profile (address/phone) editing workflow — «دانشجویان و احراز هویت» shows national-ID/verification/documents only; `Hedayati_Student_Profile`'s address fields live on the native WordPress user-edit screen, a separate, unintegrated surface. Enrollment access and integrated basic-profile editing for reception are Phase 2E work, not built. |
+| 10.2 | Teacher: assigned runs, rosters, sessions, attendance | 🟡 Phase 3 (not merged/staging-tested): `/panel/?view=run&run_id=` — assigned runs (`Hedayati_Run_Staff_Service::user_is_staff_on_run()`), roster (names only), sessions, an attendance grid + "new session" form gated on `hedayati_record_attendance` / `hedayati_manage_assigned_sessions`. |
+| 10.3 | TA: assigned runs and rosters only; no attendance by default | 🟡 Phase 3 (not merged/staging-tested): same `/panel/` run view, roster names only, **no** attendance/session write UI (TA lacks the caps; the view returns before rendering them). |
+| 10.4 | Manager: courses, runs, assignments, enrollments, verification, private documents, settings, audit logs | 🟡 wp-admin (owner decision: no separate front-end manager dashboard for launch). **Capability gating fixed in Phase 3 (D42, HD-007/008/009):** the `course` CPT, `course-category` taxonomy + term meta, and Settings now gate on `hedayati_manage_courses` / `hedayati_manage_settings` (previously defined-but-unchecked), so `hedayati_manager` can actually manage courses/categories/settings. `/panel/` also gives the manager quick links into every wp-admin operational screen. |
 | 10.5 | Audit-log viewer | 🟡 (minimal read-only viewer under «عملیات آموزشی → گزارش رویدادها», `hedayati_view_audit_logs`, filter + paginate; richer UX — export, date range, actor search — remains future work) |
 | 10.6 | Administrator: full technical + operational access, distinct from `hedayati_manager`'s operational-only scope | ✅ (native `administrator` augmented with all managed capabilities; no `manage_options` granted to `hedayati_manager` — D10) |
 

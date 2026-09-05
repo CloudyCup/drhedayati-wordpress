@@ -1,43 +1,53 @@
 # Launch completion — working checklist
 
-Owner authorized Codex to take over on 2026-09-05; Claude is stopped.
-Working branch: `feature/launch-completion`, preserving Claude's Phase 2D work at `01c4e1c`.
-This checklist is the current release queue. Earlier phase documents preserve design/history;
-their test totals and "not implemented" statements are not current evidence.
+Working branch: `feature/phase-3-launch-completion` (off Phase 2D @ `01c4e1c`). `main` is
+unchanged at `32640e4`. The prior Codex/ChatGPT working-tree WIP is preserved verbatim at commit
+`7500348` and on `snapshot/codex-launch-completion-wip-2026-09-05` — nothing was discarded.
+Earlier phase documents preserve design/history; the current authoritative status is
+`docs/agent/STATUS.md`'s Phase 3 section.
 
-## Confirmed release decisions
+## Confirmed release decisions (owner, 2026-09-05 — see `docs/DECISIONS.md` D41–D43)
 
-- Preserve WordPress, Hedayati Core, the approved Navigator design, Persian RTL and light/dark modes.
-- Accounts are reception-created. No public registration, payments, OTP or callback form for launch.
-- Consultation uses institute phone/contact details; a callback form is a later feature.
-- Teacher biographies and class dates/fees may be public only after explicit staff publication.
-- Existing manager administration may remain in wp-admin; teacher/TA and reception need usable scoped journeys.
+- Preserve WordPress, Hedayati Core, the approved Navigator design, Persian RTL and light/dark.
+- Accounts are reception-created (`hedayati_create_students`). No public registration.
+- Reception-created accounts get a one-shot temporary password + forced first-login change; no
+  email/SMS in Phase 3.
+- Consultation page is phone/contact CTA only for launch; a callback form is a later feature.
+- Teacher biographies and class dates/fees are public only after explicit per-record staff opt-in.
+- Manager administration stays in wp-admin; teacher/TA and reception get scoped `/panel/` journeys.
+- Students never see internal verification rejection notes.
 - Do not publish real identity records or copy production data into tests.
 
 ## Work queue
 
-- [ ] Establish repeatable local real-WordPress testing without requiring Docker on this machine.
-- [ ] Verify Phase 2D runtime and HTTP login/reset, portal guards, upload/download and cross-user denial.
-- [ ] Correct manager course/category/settings permissions and direct student-detail scope.
-- [ ] Complete teacher/TA assigned runs, roster, sessions and teacher-only attendance.
-- [ ] Complete reception account creation, lookup, enrollment and identity/document intake.
-- [ ] Complete public About/Contact/Consultation, staff-approved teacher/class publication and Shamsi display.
-- [ ] Load licensed local Persian fonts and preserve editable branding/content.
-- [ ] Verify mobile/desktop RTL, light/dark, keyboard navigation and public/private cache behavior.
-- [ ] Run regression suite, record actual results, prepare versioned deployment artifacts.
-- [ ] Inventory legacy URLs/content and prepare redirect/migration mapping with authenticated access if needed.
-- [ ] Verify staging environment, secrets/private storage, email, backups and a restore/rollback rehearsal.
-- [ ] Obtain approval of the tested release before deployment/cutover.
-
-## Baseline evidence
-
-- 2026-09-05: six local Node suites passed: 98 + 53 + 74 + 208 + 132 + 82 = 647 assertions.
-- GitHub read directly: latest green acceptance run is Phase 2C `372b169`; no Phase 2D runtime run yet.
-- PHP/Docker absent from PATH at takeover. Portable local runtime preparation in progress.
-- No staging/production changes, commits, pushes or merges performed by this takeover.
+- [x] Preserve the Codex WIP (baseline commit `7500348` + snapshot branch).
+- [x] Establish real-WordPress runtime signal — via `Acceptance (Docker WordPress)` GitHub Actions
+      on the Phase 3 branch (no local Docker needed). GREEN: 489/0 on HEAD `046bd31`.
+- [x] Correct manager course / category / settings permissions + student-detail scope (D42;
+      HD-007/008/009).
+- [x] Teacher/TA assigned runs, roster, sessions, teacher-only attendance (`Hedayati_Staff_Portal`).
+- [x] Reception account creation, lookup, enrollment, identity/document intake.
+- [x] Forced first-login password change + one-shot temporary password (`Hedayati_Account_Security`).
+- [x] Public About/Contact/Consultation/Teachers, per-run publication opt-in, Shamsi on the course
+      page.
+- [x] Self-hosted Vazirmatn WOFF2 (login + public pages, no CDN).
+- [x] `page.php` regression handling (keeps `.entry-content`, adds `role=main`).
+- [x] Split the WIP's dense one-line PHP (staff portal, public content) into readable form.
+- [x] Static + runtime regression suites (Node 732/0; Docker 489/0) + docs reconciliation.
+- [ ] **Human visual/RTL/dark-mode review** of `/panel/`, `/account/`, the forced-change screen,
+      and the four public pages — recommended before merge, required before staging sign-off.
+- [ ] Merge Phase 3 → `main` once the review is done and CI is green on the merge HEAD.
+- [ ] **Phase 4 — integrated staging** (`mystik.ir`, once): provision `HEDAYATI_DATA_ENCRYPTION_KEY`
+      / `HEDAYATI_DATA_HMAC_KEY` / `HEDAYATI_PRIVATE_UPLOADS_DIR` + private uploads dir, deploy the
+      2A+2B+2C+2D+3 build, run the post-deploy roles-sync (2.2.0 → 2.3.0) + migration check,
+      execute one consolidated acceptance matrix, verify LiteSpeed never caches `/account/*` or
+      `/panel/*`, Lighthouse/Web-Vitals + a11y baseline, backup/restore drill.
+- [ ] Inventory legacy ASP.NET URLs/content, build the redirect map (parallel; needs institute
+      access).
+- [ ] Obtain approval of the tested release before deployment/cutover (Phase 5).
 
 ## Required institute inputs before launch
 
-Approved final content/logo/contact details; which teacher/class records staff wish to publish;
-legacy migration scope; authorized staging/hosting access and cutover timing. These do not block
-local implementation and synthetic-data testing.
+Approved final content / logo / contact details; which teacher/class records to publish; legacy
+migration scope; authorized staging/hosting access and cutover timing. These do not block Phase 3
+merge or synthetic-data testing.
