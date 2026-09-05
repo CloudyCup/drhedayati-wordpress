@@ -5,10 +5,9 @@ handoff, with independent local review recorded separately in TEST_RESULTS.md. R
 future work; update these concise files as work progresses. Code establishes what exists; the
 owner's handoff establishes intent. Older conflicting status prose is superseded by this file.
 
-## Phase 3 — launch completion (2026-09-05) — IMPLEMENTED, RUNTIME-CI GREEN, NOT MERGED, NOT STAGING-TESTED
+## Phase 3 — launch completion (2026-09-05) — MERGED TO MAIN, RUNTIME-CI GREEN, NOT STAGING-TESTED
 
-**Branch `feature/phase-3-launch-completion`, off `feature/phase-2d-account-shell` @ `01c4e1c`
-(Phase 2D).** `main` is unchanged at `32640e4`. The prior Codex/ChatGPT "launch-completion"
+**Merged to `main` via `e04c343` from `feature/phase-3-launch-completion`.** The prior Codex/ChatGPT "launch-completion"
 working-tree WIP was preserved verbatim as the branch's first commit (`7500348`) and also on
 `snapshot/codex-launch-completion-wip-2026-09-05`; nothing was discarded.
 
@@ -41,7 +40,7 @@ wp-admin (no separate front-end manager dashboard); students never see verificat
   RESULT: PASS** (up from the Codex-WIP baseline's 450 — `docker/wp-tests/test-phase-3.php` adds
   the temp-password / forced-change / capability-matrix runtime coverage). This is the first
   real-WordPress runtime evidence for Phase 2D **and** the launch-completion work — it is green.
-- **NOT merged to `main`. NOT staging-tested. NOT deployed.** No `mystik.ir` / `drhedayati.com`
+- **Merged to `main`. NOT staging-tested. NOT deployed.** No `mystik.ir` / `drhedayati.com`
   contact. Staging is Phase 4: provision `HEDAYATI_DATA_ENCRYPTION_KEY` / `HEDAYATI_DATA_HMAC_KEY`
   / `HEDAYATI_PRIVATE_UPLOADS_DIR`, deploy the integrated 2A+2B+2C+2D+3 build once, run a single
   consolidated acceptance matrix. On deploy the `admin_init` roles sync must run (2.2.0 → 2.3.0)

@@ -33,7 +33,7 @@ course/category/settings capability resolution against real `map_meta_cap()`. `t
 (from the WIP) also passes on CI: full role × {course, category, settings} matrix, staff privacy,
 public opt-in defaults, cross-user denial.
 
-**Not merged, not deployed, no `mystik.ir`/`drhedayati.com` contact.** Interceptor/guard
+**Merged to `main` via `e04c343`; not deployed, no `mystik.ir`/`drhedayati.com` contact.** Interceptor/guard
 `template_redirect` behaviour and real multipart upload remain Phase 4 staging-acceptance items
 (documented in the test file headers, same class as Phase 2C/2D).
 

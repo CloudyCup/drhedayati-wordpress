@@ -1,8 +1,8 @@
 # CURRENT_STATE.md
 
 **Last documentation update:** 2026-09-05 (Phase 3) — **Phase 3 "launch completion" is implemented
-on `feature/phase-3-launch-completion` (off Phase 2D @ `01c4e1c`), with GREEN GitHub Actions runtime acceptance (491/0) and GREEN Node static suites (750/0). NOT merged, NOT staging-tested,
-NOT deployed.** `main` is unchanged at `32640e4`. Phase 3 absorbs the prior Codex/ChatGPT
+and merged into `main` via `e04c343`, with GREEN GitHub Actions runtime acceptance (491/0) and
+GREEN Node static suites (750/0). NOT staging-tested, NOT deployed.** Phase 3 absorbs the prior Codex/ChatGPT
 "launch-completion" working-tree WIP (preserved verbatim at commit `7500348` and on
 `snapshot/codex-launch-completion-wip-2026-09-05`) plus: forced first-login password change +
 reception-created accounts with one-shot temporary passwords (`Hedayati_Account_Security`,
@@ -480,10 +480,10 @@ re-tested (unchanged by the subsequent merge to `main` — merging code is not s
   enrollments) — wired into `docker/wp-tests/run.php`; its actual GitHub Actions result is
   recorded in `docs/agent/STATUS.md`, not repeated here since it can go stale.
 
-### Plugin/theme — launch completion (Phase 3) — branch `feature/phase-3-launch-completion`, runtime-CI GREEN, NOT merged, NOT staging-tested
+### Plugin/theme — launch completion (Phase 3) — merged to `main` at `e04c343`, runtime-CI GREEN, NOT staging-tested
 
 > Node static **732/0** · `Acceptance (Docker WordPress)` on the exact HEAD **491/0, cleanup verified, RESULT: PASS** (run `33976122273`, HEAD `6c9bdac`). Absorbs the preserved Codex/ChatGPT WIP (commit
-> `7500348`). **Not merged to `main`, not deployed, no `mystik.ir`/`drhedayati.com` contact.**
+> `7500348`). **Merged to `main`; not deployed, no `mystik.ir`/`drhedayati.com` contact.**
 
 - **`Hedayati_Account_Security`** (`class-account-security.php`): forced first-login password
   change. `hedayati_must_change_password` usermeta marker (boolean `'1'` only — never a password).

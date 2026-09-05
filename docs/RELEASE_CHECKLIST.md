@@ -1,7 +1,6 @@
 # Launch completion — working checklist
 
-Working branch: `feature/phase-3-launch-completion` (off Phase 2D @ `01c4e1c`). `main` is
-unchanged at `32640e4`. The prior Codex/ChatGPT working-tree WIP is preserved verbatim at commit
+Phase 3 was merged into `main` via `e04c343`. The prior Codex/ChatGPT working-tree WIP is preserved verbatim at commit
 `7500348` and on `snapshot/codex-launch-completion-wip-2026-09-05` — nothing was discarded.
 Earlier phase documents preserve design/history; the current authoritative status is
 `docs/agent/STATUS.md`'s Phase 3 section.
@@ -41,7 +40,7 @@ Earlier phase documents preserve design/history; the current authoritative statu
 - [x] Follow-up real local WordPress browser review (desktop/mobile, RTL, light/dark) confirmed the
       Phase 3 templates on genuine HTTP responses; removed the WordPress admin toolbar from the
       staff panel and forced password screen after it appeared as unexplained mobile chrome.
-- [ ] Merge Phase 3 → `main` once the review is done and CI is green on the merge HEAD.
+- [x] Merge Phase 3 → `main` (`e04c343`); verify CI on the final pushed `main` HEAD.
 - [ ] **Phase 4 — integrated staging** (`mystik.ir`, once): provision `HEDAYATI_DATA_ENCRYPTION_KEY`
       / `HEDAYATI_DATA_HMAC_KEY` / `HEDAYATI_PRIVATE_UPLOADS_DIR` + private uploads dir, deploy the
       2A+2B+2C+2D+3 build, run the post-deploy roles-sync (2.2.0 → 2.3.0) + migration check,

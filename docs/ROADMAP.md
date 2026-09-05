@@ -88,13 +88,13 @@ several items still need institute decisions (marked ❓, see the bottom of this
    Codex working session had already taken, ratified by the owner 2026-09-05). Status:
    - **Phase 2D — shared account shell + student portal: 🟢 IMPLEMENTED** on
      `feature/phase-2d-account-shell` (off `main` @ `32640e4`), now the base of the Phase 3 branch.
-   - **Phase 3 — launch completion: 🟢 IMPLEMENTED, runtime-CI GREEN** on
-     `feature/phase-3-launch-completion`. Front-end staff `/panel/` (teacher/TA/reception);
+   - **Phase 3 — launch completion: 🟢 MERGED TO `main`, runtime-CI GREEN** via `e04c343`.
+     Front-end staff `/panel/` (teacher/TA/reception);
      reception-created student accounts + one-shot temporary password + forced first-login change
      (`Hedayati_Account_Security`, D41); public About/Contact/Consult/Teachers pages + per-run
      publication opt-in (D43); course/taxonomy/settings capability-consistency fixes (D42);
      `page.php`; self-hosted Vazirmatn; Shamsi on the course page. Plugin `1.8.0`, theme `1.2.0`,
-     no DB change. Node static **750/0**; `Acceptance (Docker WordPress)` **491/0, PASS** on the latest pushed HEAD. **NOT merged, NOT staging-tested, NOT deployed.**
+     no DB change. Node static **750/0**; `Acceptance (Docker WordPress)` **491/0, PASS** on the latest pushed feature HEAD. **NOT staging-tested, NOT deployed.**
    - **Phase 4 — integrated staging** (`mystik.ir`, once, end to end) and **Phase 5 — production
      cutover** (`drhedayati.com`) remain the only steps after Phase 3 merges to `main`.
 4. **Public content & pages.** Create About, Contact, and consultation pages (templates + a
