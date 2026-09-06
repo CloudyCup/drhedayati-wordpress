@@ -100,7 +100,7 @@ function hdit_run_ai_studio(): void {
 
 	$m_link = Hedayati_Material_Service::create( [ 'run_id' => $run, 'type' => 'link', 'title' => 'مرجع شبکه', 'url' => 'https://example.org/net' ], $teacher );
 	HDIT::not_wp_error( 'assigned teacher can add a link material', $m_link );
-	HDIT::is_wp_error( 'link material rejects a non-http url', Hedayati_Material_Service::create( [ 'run_id' => $run, 'type' => 'link', 'title' => 'x', 'url' => 'javascript:alert(1)' ], $teacher ), 'url' );
+	HDIT::is_wp_error( 'link material rejects a non-http url', Hedayati_Material_Service::create( [ 'run_id' => $run, 'type' => 'link', 'title' => 'لینک نامعتبر', 'url' => 'javascript:alert(1)' ], $teacher ), 'url' );
 	HDIT::is_wp_error( 'a stranger cannot add material to a run they do not teach', Hedayati_Material_Service::create( [ 'run_id' => $run, 'type' => 'note', 'title' => 'x' ], $reception ), 'cap' );
 
 	HDIT::ok( 'an enrolled active student can view run materials', Hedayati_Material_Service::can_view_run( $run, $student_a ) );
