@@ -13,7 +13,7 @@ Branch `feature/manager-experience` (`59ce4ee` baseline = recovered Codex WIP):
 
 ## AI Studio parity modules — consultations/progress/certificates/materials/tickets/notifications/settings (2026-09-06, D46–D52) — STATIC + DOCKER CI GREEN
 
-Branch `feature/manager-experience`, HEAD `f6ad232`:
+Branch `feature/manager-experience`, HEAD `6a5abf7` (docs pinned; runtime unchanged since `f6ad232`):
 
 | Check | Result |
 |---|---|

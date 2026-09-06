@@ -2,7 +2,7 @@
 
 ## AI Studio parity modules D46–D52 (2026-09-06) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
 
-`feature/manager-experience` HEAD `f6ad232`. The owner brought the whole
+`feature/manager-experience` HEAD `6a5abf7` (docs pinned; runtime unchanged since `f6ad232`). The owner brought the whole
 `docs/AI_STUDIO_PANEL_MATRIX.md` §E set in scope; all seven are built as real WordPress
 subsystems reusing existing services (no mock data):
 
