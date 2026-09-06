@@ -18,9 +18,9 @@ editor, opened from the row. Manager sidebar + dashboard now route to these in-p
 of wp-admin. `docs/AI_STUDIO_PANEL_MATRIX.md` is the authoritative option-by-option comparison and
 lists the seven remaining owner decisions (consultation, progress, certificates, materials,
 tickets, notifications, in-panel settings form). Node static suites **769/0**. Docker real-WordPress
-acceptance: **NOT RE-RUN in this environment** (no Docker/WSL2) — extended `docker/wp-tests/test-phase-3.php`
-must be run in CI on push before merge. No browser review of the new course/featured views yet.
-Not merged, pushed, or deployed. See D44/D45.
+acceptance: `Acceptance (Docker WordPress)` run `34023251353` on `737d970` — **508/0, PASS, cleanup
+verified**. No browser review of the new course/featured views yet. Branch pushed to origin;
+**not merged, not deployed**. See D44/D45.
 
 Static suites (as of the schedule increment): **762/0**. Real
 WordPress runtime acceptance: **499/0, PASS, cleanup verified**. The manager and student dashboards,

@@ -1,13 +1,13 @@
 # Test results
 
-## AI Studio manager panel — course/featured in-panel tabs (2026-09-06) — STATIC GREEN, DOCKER PENDING
+## AI Studio manager panel — course/featured in-panel tabs (2026-09-06) — STATIC + DOCKER CI GREEN
 
 Branch `feature/manager-experience` (`59ce4ee` baseline = recovered Codex WIP):
 
 | Check | Result |
 |---|---|
 | Node static suites | **769 / 0** (`76 + 208 + 132 + 84 + 118 + 98 + 53`) — `verify-phase3.js` gained 8 assertions for the in-panel course table, nonce/capability-guarded toggles, the server-side 8-slot cap, and "editing stays in the WP editor" |
-| Local real WordPress/PHP acceptance | **NOT RUN — no PHP/Docker in the Claude Code environment.** `docker/wp-tests/test-phase-3.php` was extended (manager sees the real course row + toggle forms; reception gets no course table and a 403 from the toggle handler; feature flag round-trips on/off) and must be executed by `Acceptance (Docker WordPress)` in CI on the next branch push. |
+| Local real WordPress/PHP acceptance | **CI GREEN** — `Acceptance (Docker WordPress)` run `34023251353` on `737d970` (workflow_dispatch, `feature/manager-experience`): **508 / 0, PASS, cleanup verified**. Includes 11 new assertions for the in-panel course table, nonce/capability-guarded feature+publish toggles, reception denial (no table + 403 from the handler), and the featured-flag on/off round-trip. |
 | Real browser review | NOT DONE for `?view=courses` / `?view=featured` |
 | Staging / production | NOT CONTACTED |
 
