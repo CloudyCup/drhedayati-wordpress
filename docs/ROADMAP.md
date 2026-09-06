@@ -127,6 +127,11 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ## P2 — enhancements
 
+- **AI Studio manager and student experience — implemented on `feature/manager-experience`.**
+  Unified `/panel/` manager home, matching `/account/` learning dashboard, and an owner-scoped
+  upcoming-class schedule are built and locally green. Consultation, progress, certificates,
+  support, notifications, and magazine remain separate modules with their own policy and acceptance
+  gates; follow `docs/AI_STUDIO_INTEGRATION.md`.
 - Improved course-authoring editor UX (structured fields currently sit below a large Gutenberg
   canvas).
 - Change the `course_cat_order` default so unordered categories don't sort to the front. ❓ (small

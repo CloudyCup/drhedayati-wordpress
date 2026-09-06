@@ -552,3 +552,22 @@ capacity, staff assignments and internal notes are never exposed.
 privacy-safe default is "nothing public unless a human said so", consistent with D30/D34 (Teacher
 CPT not publicly routed until a deliberate design). A per-run column would have needed a migration;
 a course-level allow-list does not.
+
+## D44 — AI Studio is the portal-experience reference, integrated incrementally (2026-09-06)
+
+**Decided (owner):** retain the real WordPress management capabilities and add the design and useful
+sections from the supplied AI Studio prototype. The first increment includes a unified manager home
+on `/panel/`, a matching student learning dashboard on `/account/`, and a read-only upcoming-class
+schedule. Manager summaries and routes use existing services and capabilities; student sessions are
+derived only from the signed-in user's active enrollments and exclude past sessions and inactive
+runs. Existing controllers continue to enforce every read and mutation.
+
+The React/Vite code remains read-only under `reference-react/` and is never a production runtime.
+Prototype-only consultation requests, certificates, progress, support tickets, and notifications are
+not displayed as working features until each has a real data model and approved business/privacy
+rules. See `docs/AI_STUDIO_INTEGRATION.md`.
+
+**Why:** the prototype supplies a strong interface concept, while its browser-local mock data cannot
+safely operate an institute. Incremental integration gives staff a coherent workspace without
+discarding tested WordPress authorization, persistence, audit, and privacy controls or delaying the
+current launch candidate for several unrelated systems.

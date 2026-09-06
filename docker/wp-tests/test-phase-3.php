@@ -217,6 +217,19 @@ function hdit_run_phase_3(): void {
 	HDIT::ok( 'manager can save institute settings without manage_options',
 		current_user_can( apply_filters( 'option_page_capability_hedayati_institute', 'manage_options' ) ) );
 	HDIT::ok( 'manager still lacks manage_options (no technical admin power)', ! current_user_can( 'manage_options' ) );
+	HDIT::ok( 'manager receives the unified manager workspace', Hedayati_Staff_Portal::is_manager_workspace() );
+
+	unset( $_GET['view'] );
+	ob_start();
+	Hedayati_Staff_Portal::render();
+	$manager_home = (string) ob_get_clean();
+	HDIT::ok( 'manager dashboard renders live KPI and operations sections',
+		str_contains( $manager_home, 'hd-manager-kpis' )
+		&& str_contains( $manager_home, 'مرکز عملیات' )
+		&& str_contains( $manager_home, 'hedayati-academic' ) );
+	HDIT::ok( 'manager dashboard does not advertise unbuilt certificate or support modules',
+		! str_contains( $manager_home, 'گواهینامه' )
+		&& ! str_contains( $manager_home, 'تیکت' ) );
 
 	wp_set_current_user( $teacher );
 	HDIT::ok( 'a teacher cannot edit a course post', ! current_user_can( 'edit_post', $course ) );

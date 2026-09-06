@@ -1,5 +1,18 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
+## AI Studio portal experience (2026-09-06) — FEATURE BRANCH, GREEN, NOT MERGED
+
+`feature/manager-experience` adapts the owner-supplied AI Studio concept into the real WordPress
+`/panel/` and `/account/`: capability-based manager shell, live non-sensitive manager KPIs, designed
+routes to implemented operations, a matching student learning dashboard, and an owner-scoped
+upcoming-class schedule derived from active enrollments and future Course Run sessions. Existing
+secured manager and student actions remain available. No schema, role, capability, or public-site
+behavior changed. Prototype-only modules are documented separately and remain unbuilt. Node static
+suites **762/0**. Runtime/browser acceptance is green: local real WordPress **499/0, PASS, cleanup
+verified**; manager/student dashboards and the student schedule were visually reviewed in Persian
+RTL at desktop/mobile widths and in light/dark modes, with no page-level mobile overflow. Not pushed,
+merged, or deployed. See D44 and `docs/AI_STUDIO_INTEGRATION.md`.
+
 Updated 2026-09-05 (Phase 3 section appended below, above Phase 2D). Canonical owner
 handoff, with independent local review recorded separately in TEST_RESULTS.md. Read this first on
 future work; update these concise files as work progresses. Code establishes what exists; the

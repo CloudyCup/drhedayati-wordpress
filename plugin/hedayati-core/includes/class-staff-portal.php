@@ -111,6 +111,12 @@ class Hedayati_Staff_Portal {
 			|| current_user_can( 'hedayati_manage_course_runs' );
 	}
 
+	/** Managers and technical administrators receive the unified operations home. */
+	public static function is_manager_workspace(): bool {
+		return current_user_can( 'hedayati_manage_course_runs' )
+			&& current_user_can( 'hedayati_manage_courses' );
+	}
+
 	/**
 	 * Send staff to the panel after login instead of wherever WordPress would.
 	 * Administrators (who hold `manage_options`) keep their normal destination.
@@ -355,6 +361,11 @@ class Hedayati_Staff_Portal {
 	private static function render_home(): void {
 		$user = wp_get_current_user();
 
+		if ( self::is_manager_workspace() ) {
+			self::render_manager_home( $user );
+			return;
+		}
+
 		echo '<h1 class="hd-portal-title">' . esc_html__( 'پنل آموزش', 'hedayati-core' ) . '</h1>';
 		echo '<p class="hd-portal-note">' . esc_html( $user->display_name ) . '</p>';
 
@@ -382,6 +393,181 @@ class Hedayati_Staff_Portal {
 		if ( current_user_can( 'hedayati_view_assigned_runs' ) ) {
 			self::render_my_runs();
 		}
+	}
+
+	/**
+	 * A task-focused manager landing page backed by real WordPress data.
+	 *
+	 * The linked operational screens remain the existing capability-gated
+	 * controllers. This page only summarizes non-sensitive counts and routes the
+	 * manager to them; it does not duplicate their mutation logic.
+	 */
+	private static function render_manager_home( WP_User $user ): void {
+		$metrics = self::manager_metrics();
+
+		echo '<header class="hd-manager-heading">';
+		echo '<div><span class="hd-manager-eyebrow">' . esc_html__( 'گزارش و دسترسی سریع', 'hedayati-core' ) . '</span>';
+		echo '<h1 class="hd-portal-title">' . esc_html__( 'داشبورد مدیریت', 'hedayati-core' ) . '</h1>';
+		printf(
+			'<p class="hd-portal-note">%s، خوش آمدید. وضعیت امروز مجتمع را ببینید و کار خود را ادامه دهید.</p>',
+			esc_html( $user->display_name )
+		);
+		echo '</div>';
+		if ( current_user_can( 'hedayati_manage_courses' ) ) {
+			printf(
+				'<a class="hd-manager-primary" href="%s">%s</a>',
+				esc_url( admin_url( 'post-new.php?post_type=course' ) ),
+				esc_html__( 'تعریف دورهٔ جدید', 'hedayati-core' )
+			);
+		}
+		echo '</header>';
+
+		echo '<section class="hd-manager-kpis" aria-label="' . esc_attr__( 'خلاصهٔ وضعیت مجتمع', 'hedayati-core' ) . '">';
+		foreach ( $metrics as $metric ) {
+			printf(
+				'<a class="hd-manager-kpi" href="%1$s"><span>%2$s</span><strong>%3$s</strong><small>%4$s</small></a>',
+				esc_url( $metric['url'] ),
+				esc_html( $metric['label'] ),
+				esc_html( Hedayati_Text::digits_to_persian( (string) $metric['value'] ) ),
+				esc_html( $metric['hint'] )
+			);
+		}
+		echo '</section>';
+
+		$actions = [
+			'hedayati_manage_courses' => [
+				admin_url( 'edit.php?post_type=course' ),
+				__( 'دوره‌ها و محتوای آموزشی', 'hedayati-core' ),
+				__( 'ساخت، ویرایش، انتشار و انتخاب دوره‌های ویژهٔ صفحه نخست', 'hedayati-core' ),
+				'book',
+			],
+			'hedayati_manage_course_runs' => [
+				admin_url( 'admin.php?page=hedayati-academic' ),
+				__( 'عملیات آموزشی', 'hedayati-core' ),
+				__( 'دوره‌های اجرایی، استادها، جلسات، ثبت‌نام و حضور و غیاب', 'hedayati-core' ),
+				'calendar',
+			],
+			'hedayati_lookup_students' => [
+				self::url( [ 'view' => 'students' ] ),
+				__( 'پذیرش و پروندهٔ دانشجو', 'hedayati-core' ),
+				__( 'جستجو، ایجاد حساب، ثبت‌نام و دریافت امن مدارک', 'hedayati-core' ),
+				'users',
+			],
+			'hedayati_verify_students' => [
+				admin_url( 'admin.php?page=hedayati-students' ),
+				__( 'احراز هویت دانشجویان', 'hedayati-core' ),
+				__( 'بررسی درخواست‌ها و مدیریت وضعیت تأیید هویت', 'hedayati-core' ),
+				'shield',
+			],
+			'hedayati_manage_teachers' => [
+				admin_url( 'edit.php?post_type=teacher' ),
+				__( 'اساتید', 'hedayati-core' ),
+				__( 'پروفایل استادها و وضعیت انتشار عمومی اطلاعات', 'hedayati-core' ),
+				'teacher',
+			],
+			'hedayati_manage_settings' => [
+				admin_url( 'options-general.php?page=hedayati-settings' ),
+				__( 'تنظیمات مجتمع', 'hedayati-core' ),
+				__( 'شماره‌های تماس و نشانی‌های نمایش‌داده‌شده در سایت', 'hedayati-core' ),
+				'settings',
+			],
+		];
+
+		echo '<section class="hd-manager-section">';
+		echo '<div class="hd-manager-section-title"><div><span class="hd-manager-eyebrow">' . esc_html__( 'مرکز عملیات', 'hedayati-core' ) . '</span>';
+		echo '<h2>' . esc_html__( 'مدیریت بخش‌های مجتمع', 'hedayati-core' ) . '</h2></div>';
+		echo '<a href="' . esc_url( home_url( '/' ) ) . '">' . esc_html__( 'مشاهدهٔ وب‌سایت', 'hedayati-core' ) . '</a></div>';
+		echo '<div class="hd-manager-actions">';
+		foreach ( $actions as $capability => $action ) {
+			if ( ! current_user_can( $capability ) ) {
+				continue;
+			}
+
+			printf(
+				'<a class="hd-manager-action" href="%1$s"><span class="hd-manager-action-icon" aria-hidden="true">%2$s</span><span><strong>%3$s</strong><small>%4$s</small></span><b aria-hidden="true">‹</b></a>',
+				esc_url( $action[0] ),
+				self::manager_icon( $action[3] ),
+				esc_html( $action[1] ),
+				esc_html( $action[2] )
+			);
+		}
+		echo '</div></section>';
+
+		if ( current_user_can( Hedayati_Audit_Log::VIEW_CAPABILITY ) ) {
+			printf(
+				'<aside class="hd-manager-audit"><div><strong>%1$s</strong><p>%2$s</p></div><a href="%3$s">%4$s</a></aside>',
+				esc_html__( 'گزارش فعالیت‌های مدیریتی', 'hedayati-core' ),
+				esc_html__( 'رویدادهای حساس سامانه بدون نمایش اطلاعات خصوصی ثبت می‌شوند.', 'hedayati-core' ),
+				esc_url( admin_url( 'admin.php?page=hedayati-academic-audit' ) ),
+				esc_html__( 'مشاهدهٔ گزارش', 'hedayati-core' )
+			);
+		}
+	}
+
+	/** @return array<int, array{label:string,value:int,hint:string,url:string}> */
+	private static function manager_metrics(): array {
+		$course_counts = wp_count_posts( 'course' );
+		$published     = isset( $course_counts->publish ) ? (int) $course_counts->publish : 0;
+
+		$featured_query = new WP_Query( [
+			'post_type'      => 'course',
+			'post_status'    => 'publish',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'meta_query'     => [
+				[
+					'key'     => '_course_is_featured',
+					'value'   => '1',
+					'compare' => '=',
+				],
+			],
+		] );
+
+		$active_runs     = Hedayati_Course_Run_Service::count_active();
+		$active_students = Hedayati_Enrollment_Service::count_active_students();
+
+		return [
+			[
+				'label' => __( 'دوره‌های منتشرشده', 'hedayati-core' ),
+				'value' => $published,
+				'hint'  => __( 'مدیریت دوره‌ها', 'hedayati-core' ),
+				'url'   => admin_url( 'edit.php?post_type=course&post_status=publish' ),
+			],
+			[
+				'label' => __( 'دوره‌های ویژه', 'hedayati-core' ),
+				'value' => (int) $featured_query->found_posts,
+				'hint'  => __( 'نمایش در صفحه نخست', 'hedayati-core' ),
+				'url'   => admin_url( 'edit.php?post_type=course' ),
+			],
+			[
+				'label' => __( 'کلاس‌های فعال', 'hedayati-core' ),
+				'value' => $active_runs,
+				'hint'  => __( 'برنامه‌ریزی و اجرا', 'hedayati-core' ),
+				'url'   => admin_url( 'admin.php?page=hedayati-academic' ),
+			],
+			[
+				'label' => __( 'دانشجویان فعال', 'hedayati-core' ),
+				'value' => $active_students,
+				'hint'  => __( 'پرونده و ثبت‌نام', 'hedayati-core' ),
+				'url'   => self::url( [ 'view' => 'students' ] ),
+			],
+		];
+	}
+
+	/** Small dependency-free icons for the manager action cards. */
+	private static function manager_icon( string $name ): string {
+		$paths = [
+			'book'     => '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v15H6.5A2.5 2.5 0 0 0 4 20.5zM20 5.5A2.5 2.5 0 0 0 17.5 3H13v15h4.5a2.5 2.5 0 0 1 2.5 2.5z"/>',
+			'calendar' => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',
+			'users'    => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+			'shield'   => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4"/>',
+			'teacher'  => '<path d="M22 10 12 5 2 10l10 5 10-5zM6 12.5V17c3 2.5 9 2.5 12 0v-4.5M22 10v6"/>',
+			'settings' => '<circle cx="12" cy="12" r="3"/>'
+				. '<path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 15 6.2L14.7 4h-4L10.4 6.2A8 8 0 0 0 8.8 7l-2.3-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.3-1a8 8 0 0 0 1.6.8l.3 2.2h4l.3-2.2a8 8 0 0 0 1.5-.8l2.4 1 2-3.5-2-1.5a7 7 0 0 0 .1-1z"/>',
+		];
+
+		$path = $paths[ $name ] ?? $paths['book'];
+		return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">' . $path . '</svg>';
 	}
 
 	private static function render_my_runs(): void {

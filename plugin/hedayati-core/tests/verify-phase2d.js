@@ -155,6 +155,7 @@ assert('no self-enrollment path exists (no ::enroll( call anywhere in this file)
 console.log('\n6. Shamsi display, Gregorian storage (no new storage-format change):');
 assert('enrollments/sessions view uses Hedayati_Jalali::format() for display', portal.includes('Hedayati_Jalali::format('));
 assert('no direct date storage/parsing bypassing existing services (no new dbDelta/migration in this file)', !/dbDelta|CREATE TABLE/i.test(portal));
+assert('schedule is derived from the current student’s active enrollments and service reads', portal.includes("case 'schedule':") && portal.includes('upcoming_sessions_for_user( $user_id )') && portal.includes("'active' !== $enrollment['status']") && portal.includes('Hedayati_Session_Service::list_for_run'));
 
 // ── 7. Bootstrap wiring ──────────────────────────────────────────────────────
 
@@ -194,6 +195,7 @@ assert('uses the shared #site-main skip-link target, matching singular.php\'s co
 assert('uses the shared .container wrapper class', template.includes('class="container'));
 assert('renders through Hedayati_Student_Portal::render_current_view() (no duplicated business logic in the template)', template.includes('Hedayati_Student_Portal::render_current_view()'));
 assert('view whitelist re-validated in the template too (defense in depth against a stray $_GET value reaching nav "is-active" state)', template.includes('Hedayati_Student_Portal::VIEWS'));
+assert('student navigation includes the real schedule view', template.includes("'schedule'") && template.includes('برنامهٔ کلاس‌ها'));
 assert('logout link uses wp_logout_url() (a nonced WP core URL), not a raw ?action=logout link', template.includes('wp_logout_url('));
 
 // ── 9. Theme assets: no new framework/bundler/jQuery ────────────────────────

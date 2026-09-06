@@ -86,7 +86,15 @@ class Hedayati_Account_Security {
 	 * persists it (WordPress hashes it inside wp_insert_user()/wp_set_password()).
 	 */
 	public static function generate_temp_password(): string {
-		return wp_generate_password( 18, true, true );
+		do {
+			$password = wp_generate_password( 18, true, true );
+		} while (
+			! preg_match( '/[a-z]/', $password )
+			|| ! preg_match( '/[A-Z]/', $password )
+			|| ! preg_match( '/\d/', $password )
+		);
+
+		return $password;
 	}
 
 	public static function set_password_url(): string {

@@ -1,5 +1,17 @@
 # CURRENT_STATE.md
 
+**Feature work after the launch candidate (2026-09-06):** `feature/manager-experience` adapts the
+AI Studio visual system to both real WordPress portals. `/panel/` now has a unified manager home
+with real service counts and capability-gated routes to every existing secured workflow. `/account/`
+now has the matching student dashboard and a real read-only upcoming-class schedule derived only
+from the signed-in student's active enrollments and future sessions. All earlier management and
+student actions remain available. Prototype-only consultation, certificate, progress, support,
+notification, and magazine modules are not presented as built. Static suites: **762/0**. Real
+WordPress runtime acceptance: **499/0, PASS, cleanup verified**. The manager and student dashboards,
+and the student schedule, were browser-reviewed at desktop/mobile widths in Persian RTL and
+light/dark modes with no page-level horizontal overflow. See D44 and
+`docs/AI_STUDIO_INTEGRATION.md`. This branch has not been merged, pushed, or deployed.
+
 **Last documentation update:** 2026-09-05 (Phase 3) — **Phase 3 "launch completion" is implemented
 and merged into `main`, followed by the plugin `1.8.1` lockout-expiry hotfix, with GREEN local
 WordPress acceptance (492/0) and GREEN Node static suites (752/0). STAGING VALIDATION IN PROGRESS;
