@@ -174,6 +174,11 @@ class Hedayati_Staff_Portal {
 			self::deny();
 		}
 
+		$modules = self::module_views();
+		if ( '' !== $view && isset( $modules[ $view ] ) && ! current_user_can( (string) $modules[ $view ]['capability'] ) ) {
+			self::deny();
+		}
+
 		if ( 'students' === $view ) {
 			if (
 				! current_user_can( 'hedayati_lookup_students' )
@@ -344,6 +349,64 @@ class Hedayati_Staff_Portal {
 
 	// ── Rendering ───────────────────────────────────────────────────────────
 
+	/**
+	 * Panel view registry for the AI-Studio-parity modules (D46–D52).
+	 *
+	 * Each module (consultations, certificates, materials, support, notifications,
+	 * settings) registers one entry rather than bloating this class:
+	 *   'slug' => [ 'capability' => 'hedayati_…', 'render' => callable, 'nav' => 'Label'|null ]
+	 * `render` is invoked only after the capability is re-checked here AND in guard().
+	 *
+	 * @return array<string, array{capability:string, render:callable, nav?:?string}>
+	 */
+	public static function module_views(): array {
+		return (array) apply_filters( 'hedayati_panel_module_views', [] );
+	}
+
+	/**
+	 * Shared verify step for a module mutation handler: POST + capability + nonce.
+	 * Modules call this instead of re-implementing the check. Dies 403 on failure.
+	 */
+	public static function guard_action( string $nonce_action, string $capability ): void {
+		Hedayati_Student_Portal::send_no_cache_headers();
+
+		$nonce = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
+
+		if (
+			'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' )
+			|| ! current_user_can( $capability )
+			|| ! wp_verify_nonce( $nonce, $nonce_action )
+		) {
+			self::deny();
+		}
+	}
+
+	/**
+	 * PRG helper for module handlers: store a one-shot notice, redirect to a panel
+	 * view, exit. Mirrors self::finish() for the core actions.
+	 *
+	 * @param true|WP_Error $result
+	 */
+	public static function redirect_notice( $result, array $args = [] ): void {
+		set_transient(
+			self::notice_key(),
+			[
+				'error'  => is_wp_error( $result ),
+				'text'   => is_wp_error( $result ) ? $result->get_error_message() : __( 'اطلاعات ذخیره شد.', 'hedayati-core' ),
+				'secret' => '',
+			],
+			45
+		);
+		wp_safe_redirect( self::url( $args ) );
+		exit;
+	}
+
+	/** True if the current user may open $slug (a registered module view). */
+	public static function can_view_module( string $slug ): bool {
+		$views = self::module_views();
+		return isset( $views[ $slug ] ) && current_user_can( (string) $views[ $slug ]['capability'] );
+	}
+
 	/** Entry point, called by theme/hedayati/page-panel.php. */
 	public static function render(): void {
 		if ( ! self::allowed() ) {
@@ -371,6 +434,12 @@ class Hedayati_Staff_Portal {
 
 		if ( 'run' === $view ) {
 			self::render_run( absint( self::get( 'run_id' ) ) );
+			return;
+		}
+
+		$modules = self::module_views();
+		if ( isset( $modules[ $view ] ) && current_user_can( (string) $modules[ $view ]['capability'] ) ) {
+			call_user_func( $modules[ $view ]['render'] );
 			return;
 		}
 
@@ -496,18 +565,38 @@ class Hedayati_Staff_Portal {
 		echo '<div class="hd-manager-section-title"><div><span class="hd-manager-eyebrow">' . esc_html__( 'مرکز عملیات', 'hedayati-core' ) . '</span>';
 		echo '<h2>' . esc_html__( 'مدیریت بخش‌های مجتمع', 'hedayati-core' ) . '</h2></div>';
 		echo '<a href="' . esc_url( home_url( '/' ) ) . '">' . esc_html__( 'مشاهدهٔ وب‌سایت', 'hedayati-core' ) . '</a></div>';
+		// AI-Studio-parity modules register their own manager card (D46–D52).
+		foreach ( self::module_views() as $slug => $module ) {
+			if ( empty( $module['title'] ) ) {
+				continue;
+			}
+			$actions[ (string) $module['capability'] . '__' . $slug ] = [
+				'url'  => 'settings' === $slug ? self::url( [ 'view' => 'settings' ] ) : self::url( [ 'view' => $slug ] ),
+				'cap'  => (string) $module['capability'],
+				'name' => (string) $module['title'],
+				'desc' => (string) ( $module['desc'] ?? '' ),
+				'icon' => (string) ( $module['icon'] ?? 'book' ),
+			];
+		}
+
 		echo '<div class="hd-manager-actions">';
-		foreach ( $actions as $capability => $action ) {
+		foreach ( $actions as $key => $action ) {
+			$capability = $action['cap'] ?? $key;
+			$url        = $action['url'] ?? $action[0];
+			$name       = $action['name'] ?? $action[1];
+			$desc       = $action['desc'] ?? $action[2];
+			$icon       = $action['icon'] ?? $action[3];
+
 			if ( ! current_user_can( $capability ) ) {
 				continue;
 			}
 
 			printf(
 				'<a class="hd-manager-action" href="%1$s"><span class="hd-manager-action-icon" aria-hidden="true">%2$s</span><span><strong>%3$s</strong><small>%4$s</small></span><b aria-hidden="true">‹</b></a>',
-				esc_url( $action[0] ),
-				self::manager_icon( $action[3] ),
-				esc_html( $action[1] ),
-				esc_html( $action[2] )
+				esc_url( $url ),
+				self::manager_icon( $icon ),
+				esc_html( $name ),
+				esc_html( $desc )
 			);
 		}
 		echo '</div></section>';
@@ -545,7 +634,7 @@ class Hedayati_Staff_Portal {
 		$active_runs     = Hedayati_Course_Run_Service::count_active();
 		$active_students = Hedayati_Enrollment_Service::count_active_students();
 
-		return [
+		$metrics = [
 			[
 				'label' => __( 'دوره‌های منتشرشده', 'hedayati-core' ),
 				'value' => $published,
@@ -571,6 +660,26 @@ class Hedayati_Staff_Portal {
 				'url'   => self::url( [ 'view' => 'students' ] ),
 			],
 		];
+
+		if ( current_user_can( Hedayati_Consultation_Service::CAPABILITY ) ) {
+			$metrics[] = [
+				'label' => __( 'درخواست مشاورهٔ جدید', 'hedayati-core' ),
+				'value' => Hedayati_Consultation_Service::count_new(),
+				'hint'  => __( 'پیگیری تماس', 'hedayati-core' ),
+				'url'   => self::url( [ 'view' => 'consultations' ] ),
+			];
+		}
+
+		if ( current_user_can( Hedayati_Support_Service::STAFF_CAP ) ) {
+			$metrics[] = [
+				'label' => __( 'تیکت در انتظار پاسخ', 'hedayati-core' ),
+				'value' => Hedayati_Support_Service::count_waiting_staff(),
+				'hint'  => __( 'پشتیبانی دانشجو', 'hedayati-core' ),
+				'url'   => self::url( [ 'view' => 'support' ] ),
+			];
+		}
+
+		return $metrics;
 	}
 
 	/** Small dependency-free icons for the manager action cards. */
@@ -583,6 +692,11 @@ class Hedayati_Staff_Portal {
 			'teacher'  => '<path d="M22 10 12 5 2 10l10 5 10-5zM6 12.5V17c3 2.5 9 2.5 12 0v-4.5M22 10v6"/>',
 			'settings' => '<circle cx="12" cy="12" r="3"/>'
 				. '<path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 15 6.2L14.7 4h-4L10.4 6.2A8 8 0 0 0 8.8 7l-2.3-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.3-1a8 8 0 0 0 1.6.8l.3 2.2h4l.3-2.2a8 8 0 0 0 1.5-.8l2.4 1 2-3.5-2-1.5a7 7 0 0 0 .1-1z"/>',
+			'chat'     => '<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-4-1L3 20l1-4.5a8.4 8.4 0 0 1-1-4A8.4 8.4 0 0 1 11.5 3h.5a8.4 8.4 0 0 1 9 8z"/>',
+			'award'    => '<circle cx="12" cy="8" r="5"/><path d="M8.2 12.3 7 22l5-3 5 3-1.2-9.7"/>',
+			'folder'   => '<path d="M4 5h5l2 3h9v11H4z"/>',
+			'lifebuoy' => '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="m6.5 6.5 3 3M14.5 14.5l3 3M17.5 6.5l-3 3M9.5 14.5l-3 3"/>',
+			'bell'     => '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>',
 		];
 
 		$path = $paths[ $name ] ?? $paths['book'];
@@ -846,12 +960,29 @@ class Hedayati_Staff_Portal {
 			echo '</ul>';
 		}
 
-		$can_sessions = current_user_can( 'hedayati_manage_assigned_sessions' ) || current_user_can( 'hedayati_manage_course_runs' );
-		if ( ! $can_sessions ) {
-			return;
+		// Run progress (objective, from sessions) — visible to any staff on the run.
+		$rp = Hedayati_Progress_Service::run_progress( $run_id );
+		if ( $rp['total'] > 0 ) {
+			printf(
+				'<p class="hd-portal-note">%s</p>',
+				esc_html( sprintf(
+					/* translators: 1: held, 2: total, 3: percent */
+					__( 'پیشرفت دوره: %1$s از %2$s جلسه (%3$s٪)', 'hedayati-core' ),
+					Hedayati_Text::digits_to_persian( (string) $rp['held'] ),
+					Hedayati_Text::digits_to_persian( (string) $rp['total'] ),
+					Hedayati_Text::digits_to_persian( (string) Hedayati_Progress_Service::percent( $rp['ratio'] ) )
+				) )
+			);
 		}
 
-		self::render_run_sessions( $run_id, $enrollments );
+		$can_sessions = current_user_can( 'hedayati_manage_assigned_sessions' ) || current_user_can( 'hedayati_manage_course_runs' );
+		if ( $can_sessions ) {
+			self::render_run_sessions( $run_id, $enrollments );
+		}
+
+		// Course/session materials — self-gates on hedayati_manage_session_materials
+		// + staff-on-run, so a TA (who lacks the cap) sees nothing here.
+		Hedayati_Material_Service::render_run_section( $run_id );
 	}
 
 	private static function render_run_sessions( int $run_id, array $enrollments ): void {

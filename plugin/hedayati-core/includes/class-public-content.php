@@ -39,6 +39,7 @@ class Hedayati_Public_Content {
 		'contact'  => 'تماس با ما',
 		'consult'  => 'مشاورهٔ انتخاب دوره',
 		'teachers' => 'مدرسان مجتمع',
+		'verify'   => 'استعلام گواهینامه',
 	];
 
 	private const RUN_STATUSES_PUBLIC = [ 'scheduled', 'in_progress' ];

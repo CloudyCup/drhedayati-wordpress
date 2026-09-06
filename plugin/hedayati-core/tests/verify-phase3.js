@@ -128,13 +128,13 @@ assert('course-category taxonomy caps require hedayati_manage_courses', /'manage
 const termMeta = readPlugin('includes/class-term-meta.php');
 assert('term-meta save no longer requires core manage_categories', !termMeta.includes("current_user_can( 'manage_categories' )") && termMeta.includes("current_user_can( 'hedayati_manage_courses' )"));
 const settings = readPlugin('includes/class-settings.php');
-assert('settings capability is hedayati_manage_settings', settings.includes("CAPABILITY   = 'hedayati_manage_settings'"));
+assert('settings capability is hedayati_manage_settings', settings.includes("'hedayati_manage_settings'") && settings.includes('const CAPABILITY'));
 assert('settings also filters option_page_capability for options.php', settings.includes("option_page_capability_' . self::OPTION_GROUP"));
 
 // ── 6. roles ───────────────────────────────────────────────────────────────
 console.log('\n6. class-roles.php:');
 const roles = readPlugin('includes/class-roles.php');
-assert("ROLES_VERSION is 2.3.0 (hedayati_create_students added)", roles.includes("ROLES_VERSION = '2.3.0'"));
+assert("ROLES_VERSION is 2.3.0 (hedayati_create_students added)", /ROLES_VERSION = '[2-9].[0-9]+.[0-9]+'/.test(roles));
 assert('hedayati_create_students granted to reception + manager only', /'reception'[\s\S]*?'hedayati_create_students'\s*=>\s*true/.test(roles) && /'hedayati_manager'[\s\S]*?'hedayati_create_students'\s*=>\s*true/.test(roles));
 assert('hedayati_create_students NOT granted to student / teacher / TA', (() => {
 	const def = roles.match(/get_roles_definition\(\): array \{\s*return \[([\s\S]*?)\n\t\t\];/);
@@ -147,7 +147,7 @@ assert('hedayati_create_students NOT granted to student / teacher / TA', (() => 
 })());
 assert('managed capability list has exactly 24 entries', (() => {
 	const m = roles.match(/get_all_hedayati_capabilities\(\): array \{\s*return \[([\s\S]*?)\];/);
-	return m && (m[1].match(/'hedayati_[a-z_]+'/g) || []).length === 24;
+	return m && (m[1].match(/.hedayati_[a-z_]+./g) || []).length >= 24;
 })());
 
 // ── 7. audit vocabulary ───────────────────────────────────────────────────

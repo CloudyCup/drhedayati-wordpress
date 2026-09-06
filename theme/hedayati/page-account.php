@@ -28,13 +28,20 @@ if ( ! in_array( $hd_current_view, Hedayati_Student_Portal::VIEWS, true ) ) {
 }
 
 $hd_nav_items = [
-	'dashboard'    => __( 'داشبورد دانشجو', 'hedayati' ),
-	'enrollments'  => __( 'دوره‌های من', 'hedayati' ),
-	'schedule'     => __( 'برنامهٔ کلاس‌ها', 'hedayati' ),
-	'verification' => __( 'احراز هویت', 'hedayati' ),
-	'documents'    => __( 'مدارک من', 'hedayati' ),
-	'profile'      => __( 'پروفایل کاربری', 'hedayati' ),
+	'dashboard'     => __( 'داشبورد دانشجو', 'hedayati' ),
+	'enrollments'   => __( 'دوره‌های من', 'hedayati' ),
+	'schedule'      => __( 'برنامهٔ کلاس‌ها', 'hedayati' ),
+	'certificates'  => __( 'گواهینامه‌های من', 'hedayati' ),
+	'support'       => __( 'پشتیبانی و تیکت', 'hedayati' ),
+	'notifications' => __( 'اعلان‌ها', 'hedayati' ),
+	'verification'  => __( 'احراز هویت', 'hedayati' ),
+	'documents'     => __( 'مدارک من', 'hedayati' ),
+	'profile'       => __( 'پروفایل کاربری', 'hedayati' ),
 ];
+
+$hd_unread = class_exists( 'Hedayati_Notification_Service' )
+	? Hedayati_Notification_Service::unread_count( get_current_user_id() )
+	: 0;
 ?>
 <main id="site-main" class="hd-portal-main section hd-student-main" role="main" tabindex="-1">
 	<div class="container hd-portal-shell hd-student-shell">
@@ -50,6 +57,9 @@ $hd_nav_items = [
 							<?php echo $hd_view_key === $hd_current_view ? ' aria-current="page"' : ''; ?>
 						>
 							<?php echo esc_html( $hd_view_label ); ?>
+							<?php if ( 'notifications' === $hd_view_key && $hd_unread > 0 ) : ?>
+								<b class="hd-nav-badge"><?php echo esc_html( Hedayati_Text::digits_to_persian( (string) $hd_unread ) ); ?></b>
+							<?php endif; ?>
 						</a>
 					</li>
 				<?php endforeach; ?>

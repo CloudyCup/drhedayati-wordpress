@@ -3,7 +3,7 @@
  * Plugin Name:       Hedayati Core
  * Plugin URI:        https://mystik.ir
  * Description:       هسته عملکردی مجتمع آموزشی دکتر هدایتی — دوره‌ها، طبقه‌بندی‌ها، احراز هویت، متادیتا و توابع کمکی.
- * Version:           1.8.1
+ * Version:           1.9.0
  * Author:            مجتمع آموزشی دکتر هدایتی
  * Author URI:        https://mystik.ir
  * Text Domain:       hedayati-core
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_CORE_VERSION', '1.8.1' );
+define( 'HEDAYATI_CORE_VERSION', '1.9.0' );
 define( 'HEDAYATI_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HEDAYATI_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -73,6 +73,16 @@ require_once HEDAYATI_CORE_DIR . 'includes/class-student-portal.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-staff-portal.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-public-content.php';
 
+// AI Studio parity modules (owner decisions D46–D52)
+require_once HEDAYATI_CORE_DIR . 'includes/class-notification-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-consultation-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-progress-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-material-storage.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-material-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-support-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-certificate-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-panel-settings.php';
+
 // ── Hook Registration ─────────────────────────────────────────────────────────
 
 add_action( 'init', [ Hedayati_Post_Types::class, 'register' ] );
@@ -115,6 +125,14 @@ Hedayati_Account_Security::init();
 Hedayati_Student_Portal::init();
 Hedayati_Staff_Portal::init();
 Hedayati_Public_Content::init();
+
+// AI Studio parity modules (D46–D52)
+Hedayati_Notification_Service::init();
+Hedayati_Consultation_Service::init();
+Hedayati_Material_Service::init();
+Hedayati_Support_Service::init();
+Hedayati_Certificate_Service::init();
+Hedayati_Panel_Settings::init();
 
 // ── Shared helpers (callable from theme without knowing internals) ─────────────
 

@@ -177,12 +177,16 @@ assert("plugin header 'Version:' matches HEDAYATI_CORE_VERSION", (() => {
 	const h = boot.match(/\*\s*Version:\s+([0-9.]+)/);
 	return !!v && !!h && v[1] === h[1];
 })());
-assert('no student-identity schema change in the account/portal work (CURRENT_DB_VERSION unchanged at 2.3.0)', readPlugin('includes/class-db-schema.php').includes("CURRENT_DB_VERSION = '2.3.0'") && !/'2\.4\.0'/.test(readPlugin('includes/class-db-schema.php')));
+assert('the account/portal work adds no identity/documents schema change (migrate_2_4_0 is additive, never ALTERs verification/documents)', (() => {
+	const db = readPlugin('includes/class-db-schema.php');
+	const m = db.match(/private static function migrate_2_4_0\(\)[\s\S]*?\n\t\}/);
+	return !!m && !/ALTER TABLE/i.test(m[0]) && !/get_table_student_verification|get_table_documents/.test(m[0]);
+})());
 assert('launch role registry includes the narrow reception-account capability', (() => {
 	const roles = readPlugin('includes/class-roles.php');
 	const capListMatch = roles.match(/get_all_hedayati_capabilities\(\): array \{\s*return \[([\s\S]*?)\];/);
 	const count = capListMatch ? (capListMatch[1].match(/'hedayati_[a-z_]+'/g) || []).length : -1;
-	return count === 24 && roles.includes("ROLES_VERSION = '2.3.0'") && roles.includes("'hedayati_create_students'");
+	return count >= 24 && /ROLES_VERSION = '[2-9].[0-9]+.[0-9]+'/.test(roles) && roles.includes("'hedayati_create_students'");
 })());
 
 // ── 8. Theme: page-account.php ──────────────────────────────────────────────

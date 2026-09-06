@@ -232,6 +232,14 @@ class Hedayati_Course_Run_Service {
 			// above without individual audit rows — the run deletion is the
 			// auditable event; the cascade is implied and recorded here.
 			Hedayati_Audit_Log::record( 'course_run.deleted', 'course_run', $run_id, 'cascade: sessions, enrollments, attendance, staff' );
+
+			/**
+			 * Fires after a Course Run and its Phase 2B children are deleted.
+			 * Later modules (materials, certificates) clean up their own rows.
+			 *
+			 * @param int $run_id
+			 */
+			do_action( 'hedayati_run_deleted', $run_id );
 		}
 
 		return false !== $affected;

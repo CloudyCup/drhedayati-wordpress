@@ -227,9 +227,10 @@ function hdit_run_phase_3(): void {
 		str_contains( $manager_home, 'hd-manager-kpis' )
 		&& str_contains( $manager_home, 'مرکز عملیات' )
 		&& str_contains( $manager_home, 'hedayati-academic' ) );
-	HDIT::ok( 'manager dashboard does not advertise unbuilt certificate or support modules',
-		! str_contains( $manager_home, 'گواهینامه' )
-		&& ! str_contains( $manager_home, 'تیکت' ) );
+	HDIT::ok( 'manager dashboard shows the AI-Studio-parity module cards now that they are built (D46–D52)',
+		str_contains( $manager_home, 'گواهینامه' )
+		&& str_contains( $manager_home, 'تیکت' )
+		&& str_contains( $manager_home, 'مشاوره' ) );
 
 	// ── In-panel course management (AI Studio "مدیریت دوره‌ها" / "دوره‌های ویژه") ──
 	wp_set_current_user( $manager );

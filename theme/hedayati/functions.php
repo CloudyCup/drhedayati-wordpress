@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_VERSION', '1.2.0' );
+define( 'HEDAYATI_VERSION', '1.3.0' );
 define( 'HEDAYATI_DIR', get_template_directory() );
 define( 'HEDAYATI_URI', get_template_directory_uri() );
 

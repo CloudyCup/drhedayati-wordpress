@@ -21,7 +21,16 @@ get_header();
     <?php if ( $hd_is_manager && current_user_can( 'hedayati_manage_course_runs' ) ) : ?><li><a class="hd-portal-nav-link" href="<?php echo esc_url( admin_url( 'admin.php?page=hedayati-academic' ) ); ?>">عملیات آموزشی</a></li><?php endif; ?>
     <?php if ( $hd_is_manager && current_user_can( 'hedayati_manage_teachers' ) ) : ?><li><a class="hd-portal-nav-link" href="<?php echo esc_url( admin_url( 'edit.php?post_type=teacher' ) ); ?>">اساتید</a></li><?php endif; ?>
     <?php if ( $hd_is_manager && current_user_can( 'hedayati_verify_students' ) ) : ?><li><a class="hd-portal-nav-link" href="<?php echo esc_url( admin_url( 'admin.php?page=hedayati-students' ) ); ?>">احراز هویت</a></li><?php endif; ?>
-    <?php if ( $hd_is_manager && current_user_can( 'hedayati_manage_settings' ) ) : ?><li><a class="hd-portal-nav-link" href="<?php echo esc_url( admin_url( 'options-general.php?page=hedayati-settings' ) ); ?>">تنظیمات مجتمع</a></li><?php endif; ?>
+    <?php
+    // AI-Studio-parity modules (consultations, certificates, materials, support,
+    // notifications, settings) register their own capability-gated nav entry.
+    foreach ( Hedayati_Staff_Portal::module_views() as $hd_slug => $hd_module ) :
+        if ( empty( $hd_module['nav'] ) || ! current_user_can( (string) $hd_module['capability'] ) ) {
+            continue;
+        }
+        ?>
+        <li><a class="hd-portal-nav-link<?php echo $hd_slug === $hd_view ? ' is-active' : ''; ?>" href="<?php echo esc_url( Hedayati_Staff_Portal::url( [ 'view' => $hd_slug ] ) ); ?>"><?php echo esc_html( (string) $hd_module['nav'] ); ?></a></li>
+    <?php endforeach; ?>
     <li class="hd-portal-nav-site"><a class="hd-portal-nav-link" href="<?php echo esc_url( home_url( '/' ) ); ?>">مشاهدهٔ وب‌سایت</a></li>
     <li><a class="hd-portal-nav-link hd-portal-nav-logout" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>">خروج از پنل</a></li>
    </ul>
