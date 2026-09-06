@@ -13,8 +13,12 @@ data — there is no database, server authorization, audit trail or persistence.
 
 Legend for **Status**:
 `DONE` implemented in the WordPress panel · `WP-ADMIN` exists, reached from the panel but
-edited in wp-admin · `PARTIAL` started · `DEMO→REAL` mock in AI Studio, must use real data ·
-`OWNER` needs a real institute policy/data-model decision before it can be built.
+edited in wp-admin · `PARTIAL` started · `NOT PORTED` deliberately excluded (unsafe/no analogue).
+
+**Update 2026-09-06:** the owner brought §E fully in scope. All seven modules are implemented
+(D46–D52); node static **876/0**, Docker real-WordPress acceptance **576/0 PASS, cleanup
+verified** (`docker/wp-tests/test-ai-studio.php`, run `34025229061` on `f6ad232`). §E now records
+resolutions, not blockers. Nothing is presented with AI Studio mock data.
 
 ---
 
@@ -23,8 +27,8 @@ edited in wp-admin · `PARTIAL` started · `DEMO→REAL` mock in AI Studio, must
 | AI Studio option | Purpose | WordPress equivalent | Backend / service | Capability | Status |
 |---|---|---|---|---|---|
 | Sidebar shell + role chip + topbar | Custom-software navigation model | `/panel/` manager shell (`page-panel.php`, `Hedayati_Staff_Portal`) with role-aware sidebar | — | `hedayati_manage_course_runs` + `hedayati_manage_courses` (`is_manager_workspace()`) | DONE |
-| Topbar notifications popover | New-consultation badge | — (no notification store) | — | — | OWNER (needs a notification model; see §C) |
-| Topbar quick-actions popover | Shortcuts to new course / issue cert / pending calls | Manager dashboard "تعریف دورهٔ جدید" primary action + operations cards | `course` CPT | `hedayati_manage_courses` | PARTIAL (course shortcut done; cert/calls are OWNER) |
+| Topbar notifications popover | New-consultation badge | Manager dashboard KPI "درخواست مشاورهٔ جدید" / "تیکت در انتظار پاسخ" (real counts) + staff notification rows (`hedayati_notifications`) | `Hedayati_Notification_Service`, `Hedayati_Consultation_Service::count_new()` | manager/reception caps | DONE (D50) |
+| Topbar quick-actions popover | Shortcuts to new course / issue cert / pending calls | Manager dashboard "تعریف دورهٔ جدید" primary action + "مرکز عملیات" cards link to every module incl. certificates + consultations | `course` CPT + module registry | per-card capability | DONE |
 | **Dashboard** — KPI tiles | دوره‌های فعال / ویژه / درخواست جدید / دانشجویان فعال | `render_manager_home()` KPI row: published courses, featured count, active runs, active students — all real counts | `wp_count_posts`, `WP_Query` featured, `Hedayati_Course_Run_Service::count_active()`, `Hedayati_Enrollment_Service::count_active_students()` | manager caps | DONE (consultation KPI replaced with real data; no fake numbers) |
 | Dashboard — "عملیات سریع مدیریتی" cards | Jump into course / featured / requests / certs | Manager dashboard "مرکز عملیات" capability-gated action cards | — | per-card capability | DONE (requests/certs cards omitted until §C) |
 | Dashboard — "وضعیت صفحه اصلی X/8" card | Featured slot usage | In-panel Featured view header shows `count / 8` | `_course_is_featured` meta | `hedayati_manage_courses` | DONE |
@@ -33,10 +37,10 @@ edited in wp-admin · `PARTIAL` started · `DEMO→REAL` mock in AI Studio, must
 | Courses — delete course | Remove a course | Row "حذف در ویرایشگر" link → wp-admin trash (native, undoable) | `course` CPT `delete_posts` | `hedayati_manage_courses` | WP-ADMIN (deliberate — native trash/restore, not a one-click front-end hard delete) |
 | Course edit drawer (title, english, dept, duration, level, seats, summary, tags, featured toggle) | Create/edit a course | wp-admin course editor (Gutenberg + `Hedayati_Meta_Box` structured fields) reached from the row / "دورهٔ جدید" | `course` CPT + `Hedayati_Course_Meta` | `hedayati_manage_courses` | WP-ADMIN (the editor already covers every field plus syllabus/audience/outcomes the drawer lacks) |
 | **Featured curation** — pick up to 8 | Choose homepage featured courses | In-panel `?view=featured` grid: toggle `_course_is_featured`, 8-cap enforced server-side, live count | `_course_is_featured`, `Hedayati_Query::get_featured_courses()` | `hedayati_manage_courses` | DONE |
-| **Requests** — consultation list, "ثبت تماس گرفته شد" | Track consultation / level-test requests | — (site only has a phone CTA today) | — | — | OWNER — needs fields, retention, spam control, staff workflow before build (§C item 1 in `AI_STUDIO_INTEGRATION.md`) |
-| **Students** — list with course + progress %, "مشاهده سوابق" | Student roster & progress | Real reception workspace `?view=students`: POST search, account creation, enrollment, verification, secure documents, audited national-ID reveal | `Hedayati_Student_Profile`, `Hedayati_Verification_Service`, `Hedayati_Enrollment_Service`, `Hedayati_Document_Service`, `Hedayati_Audit_Log` | `hedayati_lookup_students` + `hedayati_view_student_profiles_basic` (+ per-action caps) | DONE (far exceeds the mock) — **progress %** is OWNER (no progress formula defined) |
-| **Certificates** — issue + recent + copy code | Issue/verify certificates | — | — | — | OWNER — separate security-sensitive project: issuer, eligibility, revocation, identifier, public-verification data rules (§C item 4) |
-| **Institute settings** — name, phones, branch addresses | Site contact info | wp-admin `options-general.php?page=hedayati-settings` (Settings API), reached from panel nav + dashboard card | `Hedayati_Settings` / `option_page_capability_hedayati_institute` | `hedayati_manage_settings` | WP-ADMIN (real, capability-gated; in-panel form is a later polish item) |
+| **Requests** — consultation list, "ثبت تماس گرفته شد" | Track consultation / level-test requests | Public `/consult/` form → `?view=consultations` queue (`new`/`contacted`/`closed`, search, internal note); nonce + honeypot + per-IP rate limit; phone → E.164 | `Hedayati_Consultation_Service`, `hedayati_consultations` table | `hedayati_manage_consultations` (reception + manager) | DONE (D46) |
+| **Students** — list with course + progress %, "مشاهده سوابق" | Student roster & progress | Reception workspace `?view=students` (POST search, account creation, enrollment, verification, secure documents, audited national-ID reveal). **Progress %** now real: `Hedayati_Progress_Service` shows run progress + attendance rate per enrollment in `/account/` | `Hedayati_Student_Profile`, `Hedayati_Verification_Service`, `Hedayati_Progress_Service`, `Hedayati_Document_Service`, `Hedayati_Audit_Log` | `hedayati_lookup_students` + `hedayati_view_student_profiles_basic` | DONE (exceeds the mock; progress is objective, D47) |
+| **Certificates** — issue + recent + copy code | Issue/verify certificates | `?view=certificates`: issue (one per enrollment), revoke, list/filter; public `/verify/?code=` page (IP rate-limited, minimal fields); student `/account/?view=certificates` | `Hedayati_Certificate_Service`, `hedayati_certificates` table | `hedayati_manage_certificates` (manager/admin only) | DONE (D48) |
+| **Institute settings** — name, phones, branch addresses | Site contact info | `?view=settings` in-panel form → canonical `Hedayati_Settings` option + sanitizer (adds institute name + Tehran address); wp-admin screen unchanged as fallback | `Hedayati_Panel_Settings` + `Hedayati_Settings` | `hedayati_manage_settings` | DONE (D52) |
 | Teachers (dashboard card only in AI Studio) | Teacher profiles + public opt-in | wp-admin `edit.php?post_type=teacher`, reached from panel nav + dashboard card | `teacher` CPT, `_hedayati_public_*` opt-in | `hedayati_manage_teachers` | WP-ADMIN |
 | Audit history (not in AI Studio; WP addition) | Sensitive-event log | wp-admin `hedayati-academic-audit`, reached from panel "گزارش فعالیت‌های مدیریتی" aside | `Hedayati_Audit_Log` | `hedayati_view_audit_logs` | WP-ADMIN |
 
@@ -46,11 +50,12 @@ edited in wp-admin · `PARTIAL` started · `DEMO→REAL` mock in AI Studio, must
 |---|---|---|
 | Sidebar + topbar shell, role chip | `/account/` student shell (`page-account.php`) with AI-Studio-style sidebar/brand | DONE |
 | **Overview** — learning dashboard, active courses, "جلسه بعدی شما" | `render_dashboard_view()` — real verification/enrollment/document KPIs, active-course list, real next session | DONE |
-| Overview — progress % bars | — | OWNER (no progress formula) |
-| **My courses** — cards with progress + "دانلود جزوه/سورس" | `?view=enrollments` read-only Shamsi-dated enrolments/sessions | PARTIAL — list DONE; per-session materials download is OWNER (no materials store) |
+| Overview — progress % bars | `?view=enrollments` shows run progress + attendance rate bars per course; "—" when there is no basis (never a fake 0%) | DONE (D47) |
+| **My courses** — cards with progress + "دانلود جزوه/سورس" | `?view=enrollments` — Shamsi-dated sessions + progress + **materials** (`Hedayati_Material_Service::render_student_run`) for the enrolled run | DONE (D47/D49) |
 | **Calendar** — weekly sessions | `?view=schedule` — real, read-only, ownership-scoped future sessions from active enrolments | DONE |
-| **Certificates** — "دانلود نسخه دیجیتال" | — | OWNER (see §A Certificates) |
-| **Support** — ticket form + support phones | — (contact page + phones only) | OWNER — needs recipients, attachments, status, retention, notifications (§C item 5) |
+| **Certificates** — "دانلود نسخه دیجیتال" | `?view=certificates` — the student's own issued certificates + print-friendly `/verify/` view | DONE (D48) |
+| **Support** — ticket form + support phones | `?view=support` — open/read/reply to the student's own tickets (IDOR-safe); support phones on `/contact/` | DONE (D51) |
+| **Notifications** (topbar bell) | `?view=notifications` + unread badge in the sidebar | DONE (D50) |
 | **Profile** — name, phone, national ID, email | `?view=profile` (name/phone/address) + `?view=verification` (verification, encrypted national-ID intake) | DONE — national ID stays write-only / audited-reveal-only, never shown to the student (D36) |
 
 ## C. WordPress/Hedayati management functions → location in the new panel
@@ -67,6 +72,14 @@ Everything below is already built in WordPress and must remain reachable. None i
 | Privileged audited national-ID reveal | wp-admin `hedayati-students` (POST-only, audited) | `hedayati_verify_students` |
 | Private document upload / view / archive / purge | `/panel/?view=students` + wp-admin | `hedayati_upload_student_documents` |
 | Courses / categories / featured / publish | `/panel/?view=courses` + `?view=featured` + Gutenberg editor | `hedayati_manage_courses` |
+| Consultation requests queue | `/panel/?view=consultations` | `hedayati_manage_consultations` |
+| Certificates: issue / revoke / list | `/panel/?view=certificates` | `hedayati_manage_certificates` |
+| Course/session materials | `/panel/?view=run&run_id=#materials` (manage) + `?view=materials` (index) | `hedayati_manage_session_materials` |
+| Support ticket queue / reply / status | `/panel/?view=support` | `hedayati_manage_support_tickets` |
+| Institute settings (in-panel) | `/panel/?view=settings` | `hedayati_manage_settings` |
+| Student progress + attendance | shown in `/account/?view=enrollments`; staff see run progress in `?view=run` | — (read, ownership/role-scoped) |
+| Student certificates / support / notifications | `/account/?view=certificates` `?view=support` `?view=notifications` | `hedayati_view_own_certificates` / `hedayati_use_support_tickets` / — |
+| Public certificate verification | `/verify/?code=` (no login) | — (IP rate-limited, minimal fields) |
 | Course runs / teachers-on-run / TA-on-run / sessions / enrolments / attendance / capacity / fees | wp-admin `hedayati-academic`, panel nav + dashboard card; teacher/TA run view `?view=run` | `hedayati_manage_course_runs` / assigned-run caps |
 | Public course-run opt-in visibility | wp-admin course editor (`_hedayati_public_catalog_details`) | `hedayati_manage_courses` |
 | Teachers CPT + public opt-in | wp-admin `edit.php?post_type=teacher`, panel nav + card | `hedayati_manage_teachers` |
@@ -81,35 +94,68 @@ Everything below is already built in WordPress and must remain reachable. None i
 | Module | administrator | hedayati_manager | reception | teacher | teacher_assistant | student |
 |---|---|---|---|---|---|---|
 | Manager dashboard (`/panel/`) | ✅ | ✅ | ✱ simple home | ✱ my-runs home | ✱ my-runs home | ✗ (`/account/`) |
-| Courses `?view=courses` / Featured | ✅ | ✅ | ✗ | ✗ | ✗ | ✗ |
-| Course feature/publish toggle | ✅ | ✅ | ✗ | ✗ | ✗ | ✗ |
+| Courses `?view=courses` / Featured / feature+publish toggle | ✅ | ✅ | ✗ | ✗ | ✗ | ✗ |
 | Academic operations (runs/sessions/enrol/attendance admin) | ✅ | ✅ | ✗ (no `manage_course_runs`) | ✗ | ✗ | ✗ |
-| Reception workspace `?view=students` | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Create student / intake / verification-initiate / doc upload | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Reception workspace `?view=students` (create / intake / verify-initiate / doc upload) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | National-ID reveal | ✅ | ✅ (if `hedayati_verify_students`) | ✗ | ✗ | ✗ | ✗ |
-| Teachers / Settings (wp-admin, from panel) | ✅ | ✅ | ✗ | ✗ | ✗ | ✗ |
-| Assigned-run view `?view=run` (roster/sessions) | ✅ | ✅ | ✗ | ✅ assigned only | ✅ assigned only (roster only) | ✗ |
+| **Consultations** `?view=consultations` | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| **Certificates** `?view=certificates` (issue/revoke) | ✅ | ✅ | ✗ | ✗ | ✗ | ✗ |
+| **Materials** manage (in run view) | ✅ | ✅ | ✗ | ✅ assigned runs | ✗ | ✗ |
+| **Support tickets** queue `?view=support` | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| **In-panel settings** `?view=settings` | ✅ | ✅ | ✗ | ✗ | ✗ | ✗ |
+| Teachers (wp-admin, from panel) | ✅ | ✅ | ✗ | ✗ | ✗ | ✗ |
+| Assigned-run view `?view=run` (roster/sessions/progress) | ✅ | ✅ | ✗ | ✅ assigned only | ✅ assigned only (roster only) | ✗ |
 | Record attendance | ✅ | ✅ | ✗ | ✅ assigned | ✗ | ✗ |
 | Audit-log viewer | ✅ | ✅ | ✗ | ✗ | ✗ | ✗ |
-| Student `/account/` portal | ✗ (own) | — | — | — | — | ✅ own only |
+| Student `/account/` — dashboard/enrolments(+progress+materials)/schedule/certificates/support/notifications/verification/documents/profile | ✗ (own) | — | — | — | — | ✅ own only |
 
 Backend/controller capability + object-scope checks are enforced regardless of which nav
 items render — the sidebar only hides what a role cannot use.
 
-## E. Outstanding owner decisions (blockers for full AI Studio parity)
+## E. Owner decisions — RESOLVED 2026-09-06 (D46–D52)
 
-1. **Consultation requests** — capture fields, retention window, spam protection, which staff
-   act on them, status vocabulary.
-2. **Student progress %** — define it: attendance ratio, completed sessions, assessment score,
-   or a staff-entered number. Nothing renders a percentage until this is answered.
-3. **Certificates & public verification** — issuer authority, eligibility rule, certificate
-   identifier scheme, revocation, and exactly which fields are public on a verification page.
-4. **Course materials / handouts store** — whether students download per-session files, where
-   they live, and access scoping.
-5. **Support tickets** — recipients, attachments, statuses, retention, notification behaviour.
-6. **Notifications** — event list, recipients, retention, delivery channel.
-7. **In-panel institute-settings form** vs. keeping the wp-admin Settings API screen (low risk
-   either way; currently wp-admin).
+| # | Decision | Resolution |
+|---|---|---|
+| 1 | Consultation requests | **Build (D46).** Fields = name, phone, optional topic + message. Public form, no auth, nonce + honeypot + per-IP rate limit. Statuses `new`/`contacted`/`closed`. Reception + manager. One internal note. No auto SMS/email. Audit carries no phone/body. |
+| 2 | Student progress % | **Objective only (D47).** Run progress = held ÷ total non-cancelled sessions. Attendance rate = present+late+excused ÷ recorded marks. Kept separate; never called "completion". Zero-session → "—". No grades/scores. |
+| 3 | Certificates + verification | **Build (D48).** Manager/admin issue, one per enrollment (`UNIQUE`), `DH-<jyear>-<10 crypto-random>` code (not the national ID). Revoke supported. Public `/verify/` shows only name/course/date/institute/code; IP rate-limited; revoked/unknown → clear non-sensitive status. Print-friendly HTML (no PDF dependency). |
+| 4 | Course materials store | **Build (D49).** Per run/session; link / note / file. Files → `Hedayati_Material_Storage` (own namespace over the Phase 2C hardened private store), enrollment-scoped nonced download handler. Identity-document store untouched. |
+| 5 | Support tickets | **Build (D51).** Student opens/reads/replies to own tickets only (ownership on every read/write). Staff queue, 4 statuses. No attachments in v1. No email/SMS. Audit = reply kind / status only. |
+| 6 | Notifications | **Build, internal only (D50).** On-site rows for a deliberate event set (consultation received, support reply/close, certificate issued/revoked). Per-user unread count + mark read. No email/SMS/push. Purged on user deletion. |
+| 7 | In-panel settings form | **Build (D52).** `/panel/?view=settings` writes through the canonical `Hedayati_Settings` option + sanitizer; wp-admin screen kept as an admin fallback. Added `institute_name` + `address_tehran`. |
 
-Until each is resolved the corresponding AI Studio tab is represented in this matrix and in
-`AI_STUDIO_INTEGRATION.md` but is **not** shown as a working feature in the panel.
+### Remaining smaller follow-ups (not blockers, not owner-blocking)
+
+- Support-ticket **attachments** — deferred to v2 (needs the same private-storage + scoping
+  treatment as materials; low demand at launch).
+- Certificate **PDF** export — HTML print view ships now; a PDF path can be added later without a
+  schema change if a safe generator is chosen.
+- Consultation **assignment to a named staff member** — the schema has `handled_by`; a UI to
+  reassign is a small future addition, not required for the workflow.
+- Notification **digest/email** — explicitly out of scope per D50.
+
+## F. Completeness verdict
+
+**AI Studio manager panel (`AdminPanel`) — every legitimate option accounted for:**
+
+| AI Studio tab | Final WordPress location | Status |
+|---|---|---|
+| Dashboard (KPIs + quick actions + featured card) | `/panel/` `render_manager_home()` | ✅ real data |
+| Courses (table, feature, publish, edit, delete) | `?view=courses` + Gutenberg editor + native trash | ✅ |
+| Featured curation | `?view=featured` | ✅ |
+| Requests (consultations) | `?view=consultations` | ✅ D46 |
+| Students (+ progress) | `?view=students` + progress in `/account/` | ✅ D47 |
+| Certificates | `?view=certificates` + `/verify/` | ✅ D48 |
+| Institute settings | `?view=settings` | ✅ D52 |
+| Courses "reset to factory" | — | ⛔ NOT PORTED (destructive bulk reset of live data; would only build on an explicit, guarded request) |
+| Course one-click hard delete | native trash/restore from the row | ⛔ replaced with the safe WP native flow |
+
+**AI Studio student panel (`StudentPanel`) — every tab accounted for:** overview ✅, my courses
+(+progress +materials) ✅, calendar/schedule ✅, certificates ✅ (D48), support ✅ (D51),
+notifications ✅ (D50), profile ✅.
+
+**Inverse check — every WordPress/Hedayati management function has a panel home:** see §C (fully
+populated). No pre-existing capability lost a route; wp-admin remains a fallback only.
+
+No legitimate AI Studio option is silently omitted. No AI Studio demo/mock datum (fake students,
+capacities, "۲۰+ سال", "۱۵K+", seeded certificates/requests) is reproduced anywhere.

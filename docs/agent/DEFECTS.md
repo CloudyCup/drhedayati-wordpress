@@ -1,5 +1,23 @@
 # Defects and acceptance gaps
 
+## AI Studio parity modules D46–D52 (2026-09-06) — OPEN GATES
+
+Not defects in delivered code (static 876/0, Docker CI 576/0 PASS cleanup-verified), but the
+remaining release gates for `feature/manager-experience`:
+
+- **G-5 — one comprehensive browser/visual review not yet done.** Per the owner plan, functionality
+  is finished first; the single manager/reception/teacher/TA/student review at desktop + mobile,
+  RTL, light + dark is still pending (checklist in the takeover report / next report).
+- **G-6 — integrated `mystik.ir` staging cycle not yet run.** Deliberately deferred to one cycle
+  near the end (per `[[workflow-no-per-phase-staging]]`).
+- **G-7 — support-ticket attachments and certificate PDF export are v2** (documented in
+  `AI_STUDIO_PANEL_MATRIX.md` §E "smaller follow-ups"); the HTML print view + link/note/file
+  materials cover launch needs.
+- **G-8 — materials `file` storage requires a configured private-uploads dir in
+  staging/production** (`HEDAYATI_PRIVATE_UPLOADS_DIR`, same requirement as Phase 2C documents).
+  `link` / `note` materials work without it; `file` uploads fail closed with a clear message
+  until it is set (same behaviour as identity documents — see `docs/DEPLOYMENT.md`).
+
 ## Manager panel — AI Studio course/featured tabs (2026-09-06) — OPEN GATES
 
 Not defects in delivered code, but **release gates** for `feature/manager-experience`:

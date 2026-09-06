@@ -598,3 +598,84 @@ reproduced anywhere.
 data cannot operate an institute. Porting the safe, real-backend tabs now gives the manager a
 coherent custom workspace without inventing backend behaviour or reviving the React/Express/Prisma
 stack (still prohibited — D-series, AGENTS.md §5).
+
+## D46–D52 — AI Studio parity modules brought fully in scope (owner, 2026-09-06)
+
+The owner directed that the remaining `docs/AI_STUDIO_PANEL_MATRIX.md` §E items are now in
+scope: finish the product, then one comprehensive visual review, then one integrated staging
+cycle. Each is a real WordPress subsystem reusing existing services — no AI Studio mock data is
+reproduced. Implemented on `feature/manager-experience`; migration **2.4.0**, roles **2.4.0**,
+plugin **1.9.0**, theme **1.3.0**. Node static **876/0**; Docker acceptance **576/0, PASS,
+cleanup verified** (run `34025229061` on `f6ad232`).
+
+### D46 — Consultation requests (supersedes the "phone CTA only" position)
+
+Public `/consult/` form (name, Iranian phone, optional topic/message) → `hedayati_consultations`.
+Server-side validation, phone canonicalised to E.164, honeypot + per-IP transient rate limit,
+nonce. Staff queue in `/panel/?view=consultations` for `hedayati_manage_consultations`
+(reception + manager): `new → contacted → closed`, search/filter, one internal note. No
+automatic SMS/email. Audit records the status transition / "internal note edited" only — never
+the phone or message body.
+
+### D47 — Student progress (real data only)
+
+`Hedayati_Progress_Service` computes, live and separately:
+- **run progress** = held/past sessions ÷ total non-cancelled sessions;
+- **attendance rate** = the student's present/late/excused marks ÷ sessions with any recorded
+  mark for that student.
+Zero-session runs return `null` (rendered "—", never 0%). No grade / score / exam / pass-fail /
+completion field is introduced — the data model does not carry those.
+
+### D48 — Certificates + public verification
+
+`hedayati_certificates`, `UNIQUE(enrollment_id)` (duplicate issuance impossible) and
+`UNIQUE(code)`. **Never auto-issued** — a `hedayati_manage_certificates` holder (manager /
+administrator only) issues one bound to a single enrollment. Public identifier =
+`DH-<jalali-year>-<10 × crypto-random base32>` (`random_bytes`), non-sequential, **never** the
+national ID or any PII-derived value. Revoke is supported and audited. Student sees only their
+own certificates in `/account/?view=certificates`; a print-friendly HTML certificate/verification
+view (no new PDF dependency). Public `/verify/?code=` page is IP rate-limited and shows **only**
+validity, recipient name (as recorded), course title, issue date, institute, and code — no
+phone / national ID / address / documents / attendance / enrollment internals. Unknown and
+revoked codes return a clear non-sensitive status.
+
+### D49 — Course/session materials
+
+`hedayati_session_materials`, per run and optionally per session; types `link` / `note` / `file`.
+`hedayati_manage_session_materials` (teacher on the run, or manager) manages; an **active**
+enrolled student, staff-on-run, or manager may view. Files use `Hedayati_Material_Storage` — a
+thin wrapper over the hardened Phase 2C private store (outside the webroot, `.htaccess` deny,
+traversal-safe) in its **own** key namespace, served **only** through a per-material nonced
+`admin-post` handler that re-checks the viewer. The identity-document table, capability and
+access policy are untouched. No enrollment-private file is reachable at a predictable URL.
+
+### D50 — Internal notifications
+
+`hedayati_notifications`, one row per (recipient, event). **On-site only** — no email, SMS, or
+push. Created for a deliberate event set (consultation received → staff; support reply/close →
+other party; certificate issued/revoked → student), never for routine CRUD. Per-user unread
+count + mark-read / mark-all-read (owner-scoped). Purged on `deleted_user`.
+
+### D51 — Support tickets
+
+`hedayati_support_tickets` + `hedayati_support_messages`. A student
+(`hedayati_use_support_tickets`) opens tickets, sees only their own, and replies to their own
+open ticket. Staff (`hedayati_manage_support_tickets` — reception + manager) work a shared queue
+with statuses `open / waiting_student / waiting_staff / closed`. Ownership is enforced on every
+read and write (`get_for_viewer()`); a student can never load or reply to another student's
+ticket. Audit records the reply kind / status transition, never the message body.
+
+### D52 — In-panel institute settings
+
+`/panel/?view=settings` (`hedayati_manage_settings`) is a thin front-end over the **existing**
+Settings API option — same option name, same canonical `Hedayati_Settings::sanitize_all()`
+sanitizer, nonce-guarded. Two legitimate fields added (`institute_name`, `address_tehran`); no
+demo-only settings. The wp-admin Settings → هدایتی screen remains as an administrator fallback
+reading/writing the identical values. The manager gains no native administrator capability.
+
+### Panel architecture
+
+`Hedayati_Staff_Portal` gained a filter-based module-view registry
+(`hedayati_panel_module_views`) plus public `guard_action()` / `redirect_notice()` helpers, so
+each module registers one capability-gated entry instead of growing the class. `guard()` and
+`render()` both re-check the module capability; navigation only hides what a role cannot use.

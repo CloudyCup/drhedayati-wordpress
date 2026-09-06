@@ -1,5 +1,19 @@
 # CURRENT_STATE.md
 
+**2026-09-06 — AI Studio parity modules complete on `feature/manager-experience` (D46–D52), HEAD
+`f6ad232`.** All seven `AI_STUDIO_PANEL_MATRIX.md` §E items are now implemented as real WordPress
+subsystems (migration **2.4.0**, roles **2.4.0**, plugin **1.9.0**, theme **1.3.0**):
+consultation requests (public form + panel queue), objective student progress + attendance,
+certificates + public `/verify/` page, course/session materials, support tickets, internal
+notifications, and an in-panel institute-settings form. `/panel/` is now the primary manager UX
+with a filter-based module registry; `/account/` gained certificates / support / notifications
+views plus progress + materials in the enrolments view. No AI Studio demo/mock data reproduced.
+**Node static 876/0. Docker real-WordPress acceptance 576/0, PASS, cleanup verified** (run
+`34025229061`). Canonical docs reconciled. **Not browser-reviewed yet, not merged, not deployed** —
+one comprehensive visual review then one integrated staging cycle remain (owner plan).
+
+---
+
 **Feature work after the launch candidate (2026-09-06):** `feature/manager-experience` adapts the
 AI Studio visual system to both real WordPress portals. `/panel/` now has a unified manager home
 with real service counts and capability-gated routes to every existing secured workflow. `/account/`
@@ -28,7 +42,7 @@ and the student schedule, were browser-reviewed at desktop/mobile widths in Pers
 light/dark modes with no page-level horizontal overflow. See D44 and
 `docs/AI_STUDIO_INTEGRATION.md`. This branch has not been merged, pushed, or deployed.
 
-**Last documentation update:** 2026-09-06 (manager-experience: recovery + in-panel course/featured tabs, D45).
+**Last documentation update:** 2026-09-06 (manager-experience: AI Studio parity modules D46–D52).
 
 **Prior — 2026-09-05 (Phase 3):** **Phase 3 "launch completion" is implemented
 and merged into `main`, followed by the plugin `1.8.1` lockout-expiry hotfix, with GREEN local

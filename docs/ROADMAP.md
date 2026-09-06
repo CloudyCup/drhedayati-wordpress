@@ -127,14 +127,15 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ## P2 — enhancements
 
-- **AI Studio manager and student experience — in progress on `feature/manager-experience` (D45).**
-  Built: unified `/panel/` manager home, matching `/account/` learning dashboard, owner-scoped
-  upcoming-class schedule, and the in-panel **course table + featured curation** tabs
-  (`?view=courses`, `?view=featured`) against the real course CPT with capability/nonce-guarded
-  toggles. Node static green (769/0); Docker CI + browser review still pending. Consultation,
-  progress, certificates, materials, support, notifications, and an in-panel Settings form remain
-  separate modules with their own policy + acceptance gates — see `docs/AI_STUDIO_PANEL_MATRIX.md`
-  §E and `docs/AI_STUDIO_INTEGRATION.md`.
+- **AI Studio manager and student experience — feature-complete on `feature/manager-experience`
+  (D44–D52), pending one visual review + one staging cycle.** Built: unified `/panel/` manager
+  home + role-aware module registry; in-panel course table + featured curation; consultation
+  queue (D46); objective progress + attendance (D47); certificates + public `/verify/` (D48);
+  course/session materials (D49); internal notifications (D50); support tickets (D51); in-panel
+  institute settings (D52). Matching `/account/` views for the student. Node static **876/0**,
+  Docker acceptance **576/0 PASS**. Remaining: one comprehensive manager/reception/teacher/TA/
+  student visual review, then the integrated `mystik.ir` staging cycle. Deferred v2:
+  ticket attachments, certificate PDF export (`docs/AI_STUDIO_PANEL_MATRIX.md` §E).
 - Improved course-authoring editor UX (structured fields currently sit below a large Gutenberg
   canvas).
 - Change the `course_cat_order` default so unordered categories don't sort to the front. ❓ (small
@@ -164,10 +165,12 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ## Items needing an institute / owner decision before implementation
 
-- Does identity verification unlock any benefit (certificates, accredited exams)? What documents
-  are mandatory? (Document web-host retention — 7 days post-archive-confirmation, then manual
-  purge — and audit IP/UA — never collected — are now resolved, D38/D39.)
-- Consultation page: form fields, where submissions go (email? CRM? WP admin?), spam handling.
+- ~~Does identity verification unlock any benefit (certificates, accredited exams)?~~ — resolved
+  (D48): certificates are a manual staff action per enrollment, not gated on verification. What
+  documents are mandatory for verification is still open. (Document retention D38/D39 resolved.)
+- ~~Consultation page: form fields, where submissions go, spam handling.~~ — resolved (D46):
+  name/phone/topic/message → `hedayati_consultations` staff queue; honeypot + per-IP rate limit;
+  no email/CRM/SMS.
 - Impact-section statistics: the actual numbers, and Customizer vs plugin-settings as the editor.
 - Course category default ordering behavior.
 - SMS provider (for future OTP/notifications).

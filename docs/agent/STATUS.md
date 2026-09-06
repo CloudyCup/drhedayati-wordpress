@@ -1,5 +1,28 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
+## AI Studio parity modules D46–D52 (2026-09-06) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
+
+`feature/manager-experience` HEAD `f6ad232`. The owner brought the whole
+`docs/AI_STUDIO_PANEL_MATRIX.md` §E set in scope; all seven are built as real WordPress
+subsystems reusing existing services (no mock data):
+
+| Module | Where | Capability | Backend |
+|---|---|---|---|
+| Consultations (D46) | public `/consult/` form → `/panel/?view=consultations` | `hedayati_manage_consultations` | `hedayati_consultations` |
+| Progress (D47) | `/account/?view=enrollments`, `?view=run` | — (role/ownership scoped) | `Hedayati_Progress_Service` (computes from sessions+attendance) |
+| Certificates (D48) | `/panel/?view=certificates`, `/account/?view=certificates`, public `/verify/` | `hedayati_manage_certificates` (mgr/admin only) | `hedayati_certificates` (UNIQUE enrollment + code) |
+| Materials (D49) | run view `#materials`, `/account/?view=enrollments` | `hedayati_manage_session_materials` (teacher/mgr) | `hedayati_session_materials` + `Hedayati_Material_Storage` |
+| Support tickets (D51) | `/panel/?view=support`, `/account/?view=support` | staff: `hedayati_manage_support_tickets`; student: `hedayati_use_support_tickets` | `hedayati_support_tickets` + `_messages` |
+| Notifications (D50) | `/account/?view=notifications` + sidebar badge | — (owner scoped) | `hedayati_notifications` |
+| In-panel settings (D52) | `/panel/?view=settings` | `hedayati_manage_settings` | canonical `Hedayati_Settings` option |
+
+Versions: plugin **1.9.0**, theme **1.3.0**, DB **2.4.0** (migration `2_4_0`, additive), ROLES
+**2.4.0** (+6 caps). Node static **876/0**. Docker `Acceptance (Docker WordPress)` run
+`34025229061`: **576/0 PASS, cleanup verified**. `Hedayati_Staff_Portal` now has a
+`hedayati_panel_module_views` registry + `guard_action()` / `redirect_notice()` helpers;
+`guard()` + `render()` both re-check module capability. NOT browser-reviewed, NOT merged, NOT
+deployed — one comprehensive visual review then one integrated staging cycle remain.
+
 ## AI Studio manager panel — course/featured tabs (2026-09-06) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
 
 Recovery: the disappeared Codex WIP was preserved on `snapshot/chatgpt-work-recovery-2026-09-06`

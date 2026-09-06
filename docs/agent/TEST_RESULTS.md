@@ -11,6 +11,17 @@ Branch `feature/manager-experience` (`59ce4ee` baseline = recovered Codex WIP):
 | Real browser review | NOT DONE for `?view=courses` / `?view=featured` |
 | Staging / production | NOT CONTACTED |
 
+## AI Studio parity modules — consultations/progress/certificates/materials/tickets/notifications/settings (2026-09-06, D46–D52) — STATIC + DOCKER CI GREEN
+
+Branch `feature/manager-experience`, HEAD `f6ad232`:
+
+| Check | Result |
+|---|---|
+| Node static suites | **876 / 0** — adds `verify-ai-studio-modules.js` (107 assertions: file hygiene, migration 2.4.0, the 6-cap role matrix, and per-module security invariants) |
+| Docker real-WordPress acceptance | `Acceptance (Docker WordPress)` run `34025229061` on `f6ad232`: **576 / 0, PASS, cleanup verified**. `docker/wp-tests/test-ai-studio.php` adds ~70 assertions — unauthorized issue/manage denied, IDOR denied on tickets, no PII in `/verify/`, rate-limit + honeypot paths, cross-user notification isolation, progress math incl. zero-session, role-aware module navigation. |
+| Real browser review | NOT DONE (one comprehensive review planned after all modules) |
+| Staging / production | NOT CONTACTED |
+
 ## AI Studio manager and student experience (2026-09-06) — GREEN LOCALLY
 
 Branch `feature/manager-experience`:

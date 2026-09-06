@@ -82,7 +82,7 @@ directly in `wp-config.php` or equivalent server config.
 |---|---|---|---|
 | `HEDAYATI_DATA_ENCRYPTION_KEY` | base64 string decoding to exactly 32 raw bytes | Any environment where national ID will be stored | The feature fails closed — `set_national_id()`/`get_national_id_decrypted()` return an error; no plaintext fallback exists |
 | `HEDAYATI_DATA_HMAC_KEY` | base64 string decoding to exactly 32 raw bytes, **independent** of the encryption key | Same as above | Same fail-closed behavior |
-| `HEDAYATI_PRIVATE_UPLOADS_DIR` | absolute filesystem path, outside the web root, writable by PHP | **Required** on any environment except local/Docker-CI (`wp_get_environment_type() !== 'local'`) | Document upload fails closed — nothing is written to disk |
+| `HEDAYATI_PRIVATE_UPLOADS_DIR` | absolute filesystem path, outside the web root, writable by PHP | **Required** on any environment except local/Docker-CI (`wp_get_environment_type() !== 'local'`) | Private-document upload **and** course-material `file` uploads (D49, `Hedayati_Material_Storage` reuses this root in its own key namespace) fail closed — nothing is written to disk. `link` / `note` materials still work without it. |
 
 Generate a key with, e.g., `openssl rand -base64 32` (run on a machine you trust, paste the output
 directly into `wp-config.php`, never into a chat/ticket/log). Never derive either key from

@@ -223,3 +223,39 @@ authorization must never depend on hidden UI.
 - Defense-in-depth upload scanning where the host permits.
 - Tested backup/restore procedure before cutover.
 - LiteSpeed cache: never cache authenticated/account pages; purge after theme/plugin deploys.
+
+## AI Studio parity modules (2026-09-06, D46–D52) — feature branch, green
+
+New security-relevant subsystems on `feature/manager-experience`. All reuse existing
+capability + audit + private-storage infrastructure.
+
+- **Consultations (D46):** public form is unauthenticated by design; nonce + honeypot +
+  per-IP transient rate limit; phone canonicalised to E.164; server-side validation. Staff
+  queue gated on `hedayati_manage_consultations`. Audit notes never contain the phone or
+  message body.
+- **Certificates (D48):** issuance gated on `hedayati_manage_certificates` (manager/admin
+  only), re-checked in the service. Public verification token is `random_bytes`-derived,
+  non-sequential, **never** the national ID. `UNIQUE(enrollment_id)` prevents duplicate
+  issuance. Public `/verify/` page is IP rate-limited and exposes only
+  name/course/date/institute/code — no phone, national ID, address, documents, attendance,
+  or enrollment internals. Revoked/unknown codes return a non-sensitive status.
+- **Materials (D49):** files stored via `Hedayati_Material_Storage` (thin wrapper over the
+  Phase 2C hardened private store, separate key namespace). Download only through a
+  per-material nonced handler that re-checks active enrollment / staff-on-run / manager.
+  The identity-document store, table, and capability are untouched. No enrollment-private
+  file is reachable at a predictable URL.
+- **Support tickets (D51):** ownership enforced on every read and write (`get_for_viewer()`)
+  — a student can never load or reply to another student's ticket (IDOR-safe). Staff queue
+  gated on `hedayati_manage_support_tickets`. Audit records reply kind / status only.
+- **Notifications (D50):** on-site only (no email/SMS/push). `mark_read` / `unread_count`
+  are owner-scoped (`user_id` in every WHERE). Cascade-deleted on `deleted_user`.
+- **In-panel settings (D52):** writes go through the canonical `Hedayati_Settings` option +
+  sanitizer; nonce + `hedayati_manage_settings`. No new administrator capability for the
+  manager. wp-admin fallback unchanged.
+- **Panel routing:** `Hedayati_Staff_Portal::guard()` and `::render()` both re-check the
+  module capability from the `hedayati_panel_module_views` registry; `guard_action()`
+  enforces POST + capability + nonce for every module mutation handler. Navigation hiding is
+  never the only control.
+
+Runtime-verified by `docker/wp-tests/test-ai-studio.php` (unauthorized issue/manage denied,
+IDOR denied, no-PII-in-verification, rate-limit paths, cross-user notification isolation).
