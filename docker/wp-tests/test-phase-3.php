@@ -231,6 +231,64 @@ function hdit_run_phase_3(): void {
 		! str_contains( $manager_home, 'گواهینامه' )
 		&& ! str_contains( $manager_home, 'تیکت' ) );
 
+	// ── In-panel course management (AI Studio "مدیریت دوره‌ها" / "دوره‌های ویژه") ──
+	wp_set_current_user( $manager );
+	$_GET['view'] = 'courses';
+	ob_start();
+	Hedayati_Staff_Portal::render();
+	$courses_view = (string) ob_get_clean();
+	HDIT::ok( 'manager courses view lists the real course by title', str_contains( $courses_view, get_the_title( $course ) ) );
+	HDIT::ok( 'manager courses view offers nonce-protected feature + publish toggle forms',
+		str_contains( $courses_view, 'hedayati_staff_course_feature' )
+		&& str_contains( $courses_view, 'hedayati_staff_course_publish' )
+		&& str_contains( $courses_view, 'name="_wpnonce"' ) );
+	HDIT::ok( 'manager courses view sends full editing to the WordPress editor', str_contains( $courses_view, 'ویرایش در ویرایشگر' ) );
+
+	$_GET['view'] = 'featured';
+	ob_start();
+	Hedayati_Staff_Portal::render();
+	$featured_view = (string) ob_get_clean();
+	HDIT::ok( 'manager featured view renders the curation grid', str_contains( $featured_view, 'hd-manager-feature-grid' ) );
+	unset( $_GET['view'] );
+	wp_set_current_user( 0 );
+
+	// Reception (no hedayati_manage_courses) never sees the in-panel course table,
+	// and the toggle handler rejects them outright.
+	wp_set_current_user( $reception );
+	$nonce_rcpt_feat = wp_create_nonce( 'hedayati_staff_course_feature' );
+	$_GET['view'] = 'courses';
+	ob_start();
+	Hedayati_Staff_Portal::render();
+	$rcpt_view = (string) ob_get_clean();
+	HDIT::ok( 'reception does not get the in-panel course table', ! str_contains( $rcpt_view, 'hd-manager-table' ) );
+	unset( $_GET['view'] );
+	wp_set_current_user( 0 );
+	HDIT_AdminPost::run( $reception, [
+		'_wpnonce'  => $nonce_rcpt_feat,
+		'course_id' => (string) $course,
+	], static fn() => Hedayati_Staff_Portal::handle_course_feature() );
+	HDIT::eq( 'reception cannot toggle a course featured flag (403)', 403, HDIT_AdminPost::$result['status'] ?? 0 );
+	HDIT::ok( 'reception attempt left the course flag untouched', ! get_post_meta( $course, '_course_is_featured', true ) );
+
+	// Manager toggles the flag on, then off, through the real handler (PRG redirect on success).
+	wp_set_current_user( $manager );
+	$nonce_mgr_feat = wp_create_nonce( 'hedayati_staff_course_feature' );
+	wp_set_current_user( 0 );
+	HDIT_AdminPost::run( $manager, [
+		'_wpnonce'  => $nonce_mgr_feat,
+		'course_id' => (string) $course,
+	], static fn() => Hedayati_Staff_Portal::handle_course_feature() );
+	HDIT::ok( 'manager feature toggle sets _course_is_featured', (bool) get_post_meta( $course, '_course_is_featured', true ) );
+
+	wp_set_current_user( $manager );
+	$nonce_mgr_feat2 = wp_create_nonce( 'hedayati_staff_course_feature' );
+	wp_set_current_user( 0 );
+	HDIT_AdminPost::run( $manager, [
+		'_wpnonce'  => $nonce_mgr_feat2,
+		'course_id' => (string) $course,
+	], static fn() => Hedayati_Staff_Portal::handle_course_feature() );
+	HDIT::ok( 'manager feature toggle clears the flag on the second call', ! get_post_meta( $course, '_course_is_featured', true ) );
+
 	wp_set_current_user( $teacher );
 	HDIT::ok( 'a teacher cannot edit a course post', ! current_user_can( 'edit_post', $course ) );
 	HDIT::ok( 'a teacher cannot manage the course-category taxonomy', ! current_user_can( get_taxonomy( 'course-category' )->cap->manage_terms ) );

@@ -1,5 +1,19 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
+## AI Studio manager panel — course/featured tabs (2026-09-06) — FEATURE BRANCH, static-green, Docker NOT re-run
+
+Recovery: the disappeared Codex WIP was preserved on `snapshot/chatgpt-work-recovery-2026-09-06`
+(`5706193`) and adopted as the `feature/manager-experience` baseline (`59ce4ee`). Nothing discarded.
+
+Owner decision **D45** (supersedes "manager uses wp-admin for launch"): the AI-Studio-style
+`/panel/` is the primary manager UX; wp-admin is a fallback. First increment on top of the recovered
+WIP: in-panel `?view=courses` + `?view=featured` (real `course` CPT + `_course_is_featured`,
+nonce + `edit_post` guarded toggles, server-side 8-slot cap), manager nav/dashboard routed to them.
+`docs/AI_STUDIO_PANEL_MATRIX.md` is the full option-by-option matrix + the 7 open owner decisions.
+Node static **769/0**. `docker/wp-tests/test-phase-3.php` extended but **not run here** (no Docker) —
+must pass `Acceptance (Docker WordPress)` in CI on push before merge. New views not browser-reviewed
+yet. NOT pushed/merged/deployed.
+
 ## AI Studio portal experience (2026-09-06) — FEATURE BRANCH, GREEN, NOT MERGED
 
 `feature/manager-experience` adapts the owner-supplied AI Studio concept into the real WordPress

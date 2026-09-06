@@ -97,6 +97,12 @@ assert('manager workspace is capability-based, not tied to a role name', staff.i
 assert('manager dashboard metrics come from real WordPress/service data', staff.includes("wp_count_posts( 'course' )") && staff.includes('Hedayati_Course_Run_Service::count_active()') && staff.includes('Hedayati_Enrollment_Service::count_active_students()'));
 assert('manager dashboard links only to implemented operational modules', staff.includes("__( 'دوره‌ها و محتوای آموزشی'") && staff.includes("__( 'عملیات آموزشی'") && !staff.includes("__( 'صدور گواهینامه'"));
 assert('manager dashboard emits no direct database queries', !staff.includes('$wpdb'));
+// ── in-panel course management (AI Studio "مدیریت دوره‌ها" / "دوره‌های ویژه") ──
+assert('in-panel course + featured views are capability-gated in the guard and the router', staff.includes("in_array( $view, [ 'courses', 'featured' ], true ) && ! current_user_can( 'hedayati_manage_courses' )") && staff.includes("'courses' === $view && current_user_can( 'hedayati_manage_courses' )") && staff.includes("'featured' === $view && current_user_can( 'hedayati_manage_courses' )"));
+assert('course feature/publish toggles are nonce+capability guarded admin-post actions', staff.includes("'course_feature' => 'hedayati_manage_courses'") && staff.includes("'course_publish' => 'hedayati_manage_courses'") && staff.includes('public static function handle_course_feature()') && staff.includes('public static function handle_course_publish()') && staff.includes("self::verify( 'course_feature' )") && staff.includes("self::verify( 'course_publish' )"));
+assert('feature toggle re-checks edit_post ownership and enforces the 8-slot cap server-side', staff.includes("current_user_can( 'edit_post', $course_id )") && staff.includes('self::featured_count() >= self::FEATURED_LIMIT') && staff.includes("const FEATURED_LIMIT = 8"));
+assert('course list reads real course data, not mock fixtures', staff.includes("'post_type'      => 'course'") && staff.includes("get_post_meta( $course_id, '_course_english_name', true )") && staff.includes("get_the_term_list( $course_id, 'course-category'") && !staff.includes('initialCourses') && !staff.includes('studentList'));
+assert('full course editing stays in the WordPress editor (no field mutation form in the panel)', staff.includes('ویرایش در ویرایشگر') && staff.includes("get_edit_post_link( $course_id )"));
 
 // ── 4. class-public-content.php ────────────────────────────────────────────
 console.log('\n4. class-public-content.php (Hedayati_Public_Content):');
@@ -162,7 +168,8 @@ assert('page.php keeps .entry-content so existing block styling still applies', 
 assert('page.php has the shared skip-link target + role=main', page.includes('id="site-main"') && page.includes('role="main"'));
 assert('page.php only reveals teachers via Hedayati_Public_Content::teachers()', page.includes('Hedayati_Public_Content::teachers()'));
 const panelPage = readTheme('page-panel.php');
-assert('manager panel shell exposes the real operational navigation', panelPage.includes('is_manager_workspace()') && panelPage.includes('دوره‌ها و صفحه نخست') && panelPage.includes('عملیات آموزشی'));
+assert('manager panel shell exposes the real operational navigation', panelPage.includes('is_manager_workspace()') && panelPage.includes('دوره‌ها و محتوای آموزشی') && panelPage.includes('عملیات آموزشی'));
+assert('manager sidebar links courses/featured to the in-panel views, not wp-admin', panelPage.includes("Hedayati_Staff_Portal::url( [ 'view' => 'courses' ] )") && panelPage.includes("Hedayati_Staff_Portal::url( [ 'view' => 'featured' ] )") && panelPage.includes("'courses' === $hd_view ? ' is-active'"));
 const single = readTheme('single-course.php');
 assert('single-course gates teacher/fee/date behind the publication opt-in', single.includes("_hedayati_public_catalog_details"));
 assert('single-course renders the public-runs part', single.includes("get_template_part( 'template-parts/public-runs'"));
@@ -192,6 +199,7 @@ assert('account.css: sidebar has min-width:0 (no mobile horizontal overflow)', /
 assert('account.css: nav-link cards (a.hd-portal-card) have their own actionable treatment', acctCss.includes('a.hd-portal-card'));
 assert('account.css: run/roster/result lists are styled', acctCss.includes('.hd-portal-run-list') && acctCss.includes('.hd-portal-roster') && acctCss.includes('.hd-portal-result-list'));
 assert('account.css: compact attendance rows', acctCss.includes('.hd-portal-attendance'));
+assert('account.css: in-panel course table + featured picker styled and collapse on mobile', acctCss.includes('.hd-manager-table') && acctCss.includes('.hd-manager-feature-grid') && acctCss.includes('.hd-manager-toggle-btn') && /max-width:\s*620px[\s\S]*\.hd-manager-th\s*\{\s*display:\s*none/.test(acctCss));
 assert('account.css: one-shot secret code block is display:block / centered', /\.hd-portal-secret code\s*\{[^}]*display:\s*block/.test(acctCss));
 assert('account.css: mobile collapses portal cards to one column', /max-width:\s*900px[\s\S]*\.hd-portal-cards\s*\{\s*grid-template-columns:\s*1fr/.test(acctCss));
 assert('account.css: forced-change hides header nav/cta', acctCss.includes('.hd-force-password .header-nav'));

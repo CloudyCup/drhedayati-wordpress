@@ -6,13 +6,31 @@ with real service counts and capability-gated routes to every existing secured w
 now has the matching student dashboard and a real read-only upcoming-class schedule derived only
 from the signed-in student's active enrollments and future sessions. All earlier management and
 student actions remain available. Prototype-only consultation, certificate, progress, support,
-notification, and magazine modules are not presented as built. Static suites: **762/0**. Real
+notification, and magazine modules are not presented as built.
+
+**2026-09-06 (continued, `feature/manager-experience`):** the recovered Codex WIP was preserved
+(`snapshot/chatgpt-work-recovery-2026-09-06` @ `5706193`) and adopted as the branch baseline.
+Added on top: the AI Studio "مدیریت دوره‌ها" and "دوره‌های ویژه" tabs as **in-panel** views on
+`/panel/` (`?view=courses`, `?view=featured`) — a real `course` CPT table with search, a
+featured-only filter, and nonce + `edit_post`-guarded feature/publish toggles (the 8-slot homepage
+cap is enforced server-side). Full per-field course editing intentionally stays in the Gutenberg
+editor, opened from the row. Manager sidebar + dashboard now route to these in-panel views instead
+of wp-admin. `docs/AI_STUDIO_PANEL_MATRIX.md` is the authoritative option-by-option comparison and
+lists the seven remaining owner decisions (consultation, progress, certificates, materials,
+tickets, notifications, in-panel settings form). Node static suites **769/0**. Docker real-WordPress
+acceptance: **NOT RE-RUN in this environment** (no Docker/WSL2) — extended `docker/wp-tests/test-phase-3.php`
+must be run in CI on push before merge. No browser review of the new course/featured views yet.
+Not merged, pushed, or deployed. See D44/D45.
+
+Static suites (as of the schedule increment): **762/0**. Real
 WordPress runtime acceptance: **499/0, PASS, cleanup verified**. The manager and student dashboards,
 and the student schedule, were browser-reviewed at desktop/mobile widths in Persian RTL and
 light/dark modes with no page-level horizontal overflow. See D44 and
 `docs/AI_STUDIO_INTEGRATION.md`. This branch has not been merged, pushed, or deployed.
 
-**Last documentation update:** 2026-09-05 (Phase 3) — **Phase 3 "launch completion" is implemented
+**Last documentation update:** 2026-09-06 (manager-experience: recovery + in-panel course/featured tabs, D45).
+
+**Prior — 2026-09-05 (Phase 3):** **Phase 3 "launch completion" is implemented
 and merged into `main`, followed by the plugin `1.8.1` lockout-expiry hotfix, with GREEN local
 WordPress acceptance (492/0) and GREEN Node static suites (752/0). STAGING VALIDATION IN PROGRESS;
 NOT deployed to production.** Phase 3 absorbs the prior Codex/ChatGPT

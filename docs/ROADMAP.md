@@ -127,11 +127,14 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ## P2 — enhancements
 
-- **AI Studio manager and student experience — implemented on `feature/manager-experience`.**
-  Unified `/panel/` manager home, matching `/account/` learning dashboard, and an owner-scoped
-  upcoming-class schedule are built and locally green. Consultation, progress, certificates,
-  support, notifications, and magazine remain separate modules with their own policy and acceptance
-  gates; follow `docs/AI_STUDIO_INTEGRATION.md`.
+- **AI Studio manager and student experience — in progress on `feature/manager-experience` (D45).**
+  Built: unified `/panel/` manager home, matching `/account/` learning dashboard, owner-scoped
+  upcoming-class schedule, and the in-panel **course table + featured curation** tabs
+  (`?view=courses`, `?view=featured`) against the real course CPT with capability/nonce-guarded
+  toggles. Node static green (769/0); Docker CI + browser review still pending. Consultation,
+  progress, certificates, materials, support, notifications, and an in-panel Settings form remain
+  separate modules with their own policy + acceptance gates — see `docs/AI_STUDIO_PANEL_MATRIX.md`
+  §E and `docs/AI_STUDIO_INTEGRATION.md`.
 - Improved course-authoring editor UX (structured fields currently sit below a large Gutenberg
   canvas).
 - Change the `course_cat_order` default so unordered categories don't sort to the front. ❓ (small

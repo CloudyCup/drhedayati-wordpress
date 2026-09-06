@@ -1,5 +1,23 @@
 # Defects and acceptance gaps
 
+## Manager panel — AI Studio course/featured tabs (2026-09-06) — OPEN GATES
+
+Not defects in delivered code, but **release gates** for `feature/manager-experience`:
+
+- **G-1 — Docker real-WordPress acceptance not run.** No PHP/Docker in the dev environment. The
+  extended `docker/wp-tests/test-phase-3.php` (in-panel course view, nonce/capability-guarded
+  feature+publish toggles, reception denial, 8-slot cap) must pass `Acceptance (Docker WordPress)`
+  in CI on the next branch push. Until then runtime behaviour of the new views is unverified.
+- **G-2 — No browser review** of `/panel/?view=courses` and `?view=featured` at desktop/mobile
+  widths, Persian RTL, light/dark. The manager dashboard + student portal from the earlier
+  increment were reviewed; these two views were not.
+- **G-3 — Seven owner decisions block full AI Studio parity** (consultation requests, student
+  progress %, certificates + public verification, per-session course materials, support tickets,
+  notifications, in-panel Settings form). Tracked in `docs/AI_STUDIO_PANEL_MATRIX.md` §E.
+- **G-4 — `wp_update_post()` on `post_status` from the front-end** (`handle_course_publish`) runs
+  outside the Gutenberg editor context. Re-check in the Docker run that a manager toggling
+  publish/draft does not trip `map_meta_cap` edge cases for `private`/`future` posts.
+
 ## Phase 3 (2026-09-05) — HD-007, HD-008, HD-009: latent capability defects, FIXED
 
 Found during the Phase 3 reconciliation of the adopted Codex/ChatGPT WIP; all three are

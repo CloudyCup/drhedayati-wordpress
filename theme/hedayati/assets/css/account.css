@@ -448,6 +448,220 @@ a.hd-portal-card:focus-visible::after {
 	white-space: nowrap;
 }
 
+/* In-panel course management (AI Studio "مدیریت دوره‌ها" / "دوره‌های ویژه"). */
+.hd-manager-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	margin: 18px 0;
+	padding: 14px;
+	border: 1px solid var(--hd-line);
+	border-radius: var(--hd-radius);
+	background: var(--hd-surface);
+}
+
+.hd-manager-toolbar .hd-portal-field {
+	flex: 1 1 220px;
+	margin: 0;
+}
+
+.hd-manager-check {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	font-size: .82rem;
+	color: var(--hd-muted);
+	white-space: nowrap;
+}
+
+.hd-manager-table {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--hd-line);
+	border-radius: var(--hd-radius);
+	overflow: hidden;
+	background: var(--hd-surface);
+}
+
+.hd-manager-tr {
+	display: grid;
+	grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.1fr) minmax(0, .7fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+	align-items: center;
+	gap: 12px;
+	padding: 12px 16px;
+	border-block-start: 1px solid var(--hd-line);
+	font-size: .84rem;
+}
+
+.hd-manager-tr:first-child {
+	border-block-start: 0;
+}
+
+.hd-manager-th {
+	background: var(--hd-surface2);
+	color: var(--hd-muted);
+	font-size: .74rem;
+	font-weight: 800;
+}
+
+.hd-manager-course-cell {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.hd-manager-course-cell small {
+	color: var(--hd-muted);
+	font-size: .72rem;
+}
+
+.hd-manager-toggle {
+	margin: 0;
+}
+
+.hd-manager-toggle-btn,
+.hd-manager-feature-btn {
+	cursor: pointer;
+	font: inherit;
+}
+
+.hd-manager-toggle-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 11px;
+	border: 1px solid var(--hd-line);
+	border-radius: 999px;
+	background: var(--hd-bg);
+	color: var(--hd-muted);
+	font-size: .76rem;
+	font-weight: 700;
+	transition: border-color var(--hd-transition), background var(--hd-transition), color var(--hd-transition);
+}
+
+.hd-manager-toggle-btn::before {
+	content: "";
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: currentColor;
+}
+
+.hd-manager-toggle-btn.is-on {
+	border-color: var(--hd-red-border);
+	background: var(--hd-red-light);
+	color: var(--hd-red-dark);
+}
+
+.hd-manager-toggle-btn:hover,
+.hd-manager-toggle-btn:focus-visible {
+	border-color: var(--hd-red-border);
+}
+
+.hd-manager-row-edit {
+	color: var(--hd-red-dark);
+	font-size: .78rem;
+	font-weight: 700;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.hd-manager-feature-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	gap: 10px;
+	margin-top: 16px;
+}
+
+.hd-manager-feature-item {
+	margin: 0;
+}
+
+.hd-manager-feature-btn {
+	display: grid;
+	grid-template-columns: 34px minmax(0, 1fr);
+	align-items: center;
+	gap: 11px;
+	width: 100%;
+	padding: 13px 14px;
+	border: 1px solid var(--hd-line);
+	border-radius: var(--hd-radius);
+	background: var(--hd-surface);
+	color: var(--hd-ink);
+	text-align: start;
+	transition: border-color var(--hd-transition), background var(--hd-transition);
+}
+
+.hd-manager-feature-btn > span:last-child {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.hd-manager-feature-btn small {
+	color: var(--hd-muted);
+	font-size: .72rem;
+}
+
+.hd-manager-feature-star {
+	font-size: 1.5rem;
+	line-height: 1;
+	color: var(--hd-muted);
+}
+
+.hd-manager-feature-btn.is-on {
+	border-color: var(--hd-red-border);
+	background: var(--hd-red-light);
+}
+
+.hd-manager-feature-btn.is-on .hd-manager-feature-star {
+	color: #ffb703;
+}
+
+.hd-manager-feature-btn:hover,
+.hd-manager-feature-btn:focus-visible {
+	border-color: var(--hd-red-border);
+}
+
+@media (max-width: 900px) {
+	.hd-manager-tr {
+		grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+	}
+
+	.hd-manager-tr > span:nth-child(3),
+	.hd-manager-th > span:nth-child(3) {
+		display: none;
+	}
+}
+
+@media (max-width: 620px) {
+	.hd-manager-table {
+		border: 0;
+		background: transparent;
+		gap: 10px;
+	}
+
+	.hd-manager-th {
+		display: none;
+	}
+
+	.hd-manager-tr {
+		grid-template-columns: 1fr 1fr;
+		border: 1px solid var(--hd-line);
+		border-radius: var(--hd-radius);
+		background: var(--hd-surface);
+	}
+
+	.hd-manager-course-cell {
+		grid-column: 1 / -1;
+	}
+
+	.hd-manager-tr > span:nth-child(2) {
+		display: none;
+	}
+}
+
 /* Student workspace: the same panel language with learning-focused content. */
 .hd-student-main {
 	background:

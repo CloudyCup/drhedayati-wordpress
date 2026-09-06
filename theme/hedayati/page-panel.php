@@ -14,7 +14,10 @@ get_header();
    <ul class="hd-portal-nav">
     <li><a class="hd-portal-nav-link<?php echo '' === $hd_view ? ' is-active' : ''; ?>" href="<?php echo esc_url( Hedayati_Staff_Portal::url() ); ?>"><?php echo $hd_is_manager ? 'داشبورد جامع' : 'پنل آموزش'; ?></a></li>
     <?php if ( current_user_can( 'hedayati_lookup_students' ) ) : ?><li><a class="hd-portal-nav-link<?php echo 'students' === $hd_view ? ' is-active' : ''; ?>" href="<?php echo esc_url( Hedayati_Staff_Portal::url( [ 'view' => 'students' ] ) ); ?>">پذیرش و دانشجویان</a></li><?php endif; ?>
-    <?php if ( $hd_is_manager && current_user_can( 'hedayati_manage_courses' ) ) : ?><li><a class="hd-portal-nav-link" href="<?php echo esc_url( admin_url( 'edit.php?post_type=course' ) ); ?>">دوره‌ها و صفحه نخست</a></li><?php endif; ?>
+    <?php if ( $hd_is_manager && current_user_can( 'hedayati_manage_courses' ) ) : ?>
+     <li><a class="hd-portal-nav-link<?php echo 'courses' === $hd_view ? ' is-active' : ''; ?>" href="<?php echo esc_url( Hedayati_Staff_Portal::url( [ 'view' => 'courses' ] ) ); ?>">دوره‌ها و محتوای آموزشی</a></li>
+     <li><a class="hd-portal-nav-link<?php echo 'featured' === $hd_view ? ' is-active' : ''; ?>" href="<?php echo esc_url( Hedayati_Staff_Portal::url( [ 'view' => 'featured' ] ) ); ?>">دوره‌های ویژهٔ صفحهٔ نخست</a></li>
+    <?php endif; ?>
     <?php if ( $hd_is_manager && current_user_can( 'hedayati_manage_course_runs' ) ) : ?><li><a class="hd-portal-nav-link" href="<?php echo esc_url( admin_url( 'admin.php?page=hedayati-academic' ) ); ?>">عملیات آموزشی</a></li><?php endif; ?>
     <?php if ( $hd_is_manager && current_user_can( 'hedayati_manage_teachers' ) ) : ?><li><a class="hd-portal-nav-link" href="<?php echo esc_url( admin_url( 'edit.php?post_type=teacher' ) ); ?>">اساتید</a></li><?php endif; ?>
     <?php if ( $hd_is_manager && current_user_can( 'hedayati_verify_students' ) ) : ?><li><a class="hd-portal-nav-link" href="<?php echo esc_url( admin_url( 'admin.php?page=hedayati-students' ) ); ?>">احراز هویت</a></li><?php endif; ?>

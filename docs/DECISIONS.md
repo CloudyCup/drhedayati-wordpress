@@ -571,3 +571,30 @@ rules. See `docs/AI_STUDIO_INTEGRATION.md`.
 safely operate an institute. Incremental integration gives staff a coherent workspace without
 discarding tested WordPress authorization, persistence, audit, and privacy controls or delaying the
 current launch candidate for several unrelated systems.
+
+## D45 — The AI-Studio-style panel is the primary manager UX; wp-admin becomes a fallback (2026-09-06)
+
+**Decided (owner):** the custom AI-Studio-inspired `/panel/` experience is now the authoritative
+manager/staff UX direction. This **supersedes the earlier D-series position that `hedayati_manager`
+would simply use wp-admin for launch**. wp-admin remains available as an underlying/admin fallback
+(and still hosts mature editors — the Gutenberg course editor, the academic-operations screen, the
+Settings API page, the audit-log viewer), but it is no longer the intended primary manager surface.
+
+**Scope of the first delivered increment:** the manager `/panel/` shell is role-aware
+(`Hedayati_Staff_Portal::is_manager_workspace()`); the manager home shows live non-sensitive KPIs
+and capability-gated operations cards; the AI Studio "مدیریت دوره‌ها" and "دوره‌های ویژه" tabs are
+implemented in-panel (`?view=courses`, `?view=featured`) against the real `course` CPT and
+`_course_is_featured` meta, with nonce + `edit_post` guarded toggle handlers and the 8-slot cap
+enforced server-side. Every capability + object-scope check is server-side; navigation only hides
+what a role cannot use.
+
+**Not built (each needs an institute policy/data-model decision — tracked in
+`docs/AI_STUDIO_PANEL_MATRIX.md` §E):** consultation requests, student progress %, certificates &
+public verification, per-session course materials, support tickets, notifications. The AI Studio
+mock data for these (fake students, capacities, counters, "۲۰+ سال"/"۱۵K+" stats) is **not**
+reproduced anywhere.
+
+**Why:** the prototype's interface concept is strong and the owner wants it; its browser-local mock
+data cannot operate an institute. Porting the safe, real-backend tabs now gives the manager a
+coherent custom workspace without inventing backend behaviour or reviving the React/Express/Prisma
+stack (still prohibited — D-series, AGENTS.md §5).

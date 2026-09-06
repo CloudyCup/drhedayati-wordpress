@@ -16,8 +16,8 @@ WordPress plugin as the source of truth. The React app is never shipped or conne
 |---|---|---|
 | Manager dashboard and quick actions | Existing operations were split between `/panel/` and wp-admin | **Implemented on feature branch:** designed `/panel/` manager home with live, non-sensitive counts and capability-gated links |
 | Student dashboard | Existing secure account views had a simpler presentation | **Implemented on feature branch:** AI Studio-inspired learning dashboard while retaining profile, verification, enrollment, and document workflows |
-| Courses | Course CPT, fields, categories, publish state | Reached from the manager home; keep the mature WordPress editor for now |
-| Homepage featured courses | `_course_is_featured`, homepage query, maximum display of eight | Reached from the manager home; a dedicated curation screen may follow after staff usage review |
+| Courses | Course CPT, fields, categories, publish state | **Implemented in-panel (2026-09-06):** `/panel/?view=courses` — real course table, search, featured filter, nonce + `edit_post`-guarded feature/publish toggles; per-field editing stays in the Gutenberg editor, opened from the row |
+| Homepage featured courses | `_course_is_featured`, homepage query, maximum display of eight | **Implemented in-panel (2026-09-06):** `/panel/?view=featured` curation grid; 8-slot cap enforced server-side in `handle_course_feature()` |
 | Students and registrations | Student accounts, Course Runs, enrollments, reception workflow | Reached through the real front-end reception workspace and academic operations |
 | Institute settings | Capability-gated Settings API page | Reached from the manager home |
 | Teachers | Teacher CPT and explicit public opt-in | Reached from the manager home |
