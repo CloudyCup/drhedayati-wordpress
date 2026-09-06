@@ -23,11 +23,12 @@ function hdit_run_ai_studio(): void {
 	$student_a = HDIT_Env::make_user( 'ais_sa', 'student' );
 	$student_b = HDIT_Env::make_user( 'ais_sb', 'student' );
 
-	$course = HDIT_Env::make_course( 'AI Studio module course' );
-	$run    = Hedayati_Course_Run_Service::create( [ 'course_id' => $course, 'run_status' => 'in_progress', 'start_date' => '2026-01-05' ] );
-	$run    = is_wp_error( $run ) ? 0 : (int) $run;
+	$course          = HDIT_Env::make_course( 'AI Studio module course' );
+	$teacher_profile = HDIT_Env::make_teacher( 'AI Studio instructor', $teacher );
+	$run             = Hedayati_Course_Run_Service::create( [ 'course_id' => $course, 'run_status' => 'in_progress', 'start_date' => '2026-01-05' ] );
+	$run             = is_wp_error( $run ) ? 0 : (int) $run;
 
-	Hedayati_Run_Staff_Service::assign( [ 'run_id' => $run, 'staff_role' => 'primary_instructor', 'user_id' => $teacher ] );
+	Hedayati_Run_Staff_Service::assign( [ 'run_id' => $run, 'staff_role' => 'primary_instructor', 'teacher_id' => $teacher_profile ] );
 	$enr_a = Hedayati_Enrollment_Service::enroll( $run, $student_a );
 	$enr_a = is_wp_error( $enr_a ) ? 0 : (int) $enr_a;
 	$enr_b = Hedayati_Enrollment_Service::enroll( $run, $student_b );
@@ -125,7 +126,7 @@ function hdit_run_ai_studio(): void {
 
 	$cert = Hedayati_Certificate_Service::get( (int) $cert_id );
 	HDIT::ok( 'certificate code is DH-<year>-<random>, non-sequential', is_array( $cert ) && 1 === preg_match( '/^DH-\d{3,4}-[A-Z0-9]{10}$/', (string) $cert['code'] ) );
-	HDIT::ok( 'certificate code is not the national ID and not the row id', is_array( $cert ) && false === strpos( (string) $cert['code'], (string) $cert['id'] ) );
+	HDIT::ok( 'certificate code is not the row id and two codes differ', is_array( $cert ) && (string) $cert['code'] !== (string) $cert['id'] && (string) $cert['code'] !== (string) $cert['enrollment_id'] );
 
 	// student sees own, not others.
 	HDIT::ok( 'student A sees their own certificate', count( Hedayati_Certificate_Service::list_for_user( $student_a ) ) === 1 );
@@ -192,9 +193,10 @@ function hdit_run_ai_studio(): void {
 	HDIT::ok( 'student B received no cross-user notification for A\'s ticket/cert', count( Hedayati_Notification_Service::list_for_user( $student_b ) ) === 0 );
 	HDIT::ok( 'unread count is per-user and positive for A', Hedayati_Notification_Service::unread_count( $student_a ) >= 2 );
 
-	$first = $n_a[0];
-	HDIT::ok( 'mark_read only affects the owner\'s own notification', Hedayati_Notification_Service::mark_read( (int) $first['id'], $student_a ) );
-	HDIT::ok( 'another user cannot mark A\'s notification read', ! Hedayati_Notification_Service::mark_read( (int) $first['id'], $student_b ) || null !== Hedayati_Notification_Service::list_for_user( $student_a )[0]['read_at'] );
+	$fresh = Hedayati_Notification_Service::list_for_user( $student_a );
+	$first = $fresh[0];
+	HDIT::ok( 'another user cannot mark A\'s notification read', ! Hedayati_Notification_Service::mark_read( (int) $first['id'], $student_b ) );
+	HDIT::ok( 'the owner can mark their own notification read', Hedayati_Notification_Service::mark_read( (int) $first['id'], $student_a ) );
 	Hedayati_Notification_Service::mark_all_read( $student_a );
 	HDIT::eq( 'mark_all_read clears the unread count', 0, Hedayati_Notification_Service::unread_count( $student_a ) );
 

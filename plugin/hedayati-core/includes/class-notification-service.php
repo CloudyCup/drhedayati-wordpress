@@ -107,13 +107,20 @@ class Hedayati_Notification_Service {
 	public static function mark_read( int $id, int $user_id ): bool {
 		global $wpdb;
 
-		$table = Hedayati_DB_Schema::get_table_notifications();
-		return false !== $wpdb->query( $wpdb->prepare(
+		if ( $id <= 0 || $user_id <= 0 ) {
+			return false;
+		}
+
+		$table    = Hedayati_DB_Schema::get_table_notifications();
+		$affected = $wpdb->query( $wpdb->prepare(
 			"UPDATE {$table} SET read_at = %s WHERE id = %d AND user_id = %d AND read_at IS NULL",
 			current_time( 'mysql', true ),
 			$id,
 			$user_id
 		) );
+
+		// Return true only if a row the caller actually owns was updated.
+		return is_int( $affected ) && $affected > 0;
 	}
 
 	public static function mark_all_read( int $user_id ): void {
