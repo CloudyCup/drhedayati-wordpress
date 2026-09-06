@@ -2,10 +2,11 @@
  * Hedayati Theme — Main Stylesheet
  * Design: Concept C / Navigator
  *
- * Font note: Vazirmatn will be self-hosted and loaded via functions.php once
- * final font files are approved. Do NOT add @import here. The stack below
- * falls back to system Persian fonts available on most Persian-language OS
- * configurations (Windows/macOS/Android/iOS).
+ * Font: Vazirmatn is self-hosted (Phase 3) — the variable WOFF2 in
+ * assets/fonts/ (SIL OFL, assets/fonts/OFL.txt) is declared once below and
+ * enqueued site-wide via functions.php. No @import, no CDN. The --hd-font
+ * stack still lists system Persian fallbacks for the swap window / a missing
+ * file.
  *
  * Structure:
  *   1. Design Tokens (light + dark)
@@ -28,6 +29,19 @@
  *  18. 404 + Misc
  *  19. Responsive
  */
+
+/* ─────────────────────────────────────────────────────────────
+   0. SELF-HOSTED FONT (Vazirmatn variable, SIL OFL — assets/fonts/OFL.txt)
+───────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('../fonts/Vazirmatn-variable.woff2') format('woff2-variations'),
+       url('../fonts/Vazirmatn-variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* ─────────────────────────────────────────────────────────────
    1. DESIGN TOKENS

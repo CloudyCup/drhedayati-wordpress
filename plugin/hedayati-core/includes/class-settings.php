@@ -26,21 +26,57 @@ class Hedayati_Settings {
 	private const OPTION_GROUP = 'hedayati_institute';
 	private const OPTION_NAME  = 'hedayati_institute_settings';
 	private const PAGE_SLUG    = 'hedayati-settings';
-	private const CAPABILITY   = 'manage_options';
+	public const CAPABILITY    = 'hedayati_manage_settings';
 
 	/**
 	 * Default values for every field.
 	 */
 	private const DEFAULTS = [
+		'institute_name' => '',
 		'phone_consult'  => '',
 		'phone_tabriz'   => '',
 		'phone_tehran'   => '',
 		'address_tabriz' => '',
+		'address_tehran' => '',
 	];
+
+	/** Canonical field list + labels — the single source of truth for both the
+	 *  wp-admin Settings API screen and the in-panel form (Hedayati_Panel_Settings). */
+	public static function field_labels(): array {
+		return [
+			'institute_name' => __( 'نام رسمی مجتمع', 'hedayati-core' ),
+			'phone_consult'  => __( 'تلفن مشاوره و ثبت‌نام', 'hedayati-core' ),
+			'phone_tabriz'   => __( 'تلفن تبریز', 'hedayati-core' ),
+			'phone_tehran'   => __( 'تلفن تهران', 'hedayati-core' ),
+			'address_tabriz' => __( 'آدرس تبریز', 'hedayati-core' ),
+			'address_tehran' => __( 'آدرس تهران', 'hedayati-core' ),
+		];
+	}
+
+	public static function is_textarea( string $key ): bool {
+		return in_array( $key, [ 'address_tabriz', 'address_tehran' ], true );
+	}
+
+	/** All current values (defaults merged). */
+	public static function all(): array {
+		$stored = get_option( self::OPTION_NAME, [] );
+		return array_merge( self::DEFAULTS, is_array( $stored ) ? $stored : [] );
+	}
+
+	/**
+	 * Persist settings through the SAME canonical sanitizer + option name the
+	 * Settings API screen uses. Used by the in-panel form (D52). Caller enforces
+	 * capability + nonce.
+	 */
+	public static function update( array $input ): void {
+		update_option( self::OPTION_NAME, self::sanitize_all( $input ) );
+	}
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
 	public static function init(): void {
+		// options.php checks this separately from the menu/page capability.
+		add_filter( 'option_page_capability_' . self::OPTION_GROUP, static fn() => self::CAPABILITY );
 		add_action( 'admin_menu',    [ self::class, 'add_page'    ] );
 		add_action( 'admin_init',    [ self::class, 'register'    ] );
 	}
@@ -77,14 +113,7 @@ class Hedayati_Settings {
 			self::PAGE_SLUG
 		);
 
-		$fields = [
-			'phone_consult'  => 'تلفن مشاوره و ثبت‌نام',
-			'phone_tabriz'   => 'تلفن تبریز',
-			'phone_tehran'   => 'تلفن تهران',
-			'address_tabriz' => 'آدرس تبریز',
-		];
-
-		foreach ( $fields as $key => $label ) {
+		foreach ( self::field_labels() as $key => $label ) {
 			add_settings_field(
 				'hedayati_' . $key,
 				$label,
@@ -108,7 +137,7 @@ class Hedayati_Settings {
 		$name    = self::OPTION_NAME . '[' . esc_attr( $key ) . ']';
 		$id      = 'hedayati_field_' . esc_attr( $key );
 
-		if ( 'address_tabriz' === $key ) {
+		if ( self::is_textarea( $key ) ) {
 			printf(
 				'<textarea id="%s" name="%s" rows="3" class="large-text">%s</textarea>',
 				esc_attr( $id ),
@@ -166,8 +195,14 @@ class Hedayati_Settings {
 			}
 		}
 
-		if ( isset( $input['address_tabriz'] ) ) {
-			$out['address_tabriz'] = sanitize_textarea_field( wp_unslash( (string) $input['address_tabriz'] ) );
+		foreach ( [ 'address_tabriz', 'address_tehran' ] as $key ) {
+			if ( isset( $input[ $key ] ) ) {
+				$out[ $key ] = sanitize_textarea_field( wp_unslash( (string) $input[ $key ] ) );
+			}
+		}
+
+		if ( isset( $input['institute_name'] ) ) {
+			$out['institute_name'] = mb_substr( sanitize_text_field( wp_unslash( (string) $input['institute_name'] ) ), 0, 190 );
 		}
 
 		return $out;

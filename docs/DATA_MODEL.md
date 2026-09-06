@@ -11,7 +11,7 @@ staging install uses a non-`wp_` randomized prefix. Code always uses `$wpdb->pre
 
 | Entity | Use |
 |---|---|
-| `wp_users` / `wp_usermeta` | ✅ Identity authority — usernames, password hashes, sessions, email, display name. Phase 2C foundation adds student **address** fields in usermeta (`hedayati_address` / `hedayati_city` / `hedayati_postal_code`); national ID / verification / documents are **not** stored (blocked — see `docs/OPEN_QUESTIONS.md` Q10–Q13). |
+| `wp_users` / `wp_usermeta` | ✅ Identity authority — usernames, password hashes, sessions, email, display name. Phase 2C adds student **address** fields in usermeta (`hedayati_address` / `hedayati_city` / `hedayati_postal_code`). National ID and verification state live in the dedicated `hedayati_student_verification` table (below), not usermeta — encryption + DB-level duplicate detection need a real table. |
 | Posts — `post` type `course` | ✅ Course catalog entries. |
 | Posts — `page` | ✅ (planned content) About / Contact / consultation / articles. |
 | Post revisions | ✅ Enabled for `course`. |
@@ -20,7 +20,7 @@ staging install uses a non-`wp_` randomized prefix. Code always uses `$wpdb->pre
 | `wp_options` | ✅ Institute settings + plugin version/state markers (see below). |
 | Nav menus | ✅ `primary`, `footer` locations (fallbacks provided). |
 | Media library | ✅ Featured images (`course-card` 560×320, `course-hero` 1200×600). ⬜ **Not** for private student documents. |
-| Roles & capabilities | ✅ 5 custom roles + 22 `hedayati_*` caps (21 from Phase 2A + `hedayati_manage_teachers` from Phase 2B; see `docs/SECURITY.md`). |
+| Roles & capabilities | ✅ 5 custom roles + **24** `hedayati_*` caps (21 from Phase 2A + `hedayati_manage_teachers` from Phase 2B + `hedayati_upload_student_documents` from Phase 2C + `hedayati_create_students` from Phase 3; `ROLES_VERSION` `2.3.0`; see `docs/SECURITY.md`). Phase 3 (D42) also makes the previously-defined-but-unchecked `hedayati_manage_courses` (course CPT + `course-category` taxonomy + term meta) and `hedayati_manage_settings` (Settings page) into real enforced gates. |
 | Transients | ✅ Auth rate-limit buckets. |
 
 ---
@@ -170,8 +170,10 @@ seconds (default 900).
   by `Hedayati_Academic_Validation` for every Course Run / Session numeric or date field
   (capacity, tuition rial, session number, ISO dates, session datetimes). `Hedayati_Phone` keeps
   its own inline map (verified Phase 2A code, left untouched); all new code uses `Hedayati_Text`.
-- **Planned:** national ID and any other searchable numeric identifier — each needs its own
-  explicit field-specific rule. **Do not** apply a blind site-wide digit conversion to prose.
+- ✅ **National ID** (Phase 2C, `Hedayati_Verification_Service::normalize_national_id()`): Persian/
+  Arabic digits transliterated to ASCII before checksum validation, HMAC fingerprinting, or
+  encryption. Any other future searchable numeric identifier still needs its own explicit
+  field-specific rule. **Do not** apply a blind site-wide digit conversion to prose.
 - Persian/Arabic **display** of numerals is a UI choice; stored/searchable values stay ASCII.
 
 ### Iranian mobile phone → canonical E.164 (`Hedayati_Phone`) ✅
@@ -266,15 +268,20 @@ values can be set at any time (e.g. an enrollment may go `withdrawn → active`;
 here (correcting a mistaken status, re-activating a withdrawal). Add per-field transition rules
 only if the institute asks for them.
 
-### Planned ⬜ (Phase 2C — approved model, no code)
+### Phase 2C — student identity, verification, private documents ✅
 
-- `student` —(1:1)— verification record (protected national-ID representation, review state,
-  reviewer, timestamps, notes) — separate from role and from phone verification.
-- `student` —(1:many)— private `Document` (abstract `storage_backend` + `storage_key`, MIME/size
-  allowlist, generated names, `archive_reference` / `archived_at` / `deleted_at` lifecycle).
-- Append-only audit-log entries for upload/access/review/deletion/archive and verification actions
-  (metadata only — never document contents). **Must be excluded from every Phase 2B deletion
-  cascade** once it exists (D16 / D31).
+- `student` —(1:1)— verification record (`hedayati_student_verification`: encrypted national-ID
+  representation + HMAC fingerprint, review state, reviewer, timestamps, note) — separate from
+  role and from phone verification. **Verification transitions are ENFORCED** (D37), unlike the
+  value-validated-only convention above: `unverified|rejected → pending → verified|rejected`,
+  `verified` exits only via an identity-change reset.
+- `student` —(1:many)— private `Document` (`hedayati_documents`: abstract `storage_backend` +
+  `storage_key`, MIME/size allowlist via real content-sniffing, generated names,
+  `archive_reference` / `archived_at` / `deleted_at` lifecycle).
+- Audit-log entries for identity/verification/document actions (metadata only — never the
+  national-ID value or a document's original filename). Excluded from every domain deletion
+  cascade like every other audit row (D16 / D31); `deleted_user` deletes the verification row and
+  purges (bytes gone, row/metadata kept, `deleted_at` set) that student's documents.
 
 ---
 
@@ -371,25 +378,72 @@ from every domain deletion cascade — audit history outlives the objects it ref
 | `note` | `varchar(255) NOT NULL DEFAULT ''` | short, PII-free context — safe enums (status/role names) + internal record ids only |
 | `created_at` | `datetime NOT NULL` | UTC. `KEY idx_created_at` |
 
-**Deliberately absent:** `ip`, `user_agent`, `updated_at`, any JSON/blob/`context` column. The
-IP/UA retention policy is unresolved (`docs/OPEN_QUESTIONS.md` Q13); no `updated_at` signals
+**Deliberately absent:** `ip`, `user_agent`, `updated_at`, any JSON/blob/`context` column. Per D39,
+this is a **permanent** decision, not a policy pending resolution; no `updated_at` signals
 append-only.
 
 Action vocabulary (filterable via `hedayati_audit_actions` / `hedayati_audit_object_types`):
 `course.deleted`, `teacher.unlinked`, `course_run.created|updated|deleted`,
 `session.created|updated|deleted`, `run_staff.assigned|removed|purged_for_user|purged_for_teacher`,
 `enrollment.created|status_changed|deleted|purged_for_user`,
-`attendance.recorded|updated|deleted`. Unknown values are sanitized, not rejected.
+`attendance.recorded|updated|deleted`, `identity.set|viewed`,
+`verification.initiated|approved|rejected|reset`, `user.identity_purged`,
+`document.uploaded|download_started|archived|purged|purged_for_user`. Unknown values are
+sanitized, not rejected. `document.download_started` (not `document.downloaded`) is deliberate —
+it proves a request initiated a byte stream, not that the client received every byte.
+
+### `{prefix}hedayati_student_verification` ✅ (migration `2.3.0`)
+
+Created by `class-db-schema.php::migrate_2_3_0`. One row per student. Written through
+`Hedayati_Verification_Service` only.
+
+| Column | Definition | Notes |
+|---|---|---|
+| `id` | `bigint unsigned AI` | PK |
+| `user_id` | `bigint unsigned NOT NULL` | `UNIQUE KEY uq_user_id` — one record per student |
+| `national_id_enc` | `text NULL` | versioned encrypted blob (`Hedayati_Crypto`, AES-256-GCM); NULL until set |
+| `national_id_hmac` | `char(64) NULL` | `UNIQUE KEY uq_national_id_hmac` — DB-level duplicate detection, same pattern as `hedayati_user_phones` (D7) |
+| `key_version` | `tinyint unsigned NOT NULL DEFAULT 1` | rotation bookkeeping |
+| `status` | `varchar(20) NOT NULL DEFAULT 'unverified'` | `KEY`; `unverified`/`pending`/`verified`/`rejected` — **enforced transitions** (D37), unlike other Phase 2B status columns |
+| `reviewer_id` | `bigint unsigned NULL` | |
+| `reviewed_at` | `datetime NULL` | |
+| `note` | `varchar(255) NOT NULL DEFAULT ''` | short, non-sensitive reason — never the national ID |
+| `created_at` / `updated_at` | `datetime NOT NULL` | UTC |
+
+Decrypting `national_id_enc` requires `hedayati_verify_students`, checked **inside the service**
+(`get_national_id_decrypted()`) in addition to the caller — the one deliberate exception to the
+capability-agnostic-service convention (D36).
+
+### `{prefix}hedayati_documents` ✅ (migration `2.3.0`)
+
+Created by the same migration. Metadata only — bytes live under
+`Hedayati_Document_Storage::resolve_root()` (outside the webroot on staging/production; the
+local/Docker-CI fallback only inside `wp-content/uploads/hedayati-private/`), never in this table
+and never at a public path.
+
+| Column | Definition | Notes |
+|---|---|---|
+| `id` | `bigint unsigned AI` | PK |
+| `user_id` | `bigint unsigned NOT NULL` | `KEY idx_user_id` — owner |
+| `doc_type` | `varchar(30) NOT NULL DEFAULT 'other'` | `national_card` / `birth_certificate` / `other` |
+| `storage_backend` | `varchar(20) NOT NULL DEFAULT 'local'` | abstract per D14 |
+| `storage_key` | `varchar(190) NOT NULL` | opaque, randomized; validated against a strict allowlist regex + canonical path-containment check on every read/delete |
+| `original_mime` | `varchar(100) NOT NULL DEFAULT ''` | from real content-sniffing, not the client |
+| `size_bytes` | `bigint unsigned NOT NULL DEFAULT 0` | |
+| `archive_reference` | `varchar(190) NULL` | optional staff-entered offsite reference |
+| `archived_at` | `datetime NULL` | set only by a manual staff confirmation |
+| `deleted_at` | `datetime NULL` | soft marker; bytes removed at the same time (manual purge only, never automatic) |
+| `created_at` / `updated_at` | `datetime NOT NULL` | UTC |
 
 ### `wp_options` markers added by Phase 2B / 2C
 
-`hedayati_core_db_version` advances to `2.2.0`; `hedayati_core_roles_version` advances to `2.1.0`;
-`hedayati_core_managed_capabilities` = **22** entries (adds `hedayati_manage_teachers`). Student
-address fields live in `wp_usermeta`, not options.
+`hedayati_core_db_version` advances to `2.3.0`; `hedayati_core_roles_version` advances to `2.2.0`;
+`hedayati_core_managed_capabilities` = **23** entries (adds `hedayati_manage_teachers` and
+`hedayati_upload_student_documents`). Student address fields live in `wp_usermeta`, not options.
 
 ---
 
-## Student profile usermeta — Phase 2C foundation ✅ (address only)
+## Student profile usermeta — Phase 2C address slice ✅
 
 `Hedayati_Student_Profile` (`class-student-profile.php`). No new table; no schema migration.
 
@@ -404,5 +458,82 @@ Fields come from `Hedayati_Student_Profile::field_registry()`, filterable via
 `show_in_rest => false` for all three. Authorization: own profile → `hedayati_edit_own_profile`;
 other user → `hedayati_view_student_profiles_basic` + core `edit_user`.
 
-**Not stored** (blocked — `docs/OPEN_QUESTIONS.md` Q10–Q13): national ID, verification state,
-document metadata, audit log.
+National ID, verification state, and document metadata are **not** in usermeta — they live in the
+dedicated `hedayati_student_verification` / `hedayati_documents` tables above (they need DB-level
+uniqueness and an enforced transition table that usermeta cannot provide).
+
+## Phase 3 meta keys ✅ (no migration — `CURRENT_DB_VERSION` stays `2.3.0`)
+
+| Key | Location | Type | Written by | Notes |
+|---|---|---|---|---|
+| `hedayati_must_change_password` | `wp_usermeta` | `'1'` or absent | `Hedayati_Account_Security` | Boolean marker only — **never** a password. Set when reception creates an account; cleared only after a successful `wp_set_password()`. `Hedayati_Account_Security::intercept()` forces the change screen while it is set. See D41. |
+| `_hedayati_public_teacher` | `wp_postmeta` (`teacher`) | `'1'` / `'0'` | `Hedayati_Public_Content` meta box | Staff opt-in to show this Teacher profile on `/teachers/`. `show_in_rest` false. |
+| `_hedayati_public_catalog_details` | `wp_postmeta` (`course`) | `'1'` / `'0'` | `Hedayati_Public_Content` meta box | Staff opt-in to show teacher name / fee / start date in the public course hero (`single-course.php` reads it). |
+| `_hedayati_public_run_ids` | `wp_postmeta` (`course`) | array of ints | `Hedayati_Public_Content` meta box | Per-run publication allow-list; each id validated to belong to the course on save. `Hedayati_Public_Content::runs()` projects each to `start_date` / `tuition_rial` / `registration_status` only. See D43 / Q8. |
+
+The temporary password itself is **not stored** — `wp_insert_user()` hashes it; the plaintext
+lives only in a 45-second single-use transient (`hedayati_staff_notice_<staff_id>`) shown to the
+creating staff member once and deleted on first render.
+
+Audit vocabulary gained object type `account` and actions `account.created`,
+`account.password_changed` (metadata only — no password, no PII; D33/D39 unchanged).
+
+## Custom tables — migration 2.4.0 (AI Studio parity modules D46–D52) ✅
+
+All dynamic-prefixed (`$wpdb->prefix . 'hedayati_…'`), additive, no DB-level FKs (service-layer
+integrity + a new `hedayati_run_deleted` cleanup hook). Business-state columns are validated
+varchars, never MySQL ENUM (D13). `CURRENT_DB_VERSION` = `2.4.0`.
+
+### `{prefix}hedayati_consultations` (D46)
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigint PK AI | |
+| `name` | varchar(190) | |
+| `phone_e164` | varchar(20) | canonical E.164, KEY |
+| `topic` | varchar(190) | optional |
+| `message` | text | ≤ 2000 chars |
+| `status` | varchar(20) | `new` / `contacted` / `closed`, KEY |
+| `staff_note` | varchar(500) | one internal note |
+| `handled_by` | bigint NULL | last staff actor |
+| `source` | varchar(30) | `public_form` |
+| `created_at`,`updated_at` | datetime | |
+
+### `{prefix}hedayati_certificates` (D48)
+
+`UNIQUE(enrollment_id)` → one certificate per enrollment (duplicate issuance impossible).
+`UNIQUE(code)`. `code` = `DH-<jalali year>-<10× crypto-random base32>`. `status` `valid` /
+`revoked`. Snapshots `title` + `recipient_name` at issue. `issued_by` / `revoked_by` / `revoked_at`
+/ `revoke_reason`. Certificates are historical — a deleted run does **not** delete them.
+
+### `{prefix}hedayati_session_materials` (D49)
+
+`run_id` (KEY), `session_id` NULL (KEY), `material_type` `link` / `note` / `file`, `title`,
+`description`, `url` (link only), `storage_key` + `original_mime` + `size_bytes` (file only —
+private store, D14 pattern, separate namespace from identity documents), `visibility` `enrolled`,
+`created_by`.
+
+### `{prefix}hedayati_support_tickets` + `{prefix}hedayati_support_messages` (D51)
+
+Ticket: `user_id` (KEY), `subject`, `category`, `status` `open` / `waiting_student` /
+`waiting_staff` / `closed` (KEY), `run_id` NULL, `last_reply_at` (KEY) + `last_reply_kind`.
+Message: `ticket_id` (KEY), `author_id`, `author_kind` `student` / `staff`, `body` (≤ 5000).
+Both cascade-deleted on `deleted_user`.
+
+### `{prefix}hedayati_notifications` (D50)
+
+`user_id` + `read_at` composite KEY (`idx_user_unread`), `type`, `subject`, `body` (≤ 500),
+`url`, `object_type` + `object_id`, `created_at` (KEY). On-site only. Cascade-deleted on
+`deleted_user`.
+
+Audit vocabulary gained object types `consultation`, `certificate`, `session_material`,
+`support_ticket`, `settings` and actions `consultation.created` / `.status_changed` /
+`.note_updated`, `certificate.issued` / `.revoked`, `material.created` / `.deleted`,
+`support.opened` / `.replied` / `.status_changed`, `settings.updated` — all metadata-only, no
+message bodies / phones / PII.
+
+## In-panel settings — new fields (D52)
+
+`Hedayati_Settings` DEFAULTS gained `institute_name` and `address_tehran` (existing option
+`hedayati_institute_settings`, same `sanitize_all()` sanitizer). `/panel/?view=settings`
+(`Hedayati_Panel_Settings`) and wp-admin Settings → هدایتی both read/write the identical option.

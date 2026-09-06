@@ -49,6 +49,9 @@ class Hedayati_Audit_Log {
 			'attendance',
 			'teacher',
 			'user',
+			'account',
+			'student_identity',
+			'document',
 		] );
 	}
 
@@ -60,6 +63,8 @@ class Hedayati_Audit_Log {
 	 */
 	public static function actions(): array {
 		return (array) apply_filters( 'hedayati_audit_actions', [
+			'account.created',
+			'account.password_changed',
 			'course.deleted',
 			'teacher.unlinked',
 			'course_run.created',
@@ -79,6 +84,18 @@ class Hedayati_Audit_Log {
 			'attendance.recorded',
 			'attendance.updated',
 			'attendance.deleted',
+			'identity.set',
+			'identity.viewed',
+			'verification.initiated',
+			'verification.approved',
+			'verification.rejected',
+			'verification.reset',
+			'user.identity_purged',
+			'document.uploaded',
+			'document.download_started',
+			'document.archived',
+			'document.purged',
+			'document.purged_for_user',
 		] );
 	}
 

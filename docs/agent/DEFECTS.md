@@ -1,11 +1,106 @@
-# Defects and acceptance gaps — 2026-09-04 (updated same day, post-fix)
+# Defects and acceptance gaps
+
+## AI Studio parity modules D46–D52 (2026-09-06) — OPEN GATES
+
+Not defects in delivered code (static 876/0, Docker CI 576/0 PASS cleanup-verified), but the
+remaining release gates for `feature/manager-experience`:
+
+- **G-5 — one comprehensive browser/visual review not yet done.** Per the owner plan, functionality
+  is finished first; the single manager/reception/teacher/TA/student review at desktop + mobile,
+  RTL, light + dark is still pending (checklist in the takeover report / next report).
+- **G-6 — integrated `mystik.ir` staging cycle not yet run.** Deliberately deferred to one cycle
+  near the end (per `[[workflow-no-per-phase-staging]]`).
+- **G-7 — support-ticket attachments and certificate PDF export are v2** (documented in
+  `AI_STUDIO_PANEL_MATRIX.md` §E "smaller follow-ups"); the HTML print view + link/note/file
+  materials cover launch needs.
+- **G-8 — materials `file` storage requires a configured private-uploads dir in
+  staging/production** (`HEDAYATI_PRIVATE_UPLOADS_DIR`, same requirement as Phase 2C documents).
+  `link` / `note` materials work without it; `file` uploads fail closed with a clear message
+  until it is set (same behaviour as identity documents — see `docs/DEPLOYMENT.md`).
+
+## Manager panel — AI Studio course/featured tabs (2026-09-06) — OPEN GATES
+
+Not defects in delivered code, but **release gates** for `feature/manager-experience`:
+
+- **G-1 — Docker real-WordPress acceptance not run.** No PHP/Docker in the dev environment. The
+  extended `docker/wp-tests/test-phase-3.php` (in-panel course view, nonce/capability-guarded
+  feature+publish toggles, reception denial, 8-slot cap) must pass `Acceptance (Docker WordPress)`
+  in CI on the next branch push. Until then runtime behaviour of the new views is unverified.
+- **G-2 — No browser review** of `/panel/?view=courses` and `?view=featured` at desktop/mobile
+  widths, Persian RTL, light/dark. The manager dashboard + student portal from the earlier
+  increment were reviewed; these two views were not.
+- **G-3 — Seven owner decisions block full AI Studio parity** (consultation requests, student
+  progress %, certificates + public verification, per-session course materials, support tickets,
+  notifications, in-panel Settings form). Tracked in `docs/AI_STUDIO_PANEL_MATRIX.md` §E.
+- **G-4 — `wp_update_post()` on `post_status` from the front-end** (`handle_course_publish`) runs
+  outside the Gutenberg editor context. Re-check in the Docker run that a manager toggling
+  publish/draft does not trip `map_meta_cap` edge cases for `private`/`future` posts.
+
+## Phase 3 (2026-09-05) — HD-007, HD-008, HD-009: latent capability defects, FIXED
+
+Found during the Phase 3 reconciliation of the adopted Codex/ChatGPT WIP; all three are
+capability-map completeness issues (no schema/data change), fixed on
+`feature/phase-3-launch-completion` and runtime-verified by `docker/wp-tests/test-launch.php` +
+`test-phase-3.php` (full role × {course, category, settings} matrix). See `docs/DECISIONS.md` D42.
+
+- **HD-007 — `hedayati_manager` could not create or edit a `course` at all.** The `course` CPT used
+  `capability_type => 'post'`, mapping to native primitives (`edit_posts`, `edit_others_posts`, …)
+  that `hedayati_manager` does not hold; the dedicated `hedayati_manage_courses` capability was
+  defined and granted but **never checked anywhere**. Fixed: `course` CPT now uses a dedicated
+  `['hedayati_course','hedayati_courses']` + `map_meta_cap => true` map with every primitive and
+  every status-conditional key (`edit_published_posts` / `edit_private_posts` /
+  `delete_published_posts` / `delete_private_posts` — the HD-006 trap) pointed at
+  `hedayati_manage_courses`.
+- **HD-008 — `hedayati_manager` could not manage the `course-category` taxonomy or its term meta.**
+  Same root cause (`manage_categories` / `manage_terms` are core caps the role lacks). Fixed:
+  taxonomy `manage_terms`/`edit_terms`/`delete_terms`/`assign_terms` and `Hedayati_Term_Meta`'s
+  save guard now require `hedayati_manage_courses`.
+- **HD-009 — `hedayati_manager` could not open or save Settings → Hedayati.** `Hedayati_Settings`
+  required core `manage_options` (deliberately not held by the operational role, D10) even though
+  `hedayati_manage_settings` existed and was granted. Fixed: capability constant →
+  `hedayati_manage_settings`, plus the matching `option_page_capability_hedayati_institute` filter
+  so `options.php` agrees on save.
+
+**HD-002 caveat unchanged:** `Hedayati_Staff_Portal::handle_student()` adds two new code paths in
+the historically-sensitive phone area — a pre-insert `is_phone_available()` check and a
+compensating `wp_delete_user()` if `assign_phone()` fails after the account is created (a race).
+`test-phase-3.php` asserts that a duplicate-phone create is refused with **no account and no
+orphan phone row** in the disposable container; the compensating-delete race branch itself is not
+reproducible from WP-CLI. Neither retroactively explains the original unexplained `mystik.ir`
+orphan-row observation.
+
+---
+
+# Defects and acceptance gaps — 2026-09-04 (updated same day: GitHub Actions run #3 GREEN + staging 1.5.3 smoke test PASSED)
+
+**Reconciliation note (2026-09-05):** HD-001 through HD-006 below are preserved as an accurate
+historical record — do not edit them. `feature/phase-2b-academic-operations` (which HD-001–HD-006
+were found and fixed on) has since been merged into `main` (`--no-ff` commit `32640e4`,
+2026-09-05, together with Phase 2C). **None of HD-001–HD-006's closure status changes as a result
+of the merge**: HD-006 stays CLOSED (fixed, runtime-verified, staging-verified before the merge);
+HD-002's historical orphan-phone-row observation stays unexplained and OPEN — merging code does
+not retroactively explain a staging data point, and this caveat must not be erased; HD-003's
+documented coverage gaps stay OPEN exactly as scoped. Phase 2C added no new numbered HD defect —
+its own build-time bugs (a stale hardcoded version assertion, a `profile_update`-vs-
+`update_user_meta` hook-timing bug, a plugin-header version-string drift) were found and fixed
+before Phase 2C's own merge; see `docs/agent/STATUS.md`'s Phase 2C section and commit `2fc121f` /
+`da77119` for detail rather than duplicating numbered-HD treatment here.
 
 Reviewed at 345e368; fixes/coverage below applied at commits 8400588 / 06db2e2 / 2af798d /
-1b16a6d. HD-001–HD-005 are harness/CI defects and evidence gaps, not product vulnerabilities —
-**no product code changed** for those; every change was to `docker/wp-tests/*`, `scripts/lib.*`,
-`docker/.env.example`, or `docker/docker-compose.yml`. **HD-006 is a real product defect**,
-found by GitHub Actions run #2 of "Acceptance (Docker WordPress)" once HD-005 let the suite
-actually execute against a real WordPress — see below.
+1b16a6d / afb5fbd / cbcb4da. HD-001–HD-005 are harness/CI defects and evidence gaps, not product
+vulnerabilities — **no product code changed** for those; every change was to `docker/wp-tests/*`,
+`scripts/lib.*`, `docker/.env.example`, or `docker/docker-compose.yml`. **HD-006 is a real product
+defect**, found by GitHub Actions run #2 of "Acceptance (Docker WordPress)" once HD-005 let the
+suite actually execute against a real WordPress, fixed in plugin `1.5.3`, and now confirmed by a
+manual staging smoke test on `mystik.ir` — see HD-006 below. **HD-006 is CLOSED.**
+
+**GitHub Actions run #3** (commit `cbcb4da`, https://github.com/CloudyCup/drhedayati-wordpress/actions/runs/33910009101)
+is **GREEN**: job "Phase 2A + 2B runtime acceptance" concluded `success`, reported **228 passed, 0
+failed**, cleanup verified, result PASS. Node static suites re-run the same day: **458 passed, 0
+failed**. This is the first fully green execution of the Docker runtime suite against a real
+WordPress — every HD item below is reconciled against what that run actually exercises, not
+against what the suite's docblocks describe in aspiration. Items with assertions genuinely in the
+228 are marked runtime-verified; items the suite still does not assert are left OPEN, explicitly.
 
 ## HD-001 — FIXED & VERIFIED — Bash bootstrap fails on default configuration
 
@@ -20,20 +115,33 @@ reproduced with Git Bash: `line 16: Local: command not found`, exit 1.
 explicit. **Verified on this machine:** `source scripts/lib.sh` now reaches the Docker Compose
 check and fails there for the expected reason (Docker absent), not on `.env` line 16.
 
-## HD-002 — OPEN (coverage added, not yet executed) — Phone deletion acceptance discrepancy
+## HD-002 — FIXED & RUNTIME-VERIFIED (with one caveat below) — Phone deletion acceptance discrepancy
 
-Owner reports one orphan phone row after QA-user deletion, manually removed. class-user-phone-service.php registers deleted_user -> delete_phone, but the hook's presence does not prove runtime cleanup.
+Owner reports one orphan phone row after QA-user deletion on **staging** (mystik.ir), manually
+removed. class-user-phone-service.php registers deleted_user -> delete_phone, but the hook's
+presence alone did not prove runtime cleanup.
 
-**Coverage added (06db2e2):** `test-phase-2a.php` now assigns a synthetic phone, deletes that
-user via `wp_delete_user()`, and asserts BOTH the user is gone AND zero phone rows remain for its
-ID — checked directly, **before** `HDIT_Env::reset()` runs, so the later table-wide DELETE cannot
-hide a failure. **Still OPEN**: this assertion has not been executed on a real WordPress runtime
-(no Docker/PHP on this machine). Do not treat HD-002 as closed until it passes on a Docker-capable
-host. Related staging IDs: T2.8, T3.15 step 5, T3.16.
+**Coverage added (06db2e2):** `test-phase-2a.php` assigns a synthetic phone, deletes that user via
+`wp_delete_user()`, and asserts BOTH the user is gone AND zero phone rows remain for its ID —
+checked directly, **before** `HDIT_Env::reset()` runs, so the later table-wide DELETE cannot hide a
+failure.
 
-## HD-003 — PARTIALLY ADDRESSED (coverage added, not yet executed) — Runtime suite gaps
+**Runtime-verified (GitHub Actions run #3, 228/0):** this exact assertion executed against a real
+WordPress + MySQL and passed — the `deleted_user` -> `Hedayati_User_Phone_Service::delete_phone`
+cleanup path works correctly under normal single-request conditions. This closes HD-002 as this
+repository's own defect-tracking item defined it ("Required evidence: ... assert ... BEFORE
+reset. Keep automatic cleanup unverified until this passes" — it has now passed).
 
-**Added (2af798d):**
+**Caveat — do not over-read this:** this proves the *mechanism* works in a clean container. It does
+not retroactively explain the one specific historical orphan row the owner observed on `mystik.ir`
+(possibly pre-dating the hook, a manual DB action, or a race condition specific to that staging
+session) — that historical observation is neither confirmed nor contradicted by this run. Related
+staging IDs: T2.8, T3.15 step 5, T3.16 remain the staging-side acceptance rows to close
+separately.
+
+## HD-003 — PARTIALLY ADDRESSED, ADDITIONS RUNTIME-VERIFIED — Runtime suite gaps remain by design
+
+**Added (2af798d) and now confirmed passing in GitHub Actions run #3 (228/0):**
 - A2/A3: `handle_run_save()` exercised with no nonce and with a valid nonce but insufficient
   capability (student), via a `wp_die`/`wp_redirect` interceptor (`HDIT_AdminPost`) that throws
   instead of ever reaching the handler's real `exit()`.
@@ -59,10 +167,12 @@ docblock, not silently claimed as covered):
   attribution across a WP-CLI-run mutation is untested here).
 - Index `Non_unique` inspection and full engine/charset coverage remain untested.
 
-None of this has been executed on a real WordPress runtime yet — treat every addition above as
-"authored, not proven" until a Docker-capable host runs it green.
+The additions above executed in GitHub Actions run #3 and are part of its 228/0 result — treat
+those specific assertions as runtime-proven. The "still open" list directly above is **not**
+covered by that green run; it remains open exactly as scoped, and a passing suite must not be read
+as closing R5, B5/J9, J1/J4, or the index/engine/charset gaps.
 
-## HD-004 — FIXED (behavior corrected, not yet executed) — Cleanup failure can now be trusted
+## HD-004 — FIXED & RUNTIME-VERIFIED — Cleanup failure can now be trusted
 
 docker/wp-tests/run.php computed `HDIT::finish()` before the final reset, caught reset exceptions
 as warnings without changing the exit code, and always printed "environment reset to a clean
@@ -80,11 +190,12 @@ state". helpers.php's `reset()` ignored every DELETE's return value.
   clean" prints only when `reset()` actually returned true; a verified cleanup failure now yields
   a distinct exit code (`3`) instead of a footnote next to a claimed-successful line.
 
-Not executed here — no Docker/PHP on this machine. The corrected logic itself has not run against
-a real WordPress database; the next Docker-capable run should confirm `reset()` returns `true`
-(not just that the suite doesn't crash).
+**Runtime-verified (GitHub Actions run #3):** the user-reported result explicitly states "cleanup
+verified" and "result PASS" at 228/0 — `HDIT_Env::reset()` returned `true` on both the pre- and
+post-suite calls, confirmed by independent re-query, not merely assumed from a lack of thrown
+exceptions.
 
-## HD-005 — FIXED (CI/environment infra only) — wpcli container detected WP_ENVIRONMENT_TYPE=production in GitHub Actions
+## HD-005 — FIXED & VERIFIED (CI/environment infra only) — wpcli container detected WP_ENVIRONMENT_TYPE=production in GitHub Actions
 
 First run of "Acceptance (Docker WordPress)" on GitHub Actions failed before any assertion ran:
 `assert_disposable_environment()` (HD-004's guard) correctly refused with `WP_ENVIRONMENT_TYPE is
@@ -111,8 +222,9 @@ entirely. `scripts/run-acceptance.{sh,ps1}` gained a preflight step that prints
 `wp_get_environment_type()` as seen inside the `wpcli` container before the suite runs, so any
 future drift is visible in the first few lines of CI output instead of requiring a second run to
 diagnose. `HDIT_Env::assert_disposable_environment()` (the guard itself) was not touched.
+**Verified: GitHub Actions run #2 onward correctly detects `local` and the guard no longer fires.**
 
-## HD-006 — FIXED (product code; plugin 1.5.3) — object-level edit_post/delete_post still false for manager/administrator on a real Teacher profile
+## HD-006 — FIXED & RUNTIME-VERIFIED (product code; plugin 1.5.3) — object-level edit_post/delete_post now true for manager/administrator on a real Teacher profile
 
 GitHub Actions run #2 (first run with the environment correctly detected as `local`, HD-005) ran
 the real acceptance suite against a live WordPress and got **212 passed, 2 failed**:
@@ -173,6 +285,23 @@ one primitive; `Hedayati_Roles::ROLES_VERSION` stays `2.1.0`, the managed-capabi
   boot required) that the four keys are declared and point at the primitive, with a negative
   control proving the 1.5.2-era config (keys absent) would trip the guard.
 
-**Status: FIXED IN CODE, NOT YET RE-VERIFIED.** Do not mark Teacher CPT authorization (T1/T2) as
-PASS until GitHub Actions run #3 (or later) is green end-to-end. The next CI run is the actual
-proof; this entry describes the fix, not a confirmed result.
+**Status: FIXED, RUNTIME-VERIFIED, AND STAGING-VERIFIED — CLOSED.** GitHub Actions run #3 (commit
+`cbcb4da`, https://github.com/CloudyCup/drhedayati-wordpress/actions/runs/33910009101) ran the
+exact regression assertions added above — manager and administrator `edit_post`/`delete_post` on
+both a `publish`- and a `private`-status Teacher profile, plus the four denied roles' `delete_post`
+checks — as part of its **228 passed, 0 failed** result (up from run #2's 214 total / 2 failed;
++14 assertions matches the coverage added for this fix exactly).
+
+**Staging smoke test on `mystik.ir` (2026-09-04, plugin `1.5.3`) then independently confirmed the
+same fix on the actual staging site**, manually verified: homepage loads; wp-admin loads;
+Hedayati Core reports `1.5.3`; the «اساتید» menu appears and opens; disposable Teacher creation,
+edit/save, and deletion all work; `hedayati_manage_teachers` resolves correctly for
+`administrator`. This is precisely T1's retest scope (menu visibility, `edit.php?post_type=teacher`
+access, and now object-level edit/save/delete on an existing profile) executed on the real staging
+environment, not just this local suite.
+
+HD-006 is CLOSED: fixed in code, runtime-verified in local Docker CI, and staging-verified on
+`mystik.ir`. No production (`drhedayati.com`) contact occurred. `docs/PHASE_2B_ACCEPTANCE.md` T1's
+staging column may now be marked PASS for the scope actually exercised (menu/authorization/
+create/edit/delete for administrator); the full low-privilege negative matrix (reception/teacher/
+TA/student on staging specifically) was not part of this smoke test and stays open — see HD-003.

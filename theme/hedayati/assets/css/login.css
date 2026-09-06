@@ -1,0 +1,54 @@
+/*
+ * Phase 2D — branded wp-login.php overrides.
+ *
+ * wp-login.php is a standalone page (no theme header/footer), so this is
+ * enqueued directly via login_enqueue_scripts (Hedayati_Auth_UI), not through
+ * the normal theme asset pipeline. Deliberately minimal: brand color + RTL,
+ * no layout rewrite of WordPress's own login form (its accessibility/security
+ * behavior — nonces, autocomplete, etc. — must stay exactly as WordPress
+ * ships it).
+ */
+
+@font-face { font-family: Vazirmatn; src: url('../fonts/Vazirmatn-variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+body.login {
+	direction: rtl;
+	font-family: 'Vazirmatn', 'B Yekan', 'Yekan Bakh', Tahoma, Arial, sans-serif;
+	background: #f6f4f1;
+}
+
+body.login #login h1 a {
+	background-image: none;
+	width: auto;
+	height: auto;
+	font-size: 1.6rem;
+	font-weight: 800;
+	color: #c52232;
+	text-indent: 0;
+}
+
+body.login form {
+	border-radius: 15px;
+	box-shadow: 0 12px 34px rgba(35, 28, 30, .08);
+}
+
+body.login .button-primary {
+	background: #c52232;
+	border-color: #a81827;
+	box-shadow: none;
+	text-shadow: none;
+}
+
+body.login .button-primary:hover,
+body.login .button-primary:focus {
+	background: #a81827;
+	border-color: #a81827;
+}
+
+body.login #nav,
+body.login #backtoblog {
+	text-align: center;
+}
+
+body.login label {
+	font-weight: 600;
+}

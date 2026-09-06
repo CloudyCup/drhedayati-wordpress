@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_VERSION', '1.0.0' );
+define( 'HEDAYATI_VERSION', '1.3.0' );
 define( 'HEDAYATI_DIR', get_template_directory() );
 define( 'HEDAYATI_URI', get_template_directory_uri() );
 
@@ -86,17 +86,13 @@ function hedayati_setup(): void {
 add_action( 'wp_enqueue_scripts', 'hedayati_enqueue_assets' );
 
 function hedayati_enqueue_assets(): void {
+	wp_enqueue_style( 'hedayati-public-pages', HEDAYATI_URI . '/assets/css/public-pages.css', [ 'hedayati-main' ], HEDAYATI_VERSION );
 	/*
-	 * Font loading policy:
-	 *   - Do NOT @import Google Fonts in CSS.
-	 *   - Do NOT enqueue from an external CDN in Phase 1.
-	 *   - Vazirmatn will be self-hosted and enqueued here once the final
-	 *     approved font files are available.
-	 *   - For now the CSS font stack falls back to system Persian fonts.
-	 *
-	 * When ready, add:
-	 *   wp_enqueue_style( 'hedayati-font-vazirmatn', HEDAYATI_URI . '/assets/fonts/vazirmatn.css', [], '4.5.1' );
-	 * and update the font-family declaration in main.css.
+	 * Font loading policy (Phase 3): Vazirmatn is self-hosted — the variable
+	 * WOFF2 in assets/fonts/ (SIL OFL) is declared with @font-face at the top of
+	 * main.css, which is enqueued below and site-wide, so no separate font
+	 * stylesheet is needed. Never @import Google Fonts; never load from a CDN.
+	 * wp-login.php gets its own copy in login.css (main.css is not loaded there).
 	 */
 
 	// Main stylesheet
@@ -123,6 +119,37 @@ function hedayati_enqueue_assets(): void {
 		HEDAYATI_VERSION,
 		[ 'strategy' => 'defer', 'in_footer' => true ]
 	);
+
+	// Phase 2D/3 — account + staff portal assets. Loaded on the student account
+	// page (ID resolved via the plugin, never a hardcoded slug), the staff
+	// `/panel/` page, and any page while a logged-in user is being forced
+	// through the first-login password change (that screen can render on top of
+	// any request). Cheap boolean checks only — no queries.
+	$hd_account_id  = class_exists( 'Hedayati_Student_Portal' ) ? Hedayati_Student_Portal::get_account_page_id() : 0;
+	$hd_needs_portal = ( $hd_account_id > 0 && is_page( $hd_account_id ) )
+		|| is_page( 'panel' )
+		|| (
+			class_exists( 'Hedayati_Account_Security' )
+			&& is_user_logged_in()
+			&& Hedayati_Account_Security::must_change( get_current_user_id() )
+		);
+
+	if ( $hd_needs_portal ) {
+		wp_enqueue_style(
+			'hedayati-account',
+			HEDAYATI_URI . '/assets/css/account.css',
+			[ 'hedayati-main' ],
+			HEDAYATI_VERSION
+		);
+
+		wp_enqueue_script(
+			'hedayati-account',
+			HEDAYATI_URI . '/assets/js/account.js',
+			[],
+			HEDAYATI_VERSION,
+			[ 'strategy' => 'defer', 'in_footer' => true ]
+		);
+	}
 }
 
 // ── Body Classes ──────────────────────────────────────────────────────────────

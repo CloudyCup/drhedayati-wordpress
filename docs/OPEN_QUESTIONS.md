@@ -99,7 +99,16 @@ add it in `Hedayati_Enrollment_Service::enroll()`. Non-blocking.
 
 ## Q8 — Which Course Run does a public course page display?
 
-**Status:** OPEN — blocks the Phase 2B theme-fallback wiring, not the backend.
+**Status:** RESOLVED (2026-09-05, Phase 3) — see `docs/DECISIONS.md` D43. Instead of an automatic
+"which run" rule, a public course page shows **only** runs a staff member has explicitly ticked
+(`_hedayati_public_run_ids` allow-list on the course), each projected to `start_date` /
+`tuition_rial` / `registration_status` only, and only while `scheduled`/`in_progress` on a
+published course (`Hedayati_Public_Content::runs()`). `_hedayati_public_catalog_details` similarly
+gates the teacher-name / fee / date fields in the course hero. No `tuition_rial` → free-text
+`_course_price` migration was needed; the free-text meta stays the fallback when nothing is opted
+in. Original open text kept below for history.
+
+**Status (historical):** OPEN — blocks the Phase 2B theme-fallback wiring, not the backend.
 **Context:** `docs/DECISIONS.md` D12 says the `_course_teacher` / `_course_next_start_date` /
 `_course_price` / `_course_registration_state` meta become "backward-compatible fallbacks" once
 Course Runs exist. The backend is built and the run layer never writes that meta — but the public
@@ -135,67 +144,102 @@ revisit only if online/multi-timezone delivery becomes a requirement.
 
 ---
 
-## Phase 2C — what is blocked and why
+## Phase 2C — resolved (owner decisions, 2026-09-05) — see D36–D40
 
-Only the **mailing-address** slice of the student profile was built
-(`class-student-profile.php` — `hedayati_address` / `hedayati_city` /
-`hedayati_postal_code` usermeta, per `docs/ROADMAP.md` P1.2). Everything below is a
-deliberate non-implementation.
+Q10–Q13 below are now **resolved by explicit owner decision** and implemented on
+`feature/phase-2c-student-portal`. This section is kept as a historical record of what was
+blocked and why; `docs/DECISIONS.md` D36–D40 record the actual decisions, and
+`docs/DATA_MODEL.md` / `docs/SECURITY.md` document the resulting implementation.
 
-## Q10 — National ID storage (BLOCKS implementation)
+## Q10 — National ID storage — RESOLVED (D36)
 
-**Needs an institute + infrastructure decision.** Per `docs/DECISIONS.md` D15 a
-reversible national-ID field requires a dedicated `HEDAYATI_DATA_ENCRYPTION_KEY`
-(and a separate keyed-HMAC secret for duplicate detection) placed in
-`wp-config.php` / server config — **outside Git** — with key versioning. None of
-that exists and it cannot be created from this repo.
-**Do not** add a national-ID field, encrypted or not, until: (a) the key + HMAC
-secret are provisioned on staging and production, (b) the key-versioning scheme is
-agreed, (c) the institute confirms national ID is actually required and what it
-unlocks. **This is a stop-and-ask item (sensitive data + encryption guarantees).**
+**Decided:** national ID is required for verified student profiles, encrypted at rest
+(AES-256-GCM) with a dedicated `HEDAYATI_DATA_ENCRYPTION_KEY` (strict base64/32-byte format,
+outside Git), plus a separate keyed-HMAC (`HEDAYATI_DATA_HMAC_KEY`) fingerprint for DB-level
+duplicate detection — same `UNIQUE`-constraint pattern as `hedayati_user_phones` (D7). Both keys
+fail closed if missing or malformed — no plaintext fallback. Only staff holding
+`hedayati_verify_students` may decrypt a stored value, through one narrow, audited, POST-only
+reveal action — never the student themselves, never any other role. See D36.
 
-## Q11 — Verification workflow semantics (BLOCKS implementation)
+## Q11 — Verification workflow semantics — RESOLVED (D37)
 
-The conceptual states (`unverified` / `pending` / `verified` / `rejected`) are
-approved, but three things are undecided and each changes the data model:
-1. **Reset rules** — does editing the profile / phone / documents drop a
-   `verified` record back to `pending`? Which field changes trigger it?
-2. **Benefit linkage** — `docs/REQUIREMENTS.md` 8.6: "No approved policy that
-   verification unlocks certificates/exams/benefits." Until there is one, a
-   verification system has nothing to gate and its urgency is unclear.
-3. **Reviewer workflow** — who moves `pending → verified/rejected`, what evidence
-   is required, is a rejection reason mandatory/visible to the student?
-**Safe interim:** none built. `reception` already has `hedayati_initiate_verification`
-and `hedayati_manager` has `hedayati_verify_students` (defined, unused). When
-unblocked, store the record as usermeta `{status, reviewed_by, reviewed_at,
-reason}` and add the reset rule as an explicit, documented policy — not a guess.
+**Decided:** `unverified` / `pending` / `verified` / `rejected` with an **enforced** transition
+table (not free value-to-value movement): `unverified|rejected → pending` (initiate),
+`pending → verified|rejected` (approve/reject), and `verified` exits only through
+`reset_for_identity_change()` — never a direct API call. Reset triggers on a legal
+first/last-name change; phone, address, and email changes do **not** reset verification (phone
+verification stays independent, per the owner's explicit instruction not to conflate the two).
+Rejection is reversible via a later `initiate()`. No manager/administrator override of the state
+machine exists — that would be a distinct, future, explicit decision. See D37.
 
-## Q12 — Private document storage (BLOCKS implementation)
+## Q12 — Private document storage — RESOLVED (D38)
 
-Per `docs/DECISIONS.md` D14 + `docs/SECURITY.md`: bytes outside `public_html`,
-application-controlled streaming after capability + ownership checks, abstract
-`storage_backend` + `storage_key`, MIME allowlist, generated names,
-archive/deleted lifecycle. Undecided: the actual storage location on ParsPack
-(can PHP write outside the web root there?), the MIME/size allowlist, the
-mandatory-document list, the retention period, and the ~48-hour offsite-transfer
-protocol (acknowledge/retry/delete/restore). **Do not store any real student
-document this session.** A schema-only foundation is possible later but adds risk
-with no user today; defer until the storage location and retention are confirmed.
+**Decided:** bytes stored via `Hedayati_Document_Storage`, environment-gated: a configured
+`HEDAYATI_PRIVATE_UPLOADS_DIR` outside the web root is **required** on staging/production (fails
+closed without it); the protected `wp-content/uploads/hedayati-private/` fallback is
+**local/Docker-CI only**. Real content-sniffing (`finfo` + PDF magic header + structural image
+validation, not extension/declared-MIME trust) against a PDF/JPEG/PNG allowlist. Canonical,
+containment-checked storage-key resolution on every read/delete (rejects traversal, absolute
+keys, symlink escape). Manual archive confirmation + a computed 7-day purge-eligibility window,
+purged only by an explicit staff action — never a cron job. See D38.
 
-## Q13 — Audit log retention (metadata log BUILT; IP/UA still BLOCKED)
+## Q13 — Audit log IP/UA — RESOLVED (D39, permanently)
 
-**Partially resolved.** The metadata-only, append-only log is implemented
-(`hedayati_audit_log`, migration `2.2.0`, `Hedayati_Audit_Log`, D33) and records
-*only* `{actor_id, action, object_type, object_id, note, created_at}` — **no IP,
-no user-agent, no `updated_at`, no serialized context.** It is wired into every
-Phase 2B mutation and has a read-only viewer.
+**Decided:** the metadata-only, append-only log stays exactly as built in Phase 2B — no IP
+address, no user-agent, ever. This is not a deferred decision awaiting a retention policy; the
+owner explicitly chose not to collect this data. See D39.
 
-**Still undecided (does not block anything built):**
-1. **IP / user-agent capture** — required by REQUIREMENTS 12.10 wording but with an
-   unresolved retention/privacy policy. Not added; adding it later is an additive
-   migration (`2.3.0`) plus a decision on how long those rows keep the IP/UA.
-2. **Retention of the metadata rows themselves** — the log grows unbounded. No
-   purge/rotation is implemented (append-only). If the institute wants a retention
-   window (e.g. "keep 3 years"), that is a separate policy + a scheduled prune that
-   must itself be audited. Low urgency at current volume.
-3. **Does anything consume the log operationally** (alerts, reports) — Phase 2D.
+## AI Studio parity modules — RESOLVED (owner decisions, 2026-09-06) — see D46–D52
+
+Q14–Q20 below were the seven `AI_STUDIO_PANEL_MATRIX.md` §E items. All are resolved by explicit
+owner decision and implemented on `feature/manager-experience` (migration 2.4.0). Node static
+876/0; Docker acceptance 576/0 PASS.
+
+## Q14 — Consultation requests — RESOLVED (D46)
+
+Public form fields = name, Iranian phone, optional topic + message. Stored in
+`hedayati_consultations`, **not** emailed/CRM'd/SMS'd. Nonce + honeypot + per-IP transient rate
+limit. Staff queue `new`/`contacted`/`closed` for `hedayati_manage_consultations` (reception +
+manager). One internal note. Audit carries no phone/message body.
+
+## Q15 — Student progress % — RESOLVED (D47)
+
+Two objective, separate numbers computed live: **run progress** = held ÷ total non-cancelled
+sessions; **attendance rate** = present+late+excused ÷ recorded marks for that student. Never
+combined, never called "completion". Zero-session runs render "—", never 0%. No grade/score/exam
+field introduced.
+
+## Q16 — Certificates & public verification — RESOLVED (D48)
+
+Manager/administrator (`hedayati_manage_certificates`) issues; never auto-granted; one per
+enrollment (`UNIQUE`). Code = `DH-<jalali year>-<10× crypto-random base32>` — not the national
+ID. Revoke supported + audited. Public `/verify/` page (IP rate-limited) shows only validity,
+recipient name, course title, issue date, institute, code. Revoked/unknown → clear non-sensitive
+status. Print-friendly HTML; no PDF dependency.
+
+## Q17 — Course/session materials — RESOLVED (D49)
+
+Per run/session; `link` / `note` / `file`. Files stored via `Hedayati_Material_Storage` (own key
+namespace over the Phase 2C hardened private store), downloaded only through a per-material nonced
+handler that re-checks active enrollment / staff-on-run / manager. Identity-document store,
+table, and capability untouched. Attachments-on-tickets deferred to v2.
+
+## Q18 — Support tickets — RESOLVED (D51)
+
+Student opens/reads/replies to own tickets only (ownership on every read/write). Staff queue
+(`hedayati_manage_support_tickets`), statuses `open`/`waiting_student`/`waiting_staff`/`closed`.
+No email/SMS. No attachments in v1. Audit = reply kind / status transition only.
+
+## Q19 — Notifications — RESOLVED (D50)
+
+On-site only. Rows created for a deliberate event set (consultation received → staff; support
+reply/close → other party; certificate issued/revoked → student). Per-user unread count + mark
+read. No email/SMS/push (Q for an SMS provider stays open for OTP, unrelated). Purged on user
+deletion.
+
+## Q20 — In-panel institute settings — RESOLVED (D52)
+
+Built. `/panel/?view=settings` writes through the canonical `Hedayati_Settings` option +
+sanitizer (nonce + `hedayati_manage_settings`). Added `institute_name` + `address_tehran`.
+wp-admin Settings → هدایتی kept as an administrator fallback on the identical values. Manager
+gains no native administrator capability.

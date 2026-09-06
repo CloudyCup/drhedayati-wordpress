@@ -43,37 +43,60 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ## P1 — required for launch
 
-1. **Phase 2B — academic operations.** 🟡 **Repository implementation complete** on branch
-   `feature/phase-2b-academic-operations` (not merged): Teacher CPT (+ optional 1:1 WP-user link);
-   Course Runs (nullable capacity/tuition, integer-rial tuition, separate `run_status` /
-   `registration_status` as validated strings); Sessions (`UNIQUE(run_id, session_number)`,
-   canonical datetimes); staff assignments (primary/additional instructor, TA — D11 asymmetry);
-   Enrollments (`UNIQUE(run_id, user_id)`, capacity check); attendance (`UNIQUE(session_id,
-   enrollment_id)`, same-run guard). Migration `2.1.0`, five services, `hedayati_manage_teachers`
-   capability, per-run ownership-scope enforcement in the «عملیات آموزشی» admin UI. Repository
-   verified: Node static suites 421/0 + an independent PHP 8.4 run 302/0 (2026-09-03).
-   **Remaining before merge:** (a) staging behavioural acceptance — `docs/PHASE_2B_ACCEPTANCE.md`
-   (NOT RUN — dbDelta, hooks, capability mapping, admin UI, auth on `mystik.ir` all unverified);
-   (b) theme-side fallback wiring
-   so the public course page reads run data for `_course_teacher` / `_course_next_start_date` /
-   `_course_price` / `_course_registration_state` (currently the meta is still the only display
-   source — no dual *entry*, but no fallback *read* yet); (c) ~~close Phase 2A behavioural
-   acceptance first~~ — **done 2026-09-03** (non-destructive gate; Category 4 deferred, not
-   required).
-2. **Phase 2C — student identity & security.** 🟡 **Foundation slice done** on
-   `feature/phase-2b-academic-operations`: address/city/postal-code profile fields in usermeta
-   with an extensible registry + server-side normalization (`Hedayati_Student_Profile`).
-   The **metadata-only append-only audit log** is now **built** (`hedayati_audit_log`, migration
-   `2.2.0`, `Hedayati_Audit_Log`, wired into every Phase 2B mutation + a read-only viewer — D33).
-   **Still blocked on institute policy** (`docs/OPEN_QUESTIONS.md` Q10–Q13): verification workflow
-   and states (reset rules + benefit linkage); `HEDAYATI_DATA_ENCRYPTION_KEY` + key versioning +
-   separate HMAC provisioned outside Git **before** any national ID; private document
-   upload/storage-outside-webroot/authorized streaming/lifecycle; the audit log's **IP/UA fields**
-   + a retention/rotation policy.
-3. **Phase 2D — interfaces** (built on proven backend services, not mock data): branded
-   login/registration/password-reset; student portal (profile, verification status, documents,
-   enrollments/sessions); teacher & TA portal (assigned runs/rosters/sessions/attendance);
-   reception panel; manager/admin operational dashboards; audit-log viewer.
+1. **Phase 2B — academic operations.** 🟢 **MERGED to `main`** (`--no-ff` commit `32640e4`,
+   alongside Phase 2C; originally built on `feature/phase-2b-academic-operations`, which has since
+   been superseded by `main`'s history): Teacher CPT (+ optional 1:1 WP-user link); Course Runs
+   (nullable capacity/tuition, integer-rial tuition, separate `run_status` / `registration_status`
+   as validated strings); Sessions (`UNIQUE(run_id, session_number)`, canonical datetimes); staff
+   assignments (primary/additional instructor, TA — D11 asymmetry); Enrollments
+   (`UNIQUE(run_id, user_id)`, capacity check); attendance (`UNIQUE(session_id, enrollment_id)`,
+   same-run guard); metadata-only append-only audit log (migration `2.2.0`). A plugin-`1.5.3`
+   staging smoke test PASSED on `mystik.ir` (2026-09-04) covering the Teacher CPT object-level
+   authorization fix (HD-006) and core admin flows — **staging acceptance beyond that smoke test
+   remains NOT RUN**; merging to `main` did not require or constitute it. See
+   `docs/agent/STATUS.md` and `docs/PHASE_2B_ACCEPTANCE.md` for the exact evidence and what remains
+   explicitly deferred (not blocking, mirroring how Phase 2A's Category 4 was treated): HD-003's
+   documented coverage gaps (full 22-cap × 6-role matrix, a second real `dbDelta` pass, exhaustive
+   mutation/actor-attribution assertions), the staging low-privilege negative matrix, and the
+   unexplained historical staging phone-row observation (HD-002 — still not retroactively
+   explained by anything built since).
+   **Explicitly NOT part of this item, deferred to Phase 2D/2F** (corrected from an earlier draft of
+   this bullet): theme-side fallback wiring so the public course page reads Course Run data for
+   `_course_teacher` / `_course_next_start_date` / `_course_price` / `_course_registration_state` —
+   see `docs/CURRENT_STATE.md`'s "Planned / not implemented" list. `docs/PHASE_2B_ACCEPTANCE.md`'s
+   own matrix never tested the public theme; this was never part of Phase 2B's actual acceptance
+   scope.
+2. **Phase 2C — student identity & security.** 🟢 **MERGED to `main`** (`--no-ff` commit `32640e4`;
+   originally built on `feature/phase-2c-student-portal`, kept but superseded by `main`'s history):
+   address/city/postal-code profile fields in usermeta (`Hedayati_Student_Profile`); the
+   metadata-only append-only audit log (`hedayati_audit_log`, `Hedayati_Audit_Log`, D33); national
+   ID (encrypted at rest + keyed-HMAC duplicate detection, `Hedayati_Crypto` +
+   `Hedayati_Verification_Service`, D36); an enforced verification-state workflow (D37); and
+   private document upload/storage-outside-webroot/authorized streaming/manual-retention
+   (`Hedayati_Document_Storage` + `Hedayati_Document_Service`, D38). See
+   `docs/OPEN_QUESTIONS.md` Q10–Q13 (all resolved) and `docs/DECISIONS.md` D36–D40. Audit log
+   IP/UA fields are **permanently** not added (D39, not a deferred policy). Plugin `1.6.0`,
+   `CURRENT_DB_VERSION` `2.3.0`, `ROLES_VERSION` `2.2.0`, 23 managed capabilities. Node static
+   suites 565/0; the extended `Acceptance (Docker WordPress)` GitHub Actions runtime suite is
+   **GREEN on the merged HEAD** (335/0, cleanup verified). **Staging execution of
+   `docs/PHASE_2C_ACCEPTANCE.md` and any deploy remain separate, owner-approved, NOT-YET-DONE
+   steps — merging to `main` is not staging acceptance and is not a deploy.** The three required
+   `wp-config.php` constants are not provisioned anywhere. Benefit linkage (verification unlocking
+   certificates/exams) remains unapproved and unbuilt — `docs/REQUIREMENTS.md` 8.6, unchanged.
+3. **Interfaces + launch completion.** The old "Phase 2D/2E/2F" split is superseded — Phases 2E
+   and 2F were consolidated into a single **Phase 3 "launch completion"** (the shape the prior
+   Codex working session had already taken, ratified by the owner 2026-09-05). Status:
+   - **Phase 2D — shared account shell + student portal: 🟢 IMPLEMENTED** on
+     `feature/phase-2d-account-shell` (off `main` @ `32640e4`), now the base of the Phase 3 branch.
+   - **Phase 3 — launch completion: 🟢 MERGED TO `main`, runtime-CI GREEN** via `e04c343`.
+     Front-end staff `/panel/` (teacher/TA/reception);
+     reception-created student accounts + one-shot temporary password + forced first-login change
+     (`Hedayati_Account_Security`, D41); public About/Contact/Consult/Teachers pages + per-run
+     publication opt-in (D43); course/taxonomy/settings capability-consistency fixes (D42);
+     `page.php`; self-hosted Vazirmatn; Shamsi on the course page. Plugin `1.8.1`, theme `1.2.0`,
+     no DB change. Node static **752/0**; local WordPress acceptance **492/0, PASS**. **Staging validation in progress; not deployed to production.**
+   - **Phase 4 — integrated staging** (`mystik.ir`, once, end to end) and **Phase 5 — production
+     cutover** (`drhedayati.com`) remain the only steps after Phase 3 merges to `main`.
 4. **Public content & pages.** Create About, Contact, and consultation pages (templates + a
    consultation submission handler ❓ UX undecided); teacher directory/profiles; editable
    homepage/footer/navigation content where staff editing is required. Note: `header.php`,
@@ -104,6 +127,15 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ## P2 — enhancements
 
+- **AI Studio manager and student experience — feature-complete on `feature/manager-experience`
+  (D44–D52), pending one visual review + one staging cycle.** Built: unified `/panel/` manager
+  home + role-aware module registry; in-panel course table + featured curation; consultation
+  queue (D46); objective progress + attendance (D47); certificates + public `/verify/` (D48);
+  course/session materials (D49); internal notifications (D50); support tickets (D51); in-panel
+  institute settings (D52). Matching `/account/` views for the student. Node static **876/0**,
+  Docker acceptance **576/0 PASS**. Remaining: one comprehensive manager/reception/teacher/TA/
+  student visual review, then the integrated `mystik.ir` staging cycle. Deferred v2:
+  ticket attachments, certificate PDF export (`docs/AI_STUDIO_PANEL_MATRIX.md` §E).
 - Improved course-authoring editor UX (structured fields currently sit below a large Gutenberg
   canvas).
 - Change the `course_cat_order` default so unordered categories don't sort to the front. ❓ (small
@@ -133,9 +165,12 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ## Items needing an institute / owner decision before implementation
 
-- Does identity verification unlock any benefit (certificates, accredited exams)? What documents
-  are mandatory? Retention period for documents and for IP/user-agent audit data?
-- Consultation page: form fields, where submissions go (email? CRM? WP admin?), spam handling.
+- ~~Does identity verification unlock any benefit (certificates, accredited exams)?~~ — resolved
+  (D48): certificates are a manual staff action per enrollment, not gated on verification. What
+  documents are mandatory for verification is still open. (Document retention D38/D39 resolved.)
+- ~~Consultation page: form fields, where submissions go, spam handling.~~ — resolved (D46):
+  name/phone/topic/message → `hedayati_consultations` staff queue; honeypot + per-IP rate limit;
+  no email/CRM/SMS.
 - Impact-section statistics: the actual numbers, and Customizer vs plugin-settings as the editor.
 - Course category default ordering behavior.
 - SMS provider (for future OTP/notifications).

@@ -167,7 +167,7 @@ class Hedayati_Term_Meta {
 		}
 
 		// Capability check
-		if ( ! current_user_can( 'manage_categories' ) ) {
+		if ( ! current_user_can( 'hedayati_manage_courses' ) ) {
 			return;
 		}
 

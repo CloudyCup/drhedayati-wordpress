@@ -48,6 +48,12 @@ class Hedayati_Taxonomies {
 			'show_in_nav_menus' => true,
 			'show_in_rest'      => true,   // Block editor support
 			'show_admin_column' => true,   // Column in CPT list table
+			'capabilities'     => [
+				'manage_terms' => 'hedayati_manage_courses',
+				'edit_terms'   => 'hedayati_manage_courses',
+				'delete_terms' => 'hedayati_manage_courses',
+				'assign_terms' => 'hedayati_manage_courses',
+			],
 			'query_var'         => true,
 			'rewrite'           => [
 				'slug'         => 'course-category',

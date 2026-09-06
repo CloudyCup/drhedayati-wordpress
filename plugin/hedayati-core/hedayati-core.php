@@ -3,7 +3,7 @@
  * Plugin Name:       Hedayati Core
  * Plugin URI:        https://mystik.ir
  * Description:       هسته عملکردی مجتمع آموزشی دکتر هدایتی — دوره‌ها، طبقه‌بندی‌ها، احراز هویت، متادیتا و توابع کمکی.
- * Version:           1.5.3
+ * Version:           1.9.0
  * Author:            مجتمع آموزشی دکتر هدایتی
  * Author URI:        https://mystik.ir
  * Text Domain:       hedayati-core
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_CORE_VERSION', '1.5.3' );
+define( 'HEDAYATI_CORE_VERSION', '1.9.0' );
 define( 'HEDAYATI_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HEDAYATI_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -59,6 +59,30 @@ require_once HEDAYATI_CORE_DIR . 'includes/class-academic-admin.php';
 // Phase 2C (foundation) — student profile fields only
 require_once HEDAYATI_CORE_DIR . 'includes/class-student-profile.php';
 
+// Phase 2C — student identity, verification, private documents
+require_once HEDAYATI_CORE_DIR . 'includes/class-crypto.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-verification-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-document-storage.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-document-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-student-admin.php';
+
+// Phase 2D — account shell, front-end auth/routing, student self-service portal
+require_once HEDAYATI_CORE_DIR . 'includes/class-auth-ui.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-account-security.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-student-portal.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-staff-portal.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-public-content.php';
+
+// AI Studio parity modules (owner decisions D46–D52)
+require_once HEDAYATI_CORE_DIR . 'includes/class-notification-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-consultation-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-progress-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-material-storage.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-material-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-support-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-certificate-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-panel-settings.php';
+
 // ── Hook Registration ─────────────────────────────────────────────────────────
 
 add_action( 'init', [ Hedayati_Post_Types::class, 'register' ] );
@@ -89,6 +113,26 @@ Hedayati_Academic_Admin::init();
 
 // Phase 2C (foundation)
 Hedayati_Student_Profile::init();
+
+// Phase 2C — student identity, verification, private documents
+Hedayati_Verification_Service::init();
+Hedayati_Document_Service::init();
+Hedayati_Student_Admin::init();
+
+// Phase 2D — account shell, front-end auth/routing, student self-service portal
+Hedayati_Auth_UI::init();
+Hedayati_Account_Security::init();
+Hedayati_Student_Portal::init();
+Hedayati_Staff_Portal::init();
+Hedayati_Public_Content::init();
+
+// AI Studio parity modules (D46–D52)
+Hedayati_Notification_Service::init();
+Hedayati_Consultation_Service::init();
+Hedayati_Material_Service::init();
+Hedayati_Support_Service::init();
+Hedayati_Certificate_Service::init();
+Hedayati_Panel_Settings::init();
 
 // ── Shared helpers (callable from theme without knowing internals) ─────────────
 
@@ -155,6 +199,9 @@ register_activation_hook( __FILE__, function (): void {
 	Hedayati_Teacher::register();
 	Hedayati_DB_Schema::migrate();
 	Hedayati_Roles::register_roles();
+	Hedayati_Student_Portal::maybe_create_account_page();
+	Hedayati_Staff_Portal::ensure_page();
+	Hedayati_Public_Content::ensure_pages();
 	flush_rewrite_rules();
 } );
 

@@ -22,7 +22,7 @@ class Hedayati_DB_Schema {
 	/**
 	 * Current target database schema version.
 	 */
-	public const CURRENT_DB_VERSION = '2.2.0';
+	public const CURRENT_DB_VERSION = '2.4.0';
 
 	/**
 	 * Option name for tracking the installed schema version.
@@ -46,6 +46,8 @@ class Hedayati_DB_Schema {
 		'2.0.0' => 'migrate_2_0_0',
 		'2.1.0' => 'migrate_2_1_0',
 		'2.2.0' => 'migrate_2_2_0',
+		'2.3.0' => 'migrate_2_3_0',
+		'2.4.0' => 'migrate_2_4_0',
 	];
 
 	/**
@@ -101,6 +103,55 @@ class Hedayati_DB_Schema {
 	public static function get_table_audit_log(): string {
 		global $wpdb;
 		return $wpdb->prefix . 'hedayati_audit_log';
+	}
+
+	/**
+	 * Phase 2C — student identity/verification & private documents (migration 2.3.0).
+	 * Dynamic-prefixed.
+	 */
+	public static function get_table_student_verification(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'hedayati_student_verification';
+	}
+
+	public static function get_table_documents(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'hedayati_documents';
+	}
+
+	/**
+	 * Phase "manager-experience" — AI Studio parity modules (migration 2.4.0).
+	 * All dynamic-prefixed; business-state columns are validated varchars, never
+	 * MySQL ENUMs (D13).
+	 */
+	public static function get_table_consultations(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'hedayati_consultations';
+	}
+
+	public static function get_table_certificates(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'hedayati_certificates';
+	}
+
+	public static function get_table_session_materials(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'hedayati_session_materials';
+	}
+
+	public static function get_table_support_tickets(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'hedayati_support_tickets';
+	}
+
+	public static function get_table_support_messages(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'hedayati_support_messages';
+	}
+
+	public static function get_table_notifications(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'hedayati_notifications';
 	}
 
 	/**
@@ -409,5 +460,241 @@ class Hedayati_DB_Schema {
 		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_audit_log ) );
 
 		return ( $exists === $table_audit_log );
+	}
+
+	/**
+	 * Migration 2.3.0: Phase 2C — student identity/verification + private documents.
+	 *
+	 * `hedayati_student_verification`: one row per student, encrypted national ID
+	 * (`national_id_enc`, versioned blob) plus a keyed-HMAC fingerprint
+	 * (`national_id_hmac`) for DB-level duplicate detection — same UNIQUE-constraint
+	 * pattern as `hedayati_user_phones` (D7). Verification review state lives in the
+	 * same row (status/reviewer/reviewed_at/note) per the documented Phase 2C data
+	 * model. Business-state `status` is a validated varchar, never a MySQL ENUM type (D13).
+	 *
+	 * `hedayati_documents`: metadata only. Bytes never live in this table — an
+	 * abstract `storage_backend` + `storage_key` reference, never a public path
+	 * (D14). `archive_reference` / `archived_at` / `deleted_at` implement the manual
+	 * offsite-transfer-confirmation + retention lifecycle.
+	 *
+	 * Additive only — does not touch any existing table. Idempotent via `dbDelta`;
+	 * the stored version only advances once both tables are confirmed present.
+	 *
+	 * @return bool True only if both tables exist afterwards.
+	 */
+	private static function migrate_2_3_0(): bool {
+		global $wpdb;
+
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$table_verification = self::get_table_student_verification();
+		$table_documents     = self::get_table_documents();
+
+		$sql_verification = "CREATE TABLE {$table_verification} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			national_id_enc text DEFAULT NULL,
+			national_id_hmac char(64) DEFAULT NULL,
+			key_version tinyint(3) unsigned NOT NULL DEFAULT 1,
+			status varchar(20) NOT NULL DEFAULT 'unverified',
+			reviewer_id bigint(20) unsigned DEFAULT NULL,
+			reviewed_at datetime DEFAULT NULL,
+			note varchar(255) NOT NULL DEFAULT '',
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY uq_user_id (user_id),
+			UNIQUE KEY uq_national_id_hmac (national_id_hmac),
+			KEY idx_status (status)
+		) {$charset_collate};";
+
+		$sql_documents = "CREATE TABLE {$table_documents} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			doc_type varchar(30) NOT NULL DEFAULT 'other',
+			storage_backend varchar(20) NOT NULL DEFAULT 'local',
+			storage_key varchar(190) NOT NULL,
+			original_mime varchar(100) NOT NULL DEFAULT '',
+			size_bytes bigint(20) unsigned NOT NULL DEFAULT 0,
+			archive_reference varchar(190) DEFAULT NULL,
+			archived_at datetime DEFAULT NULL,
+			deleted_at datetime DEFAULT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY idx_user_id (user_id),
+			KEY idx_archived_at (archived_at)
+		) {$charset_collate};";
+
+		if ( ! function_exists( 'dbDelta' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		}
+
+		dbDelta( $sql_verification );
+		dbDelta( $sql_documents );
+
+		foreach ( [ $table_verification, $table_documents ] as $table ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+			if ( $exists !== $table ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Migration 2.4.0: AI Studio parity modules (owner decisions D46–D52).
+	 *
+	 *   - `hedayati_consultations`     public consultation-request queue
+	 *   - `hedayati_certificates`      manager-issued certificates + public token
+	 *   - `hedayati_session_materials` run/session resources (link / note / file)
+	 *   - `hedayati_support_tickets`   internal support tickets
+	 *   - `hedayati_support_messages`  ticket message thread
+	 *   - `hedayati_notifications`     internal per-user notifications
+	 *
+	 * Additive only — touches no existing table. Every business-state column is a
+	 * validated varchar (D13). No DB-level FKs (cross-engine safety, D-series);
+	 * referential integrity is enforced in the service layer + deletion hooks.
+	 *
+	 * @return bool True only if all six tables exist afterwards.
+	 */
+	private static function migrate_2_4_0(): bool {
+		global $wpdb;
+
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$table_consultations = self::get_table_consultations();
+		$table_certificates  = self::get_table_certificates();
+		$table_materials     = self::get_table_session_materials();
+		$table_tickets       = self::get_table_support_tickets();
+		$table_messages      = self::get_table_support_messages();
+		$table_notifications = self::get_table_notifications();
+
+		$sql_consultations = "CREATE TABLE {$table_consultations} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			name varchar(190) NOT NULL DEFAULT '',
+			phone_e164 varchar(20) NOT NULL DEFAULT '',
+			topic varchar(190) NOT NULL DEFAULT '',
+			message text DEFAULT NULL,
+			status varchar(20) NOT NULL DEFAULT 'new',
+			staff_note varchar(500) NOT NULL DEFAULT '',
+			handled_by bigint(20) unsigned DEFAULT NULL,
+			source varchar(30) NOT NULL DEFAULT 'public_form',
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY idx_status (status),
+			KEY idx_created_at (created_at),
+			KEY idx_phone (phone_e164)
+		) {$charset_collate};";
+
+		$sql_certificates = "CREATE TABLE {$table_certificates} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			enrollment_id bigint(20) unsigned NOT NULL,
+			user_id bigint(20) unsigned NOT NULL,
+			run_id bigint(20) unsigned NOT NULL,
+			course_id bigint(20) unsigned NOT NULL,
+			code varchar(40) NOT NULL,
+			status varchar(20) NOT NULL DEFAULT 'valid',
+			title varchar(190) NOT NULL DEFAULT '',
+			recipient_name varchar(190) NOT NULL DEFAULT '',
+			issued_on date NOT NULL,
+			issued_by bigint(20) unsigned NOT NULL DEFAULT 0,
+			revoked_at datetime DEFAULT NULL,
+			revoked_by bigint(20) unsigned DEFAULT NULL,
+			revoke_reason varchar(255) NOT NULL DEFAULT '',
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY uq_enrollment (enrollment_id),
+			UNIQUE KEY uq_code (code),
+			KEY idx_user_id (user_id),
+			KEY idx_status (status)
+		) {$charset_collate};";
+
+		$sql_materials = "CREATE TABLE {$table_materials} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			run_id bigint(20) unsigned NOT NULL,
+			session_id bigint(20) unsigned DEFAULT NULL,
+			material_type varchar(20) NOT NULL DEFAULT 'link',
+			title varchar(190) NOT NULL DEFAULT '',
+			description varchar(500) NOT NULL DEFAULT '',
+			url text DEFAULT NULL,
+			storage_key varchar(190) DEFAULT NULL,
+			original_mime varchar(100) NOT NULL DEFAULT '',
+			size_bytes bigint(20) unsigned NOT NULL DEFAULT 0,
+			visibility varchar(20) NOT NULL DEFAULT 'enrolled',
+			created_by bigint(20) unsigned NOT NULL DEFAULT 0,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY idx_run_id (run_id),
+			KEY idx_session_id (session_id)
+		) {$charset_collate};";
+
+		$sql_tickets = "CREATE TABLE {$table_tickets} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			subject varchar(190) NOT NULL DEFAULT '',
+			category varchar(30) NOT NULL DEFAULT 'general',
+			status varchar(20) NOT NULL DEFAULT 'open',
+			run_id bigint(20) unsigned DEFAULT NULL,
+			last_reply_at datetime NOT NULL,
+			last_reply_kind varchar(10) NOT NULL DEFAULT 'student',
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY idx_user_id (user_id),
+			KEY idx_status (status),
+			KEY idx_last_reply_at (last_reply_at)
+		) {$charset_collate};";
+
+		$sql_messages = "CREATE TABLE {$table_messages} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			ticket_id bigint(20) unsigned NOT NULL,
+			author_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			author_kind varchar(10) NOT NULL DEFAULT 'student',
+			body text NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY idx_ticket_id (ticket_id)
+		) {$charset_collate};";
+
+		$sql_notifications = "CREATE TABLE {$table_notifications} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			type varchar(40) NOT NULL DEFAULT '',
+			subject varchar(190) NOT NULL DEFAULT '',
+			body varchar(500) NOT NULL DEFAULT '',
+			url varchar(255) NOT NULL DEFAULT '',
+			object_type varchar(32) NOT NULL DEFAULT '',
+			object_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			read_at datetime DEFAULT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY idx_user_unread (user_id, read_at),
+			KEY idx_created_at (created_at)
+		) {$charset_collate};";
+
+		if ( ! function_exists( 'dbDelta' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		}
+
+		dbDelta( $sql_consultations );
+		dbDelta( $sql_certificates );
+		dbDelta( $sql_materials );
+		dbDelta( $sql_tickets );
+		dbDelta( $sql_messages );
+		dbDelta( $sql_notifications );
+
+		foreach ( [ $table_consultations, $table_certificates, $table_materials, $table_tickets, $table_messages, $table_notifications ] as $table ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+			if ( $exists !== $table ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 }

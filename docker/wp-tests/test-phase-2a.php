@@ -25,18 +25,19 @@ function hdit_run_phase_2a(): void {
 		Hedayati_DB_Schema::CURRENT_DB_VERSION,
 		get_option( Hedayati_DB_Schema::OPTION_DB_VERSION )
 	);
-	HDIT::eq( 'DB schema version is 2.2.0', '2.2.0', get_option( Hedayati_DB_Schema::OPTION_DB_VERSION ) );
+	HDIT::ok( 'DB schema version is at least 2.3.0', version_compare( (string) get_option( Hedayati_DB_Schema::OPTION_DB_VERSION ), '2.3.0', '>=' ) );
 	HDIT::eq(
 		'installed roles schema option == ROLES_VERSION',
 		Hedayati_Roles::ROLES_VERSION,
 		get_option( Hedayati_Roles::OPTION_ROLES_VERSION )
 	);
-	HDIT::eq( 'roles schema version is 2.1.0', '2.1.0', get_option( Hedayati_Roles::OPTION_ROLES_VERSION ) );
+	HDIT::eq( 'roles schema version is current', Hedayati_Roles::ROLES_VERSION, get_option( Hedayati_Roles::OPTION_ROLES_VERSION ) );
 	HDIT::eq(
-		'managed-capability list has 22 entries',
-		22,
+		'managed-capability list matches Hedayati_Roles::get_all_hedayati_capabilities()',
+		count( Hedayati_Roles::get_all_hedayati_capabilities() ),
 		count( (array) get_option( Hedayati_Roles::OPTION_MANAGED_CAPS ) )
 	);
+	HDIT::ok( 'managed-capability list has at least 24 entries', count( (array) get_option( Hedayati_Roles::OPTION_MANAGED_CAPS ) ) >= 24 );
 	HDIT::eq( 'no migration lock is held after a completed run', false, (bool) get_option( Hedayati_DB_Schema::LOCK_OPTION ) );
 
 	$before = get_option( Hedayati_DB_Schema::OPTION_DB_VERSION );
@@ -284,5 +285,16 @@ function hdit_run_phase_2a(): void {
 	}
 	$blocked = wp_authenticate( $login, $pass );
 	HDIT::is_wp_error( 'a rate-limited identifier is blocked even WITH the correct password', $blocked, 'too_many_retries' );
+
+	$key_method = new ReflectionMethod( Hedayati_Rate_Limiter::class, 'get_transient_key' );
+	$key_method->setAccessible( true );
+	$id_key = (string) $key_method->invoke( null, 'id', $login );
+	$count_before_blocked_retry = (int) get_transient( $id_key );
+	Hedayati_Auth::on_login_failed( $login, new WP_Error( 'too_many_retries' ) );
+	HDIT::eq(
+		'an already-blocked retry does not increment or extend its lockout counter',
+		$count_before_blocked_retry,
+		(int) get_transient( $id_key )
+	);
 	Hedayati_Rate_Limiter::clear_identifier_attempts( $login );
 }

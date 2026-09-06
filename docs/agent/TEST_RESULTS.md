@@ -1,7 +1,97 @@
+# Test results
+
+## AI Studio manager panel — course/featured in-panel tabs (2026-09-06) — STATIC + DOCKER CI GREEN
+
+Branch `feature/manager-experience` (`59ce4ee` baseline = recovered Codex WIP):
+
+| Check | Result |
+|---|---|
+| Node static suites | **769 / 0** (`76 + 208 + 132 + 84 + 118 + 98 + 53`) — `verify-phase3.js` gained 8 assertions for the in-panel course table, nonce/capability-guarded toggles, the server-side 8-slot cap, and "editing stays in the WP editor" |
+| Local real WordPress/PHP acceptance | **CI GREEN** — `Acceptance (Docker WordPress)` run `34023251353` on `737d970` (workflow_dispatch, `feature/manager-experience`): **508 / 0, PASS, cleanup verified**. Includes 11 new assertions for the in-panel course table, nonce/capability-guarded feature+publish toggles, reception denial (no table + 403 from the handler), and the featured-flag on/off round-trip. |
+| Real browser review | NOT DONE for `?view=courses` / `?view=featured` |
+| Staging / production | NOT CONTACTED |
+
+## AI Studio parity modules — consultations/progress/certificates/materials/tickets/notifications/settings (2026-09-06, D46–D52) — STATIC + DOCKER CI GREEN
+
+Branch `feature/manager-experience`, HEAD `6a5abf7` (docs pinned; runtime unchanged since `f6ad232`):
+
+| Check | Result |
+|---|---|
+| Node static suites | **876 / 0** — adds `verify-ai-studio-modules.js` (107 assertions: file hygiene, migration 2.4.0, the 6-cap role matrix, and per-module security invariants) |
+| Docker real-WordPress acceptance | `Acceptance (Docker WordPress)` run `34025229061` on `f6ad232`: **576 / 0, PASS, cleanup verified**. `docker/wp-tests/test-ai-studio.php` adds ~70 assertions — unauthorized issue/manage denied, IDOR denied on tickets, no PII in `/verify/`, rate-limit + honeypot paths, cross-user notification isolation, progress math incl. zero-session, role-aware module navigation. |
+| Real browser review | NOT DONE (one comprehensive review planned after all modules) |
+| Staging / production | NOT CONTACTED |
+
+## AI Studio manager and student experience (2026-09-06) — GREEN LOCALLY
+
+Branch `feature/manager-experience`:
+
+| Check | Result |
+|---|---|
+| Node static suites | **762 / 0** (`76 + 208 + 132 + 84 + 111 + 98 + 53`) |
+| Local real WordPress/PHP 8.3 acceptance | **499 / 0, PASS, cleanup verified** |
+| Real browser review | `/panel/` manager home plus `/account/` student dashboard and upcoming schedule at desktop/mobile widths, Persian RTL, light/dark; no page-level mobile overflow (`scrollWidth === clientWidth`) |
+| Staging / production | NOT CONTACTED |
+
+## Phase 3 — launch completion (2026-09-05) — GREEN
+
+Branch `feature/phase-3-launch-completion`. Baseline = the preserved Codex/ChatGPT WIP (commit
+`7500348`, also `snapshot/codex-launch-completion-wip-2026-09-05`).
+
+| Check | Result |
+|---|---|
+| `verify-phase2a.js` | 74 / 0 |
+| `verify-phase2b.js` | 208 / 0 |
+| `verify-phase2c.js` | 132 / 0 |
+| `verify-phase2d.js` | 82 / 0 |
+| `verify-phase3.js` (new) | 103 / 0 (historical Phase 3 result before manager-experience assertions) |
+| `verify-audit-log.js` | 98 / 0 |
+| `verify-jalali.js` | 53 / 0 |
+| **Node static total** | **752 / 0** after the 1.8.1 lockout hotfix, every process exit 0 |
+| `Acceptance (Docker WordPress)` GitHub Actions | run `33974539901` on the WIP baseline `7500348`: **450 / 0, PASS, cleanup verified** (first-ever real-WordPress runtime evidence for Phase 2D + launch WIP). |
+| `Acceptance (Docker WordPress)` GitHub Actions | run `33975445108` on `046bd31` (feat commit): **489 / 0, PASS** (+39 = `docker/wp-tests/test-phase-3.php`); run `33976122273` on `6c9bdac` and the current tip: **491 / 0, PASS, cleanup verified** (+2 = the duplicate-phone / orphan-row guard). |
+| PHP lint | Local PHP 8.3: changed account-security and staff-portal files pass. |
+| Real local WordPress browser review | Desktop/mobile, RTL, light/dark: public pages, all account views, panel home/run, and forced-password screen reviewed on genuine HTTP responses; no page-level horizontal overflow. WordPress admin toolbar defect found and fixed for panel/forced flows. |
+| Live staging / production | NOT CONTACTED. |
+
+Plugin `1.8.1` adds a staging-discovered lockout-expiry regression check: `wp_login_failed` now
+receives WordPress's final `WP_Error`, and an error already carrying `too_many_retries` does not
+increment the counter or refresh its expiry. This adds two static assertions and one real
+WordPress-runtime assertion; all prior thresholds and successful-login behavior remain unchanged.
+Hotfix result: Node static **752/0**; local WordPress/PHP 8.3 acceptance **492/0**, synthetic-data
+cleanup verified.
+
+`test-phase-3.php` runtime coverage: temp-password generation (length ≥ 16, entropy classes,
+uniqueness); reception-create → `must_change` marker set + `user_pass` stored only as a WP hash +
+one-shot staff notice consumed exactly once + `account.created` audit (actor = reception, no
+password/phone/id in the note); the full forced-change handler (too-short / mismatch /
+missing-nonce all rejected with the marker intact; a valid change clears the marker, the new
+password authenticates via `wp_authenticate()`, `account.password_changed` is audited without the
+value; a post-change call with no marker leaves the password untouched); `hedayati_create_students`
+role matrix (student/teacher/TA false, reception/manager/admin true); manager
+course/category/settings capability resolution against real `map_meta_cap()`. `test-launch.php`
+(from the WIP) also passes on CI: full role × {course, category, settings} matrix, staff privacy,
+public opt-in defaults, cross-user denial.
+
+**Merged to `main` via `e04c343`; not deployed, no `mystik.ir`/`drhedayati.com` contact.** Interceptor/guard
+`template_redirect` behaviour and real multipart upload remain Phase 4 staging-acceptance items
+(documented in the test file headers, same class as Phase 2C/2D).
+
+---
+
 # Test results — 2026-09-04
 
+**Reconciliation note (2026-09-05):** everything below is preserved as an accurate historical
+record of this specific review session (branch `feature/phase-2b-academic-operations`, HEAD
+`345e368`) — do not edit the narrative itself. Since this was written, that branch and
+`feature/phase-2c-student-portal` (Phase 2C) were both merged into `main` via a single `--no-ff`
+merge commit, `32640e4` (2026-09-05). The assertion counts below (449 Node, then 458 after HD-006)
+are superseded by `main`'s current 565/0 Node total and the Phase 2C Docker acceptance suite's
+335/0 result — see `docs/agent/STATUS.md` for current figures. Phase 2C staging acceptance remains
+NOT RUN regardless of the merge.
+
 Repository: C:/Projects/drhedayati-wordpress
-Branch: feature/phase-2b-academic-operations
+Branch: feature/phase-2b-academic-operations (historical — see reconciliation note above)
 Reviewed HEAD: 345e368bfa1a17079c7436c085e9514f441aee5e
 Initial git status: clean. Changes from this review are documentation only, uncommitted.
 
@@ -69,6 +159,37 @@ Commits 8400588 (HD-001), 06db2e2 (HD-002 coverage), 2af798d (HD-003 coverage), 
   ```
   This is the suite's first genuine **product** finding — a real Teacher CPT authorization gap,
   not a CI or harness problem. Root cause, fix (plugin `1.5.3`), and regression coverage: HD-006
-  in `docs/agent/DEFECTS.md`. **Do not mark Teacher CPT authorization (T1/T2) as PASS** until a
-  subsequent CI run is green — this file will be updated with that run's actual result, not an
-  assumed one.
+  in `docs/agent/DEFECTS.md`.
+- **Run #3** (commit `cbcb4da`, after the HD-006 fix):
+  https://github.com/CloudyCup/drhedayati-wordpress/actions/runs/33910009101 — job "Phase 2A + 2B
+  runtime acceptance" concluded `success`. **228 passed, 0 failed, cleanup verified, result PASS**
+  (up from run #2's 214 total; +14 matches the HD-006 regression assertions exactly). Node static
+  suites re-run the same day: **458 passed, 0 failed** (verify-phase2b rose from 199 to 208 for
+  the same reason — the new §9c static regression block). This is the first fully green execution
+  of the Docker runtime suite. Teacher CPT object-level authorization (`edit_post`/`delete_post`
+  for manager and administrator, publish and private status) is now **runtime-verified in this
+  disposable environment**. It was **not**, at that point, a staging (`mystik.ir`) retest.
+
+## Staging smoke test — plugin 1.5.3 on mystik.ir (2026-09-04) — PASSED
+
+Manually verified on staging by the operator (not this reviewer's environment; reported, not
+independently re-run here — same evidentiary status as the other owner/operator-reported staging
+results in this file):
+
+- homepage loads
+- wp-admin loads
+- Hedayati Core reports `1.5.3`
+- «اساتید» menu appears and opens
+- disposable Teacher creation works
+- Teacher edit/save works
+- Teacher deletion works
+- `hedayati_manage_teachers` resolves correctly for `administrator`
+
+This is T1's retest scope (menu visibility + admin-list access + object-level create/edit/delete
+for `administrator`) executed on the real staging environment, directly confirming the HD-006 fix
+where it actually matters. Combined with GitHub Actions run #3 (228/0, above) and the static
+suites (458/0), **HD-006 is now CLOSED** (see `docs/agent/DEFECTS.md`). No production
+(`drhedayati.com`) contact occurred. This smoke test did **not** exercise the low-privilege
+negative matrix (reception/teacher/TA/student) on staging, nor the broader Phase 2B functional
+matrix (enrollment/attendance/sessions/audit rows) on staging specifically — those remain covered
+by the local Docker CI suite only, not independently re-run on `mystik.ir`.

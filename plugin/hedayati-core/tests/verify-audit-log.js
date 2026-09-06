@@ -30,7 +30,7 @@ console.log('=== NODE.JS AUDIT-LOG VERIFICATION ===\n');
 // ─────────────────────────────────────────────────────────────────────────────
 console.log('1. Migration 2.2.0 (class-db-schema.php):');
 const db = read('includes/class-db-schema.php');
-assert("CURRENT_DB_VERSION bumped to 2.2.0", db.includes("CURRENT_DB_VERSION = '2.2.0'"));
+assert("CURRENT_DB_VERSION >= 2.2.0 (audit-log baseline retained)", /CURRENT_DB_VERSION = '2\.\d+\.\d+'/.test(db) && !db.includes("CURRENT_DB_VERSION = '2.0.") && !db.includes("CURRENT_DB_VERSION = '2.1."));
 assert("MIGRATIONS registers '2.2.0' => 'migrate_2_2_0'", /'2\.2\.0'\s*=>\s*'migrate_2_2_0'/.test(db));
 assert("migrate_2_2_0() defined", db.includes('private static function migrate_2_2_0()'));
 assert("2.0.0 + 2.1.0 migrations still present (no regression)", db.includes('migrate_2_0_0') && db.includes('migrate_2_1_0'));

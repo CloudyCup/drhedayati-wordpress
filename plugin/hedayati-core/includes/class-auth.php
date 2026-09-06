@@ -36,7 +36,7 @@ class Hedayati_Auth {
 		add_filter( 'authenticate', [ self::class, 'enforce_rate_limit' ], 90, 3 );
 
 		// Authoritative single failure recording point
-		add_action( 'wp_login_failed', [ self::class, 'on_login_failed' ] );
+		add_action( 'wp_login_failed', [ self::class, 'on_login_failed' ], 10, 2 );
 		add_action( 'wp_login', [ self::class, 'on_login_success' ], 10, 2 );
 	}
 
@@ -123,9 +123,17 @@ class Hedayati_Auth {
 	 * Authoritative single failure recording point.
 	 * Triggered by WordPress whenever an authentication attempt returns a WP_Error.
 	 *
-	 * @param string $username
+	 * @param string        $username Login identifier submitted by the visitor.
+	 * @param WP_Error|null $error    Final authentication error supplied by WordPress.
 	 */
-	public static function on_login_failed( string $username ): void {
+	public static function on_login_failed( string $username, ?WP_Error $error = null ): void {
+		// A request rejected by our existing lockout is not a new credential
+		// failure. Counting it would refresh the transient expiry on every retry
+		// and could turn a 15-minute lockout into an indefinite one.
+		if ( $error instanceof WP_Error && $error->get_error_code() === 'too_many_retries' ) {
+			return;
+		}
+
 		$client_ip = Hedayati_Rate_Limiter::get_client_ip();
 		Hedayati_Rate_Limiter::record_failure( $username, $client_ip );
 	}
