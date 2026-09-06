@@ -433,6 +433,48 @@ function hdit_run_phase_2d(): void {
 	HDIT::ok( 'enrollments view shows a Shamsi-formatted date (Persian digits), not a raw ISO string', 1 === preg_match( '/[۰-۹]/u', $enrollments_output ) );
 	HDIT::ok( 'no enrollment/session mutation form exists in this view (no <form> markup — read-only)', false === strpos( $enrollments_output, '<form' ) );
 
+	// ── 10. Upcoming schedule is ownership-scoped and read-only ────────────
+	HDIT::section( 'Phase 2D — student schedule is real, future-only and owner-scoped' );
+
+	$future_starts = gmdate( 'Y-m-d H:i', time() + ( 3 * DAY_IN_SECONDS ) );
+	if ( $run_id > 0 ) {
+		Hedayati_Session_Service::create( [
+			'run_id'        => $run_id,
+			'session_number' => '2',
+			'starts_at'     => $future_starts,
+			'topic'         => 'Future owned session',
+		] );
+	}
+
+	$other_course = HDIT_Env::make_course( 'Other student private course' );
+	$other_run    = Hedayati_Course_Run_Service::create( [
+		'course_id' => $other_course,
+		'run_status' => 'in_progress',
+		'start_date' => gmdate( 'Y-m-d', time() ),
+	] );
+	if ( ! is_wp_error( $other_run ) ) {
+		Hedayati_Enrollment_Service::enroll( $other_run, $student_b );
+		Hedayati_Session_Service::create( [
+			'run_id'        => $other_run,
+			'session_number' => '1',
+			'starts_at'     => gmdate( 'Y-m-d H:i', time() + ( 2 * DAY_IN_SECONDS ) ),
+			'topic'         => 'Other student private session',
+		] );
+	}
+
+	wp_set_current_user( $student_a );
+	$_GET = [ 'view' => 'schedule' ];
+	$schedule_output = Hedayati_Student_Portal::render_current_view();
+	wp_set_current_user( 0 );
+	$_GET = [];
+
+	HDIT::ok( 'schedule shows the signed-in student future session', str_contains( $schedule_output, 'Future owned session' ) );
+	HDIT::ok( 'schedule excludes another student course and session',
+		! str_contains( $schedule_output, 'Other student private course' )
+		&& ! str_contains( $schedule_output, 'Other student private session' ) );
+	HDIT::ok( 'schedule excludes the signed-in student past session', ! str_contains( $schedule_output, 'Intro' ) );
+	HDIT::ok( 'schedule is read-only', ! str_contains( $schedule_output, '<form' ) );
+
 	// ── Cleanup ──────────────────────────────────────────────────────────────
 	if ( $doc_id_a > 0 ) {
 		Hedayati_Document_Storage::delete( $stored_for_a['storage_key'] );

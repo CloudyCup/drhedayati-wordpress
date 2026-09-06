@@ -44,7 +44,7 @@ class Hedayati_Student_Portal {
 	private const OPTION_PAGE_ID  = 'hedayati_account_page_id';
 	private const VIEW_CAPABILITY = 'hedayati_view_own_portal';
 
-	public const VIEWS = [ 'dashboard', 'profile', 'verification', 'enrollments', 'documents' ];
+	public const VIEWS = [ 'dashboard', 'enrollments', 'schedule', 'verification', 'documents', 'profile' ];
 
 	public static function init(): void {
 		add_action( 'admin_init', [ self::class, 'maybe_create_account_page' ] );
@@ -173,6 +173,8 @@ class Hedayati_Student_Portal {
 				return self::render_verification_view( $user_id );
 			case 'enrollments':
 				return self::render_enrollments_view( $user_id );
+			case 'schedule':
+				return self::render_schedule_view( $user_id );
 			case 'documents':
 				return self::render_documents_view( $user_id );
 			default:
@@ -185,21 +187,27 @@ class Hedayati_Student_Portal {
 		$enrollments  = Hedayati_Enrollment_Service::list_for_user( $user_id );
 		$documents    = Hedayati_Document_Service::list_for_user( $user_id );
 		$active_count = count( array_filter( $enrollments, static fn( $e ) => 'active' === $e['status'] ) );
+		$active       = array_values( array_filter( $enrollments, static fn( $e ) => 'active' === $e['status'] ) );
+		$upcoming     = self::upcoming_sessions_for_user( $user_id );
 
 		$display_name = wp_get_current_user()->display_name;
 
 		ob_start();
 		?>
-		<h1 class="hd-portal-title"><?php esc_html_e( 'داشبورد', 'hedayati-core' ); ?></h1>
-		<?php if ( '' !== $display_name ) : ?>
+		<header class="hd-student-heading">
+			<div><span class="hd-manager-eyebrow"><?php esc_html_e( 'میز کار آموزشی', 'hedayati-core' ); ?></span>
+			<h1 class="hd-portal-title"><?php esc_html_e( 'داشبورد یادگیری', 'hedayati-core' ); ?></h1>
+			<?php if ( '' !== $display_name ) : ?>
 			<p class="hd-portal-note">
 				<?php
 				/* translators: %s: student display name */
 				printf( esc_html__( 'خوش آمدید، %s.', 'hedayati-core' ), esc_html( $display_name ) );
 				?>
 			</p>
-		<?php endif; ?>
-		<div class="hd-portal-cards">
+			<?php endif; ?></div>
+			<a class="hd-student-catalog" href="<?php echo esc_url( home_url( '/courses/' ) ); ?>"><?php esc_html_e( 'مشاهدهٔ دوره‌ها', 'hedayati-core' ); ?></a>
+		</header>
+		<div class="hd-portal-cards hd-student-kpis">
 			<div class="hd-portal-card">
 				<span class="hd-portal-card-label"><?php esc_html_e( 'وضعیت احراز هویت', 'hedayati-core' ); ?></span>
 				<span class="hd-portal-card-value"><?php echo esc_html( self::verification_status_label( $status['status'] ) ); ?></span>
@@ -214,6 +222,39 @@ class Hedayati_Student_Portal {
 			</div>
 		</div>
 
+		<div class="hd-student-dashboard-grid">
+			<section class="hd-student-learning">
+				<div class="hd-student-section-heading"><div><span><?php esc_html_e( 'در حال یادگیری', 'hedayati-core' ); ?></span><h2><?php esc_html_e( 'دوره‌های فعال شما', 'hedayati-core' ); ?></h2></div><a href="<?php echo esc_url( self::get_account_url( 'enrollments' ) ); ?>"><?php esc_html_e( 'مشاهدهٔ همه', 'hedayati-core' ); ?></a></div>
+				<?php if ( empty( $active ) ) : ?>
+					<p class="hd-portal-note"><?php esc_html_e( 'در حال حاضر دورهٔ فعالی برای شما ثبت نشده است.', 'hedayati-core' ); ?></p>
+				<?php else : ?>
+					<div class="hd-student-course-list">
+					<?php foreach ( array_slice( $active, 0, 3 ) as $enrollment ) :
+						$run = Hedayati_Course_Run_Service::get( (int) $enrollment['run_id'] );
+						if ( null === $run ) { continue; }
+						$title = get_the_title( $run['course_id'] ) ?: sprintf( '#%d', $run['course_id'] );
+						?>
+						<a href="<?php echo esc_url( self::get_account_url( 'enrollments' ) ); ?>"><span class="hd-student-course-mark"><?php echo esc_html( Hedayati_Text::digits_to_persian( (string) mb_substr( $title, 0, 2 ) ) ); ?></span><span><strong><?php echo esc_html( $run['label'] ?: $title ); ?></strong><small><?php echo esc_html( $title ); ?></small></span><b aria-hidden="true">‹</b></a>
+					<?php endforeach; ?>
+					</div>
+				<?php endif; ?>
+			</section>
+
+			<aside class="hd-student-next-class">
+				<span><?php esc_html_e( 'جلسهٔ بعدی شما', 'hedayati-core' ); ?></span>
+				<?php if ( empty( $upcoming ) ) : ?>
+					<h2><?php esc_html_e( 'برنامه‌ای ثبت نشده', 'hedayati-core' ); ?></h2>
+					<p><?php esc_html_e( 'جلسهٔ آینده پس از ثبت برنامهٔ کلاس در اینجا نمایش داده می‌شود.', 'hedayati-core' ); ?></p>
+				<?php else : $next = $upcoming[0]; ?>
+					<h2><?php echo esc_html( $next['course_title'] ); ?></h2>
+					<p><?php echo esc_html( $next['topic'] ); ?></p>
+					<strong dir="ltr"><?php echo esc_html( substr( $next['starts_at'], 11, 5 ) ); ?></strong>
+					<p dir="ltr"><?php echo esc_html( Hedayati_Jalali::format( $next['starts_at'], true, false ) ); ?></p>
+				<?php endif; ?>
+				<a href="<?php echo esc_url( self::get_account_url( 'schedule' ) ); ?>"><?php esc_html_e( 'مشاهدهٔ برنامهٔ کلاس‌ها', 'hedayati-core' ); ?></a>
+			</aside>
+		</div>
+
 		<h2 class="hd-portal-subtitle"><?php esc_html_e( 'دسترسی سریع', 'hedayati-core' ); ?></h2>
 		<div class="hd-portal-cards">
 			<a class="hd-portal-card" href="<?php echo esc_url( self::get_account_url( 'enrollments' ) ); ?>"><?php esc_html_e( 'دوره‌ها و جلسات من', 'hedayati-core' ); ?></a>
@@ -222,6 +263,62 @@ class Hedayati_Student_Portal {
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	private static function render_schedule_view( int $user_id ): string {
+		$items = self::upcoming_sessions_for_user( $user_id );
+
+		ob_start();
+		?>
+		<div class="hd-student-view-heading"><span class="hd-manager-eyebrow"><?php esc_html_e( 'برنامهٔ آموزشی', 'hedayati-core' ); ?></span><h1 class="hd-portal-title"><?php esc_html_e( 'جلسات آینده', 'hedayati-core' ); ?></h1></div>
+		<?php if ( empty( $items ) ) : ?>
+			<div class="hd-student-empty"><strong><?php esc_html_e( 'جلسه‌ای در برنامه نیست', 'hedayati-core' ); ?></strong><p><?php esc_html_e( 'پس از ثبت برنامه توسط واحد آموزش، جلسه‌های آینده در این بخش نمایش داده می‌شوند.', 'hedayati-core' ); ?></p><a href="<?php echo esc_url( home_url( '/contact/' ) ); ?>"><?php esc_html_e( 'ارتباط با واحد آموزش', 'hedayati-core' ); ?></a></div>
+		<?php else : ?>
+			<div class="hd-student-schedule">
+			<?php foreach ( $items as $item ) : ?>
+				<article><time dir="ltr"><?php echo esc_html( Hedayati_Jalali::format( $item['starts_at'], true, true ) ); ?></time><div><strong><?php echo esc_html( $item['course_title'] ); ?></strong><p><?php echo esc_html( $item['topic'] ); ?></p><small><?php echo esc_html( $item['run_label'] ); ?></small></div></article>
+			<?php endforeach; ?>
+			</div>
+		<?php endif;
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Build the signed-in student's future schedule from authorized enrollments.
+	 *
+	 * @return array<int, array{starts_at:string,topic:string,course_title:string,run_label:string}>
+	 */
+	private static function upcoming_sessions_for_user( int $user_id ): array {
+		$items = [];
+		$now   = current_time( 'mysql' );
+
+		foreach ( Hedayati_Enrollment_Service::list_for_user( $user_id ) as $enrollment ) {
+			if ( 'active' !== $enrollment['status'] ) {
+				continue;
+			}
+
+			$run = Hedayati_Course_Run_Service::get( (int) $enrollment['run_id'] );
+			if ( null === $run || in_array( $run['run_status'], [ 'completed', 'cancelled' ], true ) ) {
+				continue;
+			}
+
+			$course_title = get_the_title( $run['course_id'] ) ?: sprintf( '#%d', $run['course_id'] );
+			foreach ( Hedayati_Session_Service::list_for_run( (int) $run['id'] ) as $session ) {
+				if ( 'scheduled' !== $session['status'] || $session['starts_at'] < $now ) {
+					continue;
+				}
+
+				$items[] = [
+					'starts_at'    => (string) $session['starts_at'],
+					'topic'        => $session['topic'] ?: sprintf( __( 'جلسهٔ %d', 'hedayati-core' ), $session['session_number'] ),
+					'course_title' => $course_title,
+					'run_label'    => $run['label'] ?: $course_title,
+				];
+			}
+		}
+
+		usort( $items, static fn( array $a, array $b ): int => strcmp( $a['starts_at'], $b['starts_at'] ) );
+		return array_slice( $items, 0, 20 );
 	}
 
 	private static function render_profile_view( int $user_id ): string {
