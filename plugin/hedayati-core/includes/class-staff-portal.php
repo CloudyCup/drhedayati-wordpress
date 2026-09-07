@@ -463,7 +463,6 @@ class Hedayati_Staff_Portal {
 			'hedayati_manage_course_runs' => [ self::url( [ 'view' => 'academic' ] ), __( 'عملیات آموزشی', 'hedayati-core' ) ],
 			'hedayati_manage_teachers'    => [ self::url( [ 'view' => 'teachers' ] ), __( 'مدیریت اساتید', 'hedayati-core' ) ],
 			'hedayati_manage_settings'    => [ self::url( [ 'view' => 'settings' ] ), __( 'اطلاعات تماس مجتمع', 'hedayati-core' ) ],
-			'hedayati_verify_students'    => [ admin_url( 'admin.php?page=hedayati-students' ), __( 'بررسی احراز هویت', 'hedayati-core' ) ],
 		];
 
 		echo '<div class="hd-portal-cards">';
@@ -534,19 +533,10 @@ class Hedayati_Staff_Portal {
 			],
 			'hedayati_lookup_students' => [
 				self::url( [ 'view' => 'students' ] ),
-				__( 'پذیرش و پروندهٔ دانشجو', 'hedayati-core' ),
-				__( 'جستجو، ایجاد حساب، ثبت‌نام و دریافت امن مدارک', 'hedayati-core' ),
+				__( 'پذیرش، پرونده و احراز هویت دانشجو', 'hedayati-core' ),
+				__( 'جستجو، ایجاد حساب، ثبت‌نام، بررسی احراز هویت و دریافت امن مدارک', 'hedayati-core' ),
 				'users',
 			],
-		];
-
-		// The student verification queue is still a classic wp-admin screen
-		// (ported to the panel in the next increment).
-		$actions['hedayati_verify_students'] = [
-			admin_url( 'admin.php?page=hedayati-students' ),
-			__( 'احراز هویت دانشجویان (موقت — پنل کلاسیک)', 'hedayati-core' ),
-			__( 'بررسی درخواست‌ها و مدیریت وضعیت تأیید هویت — نسخهٔ درون‌پنلی در فاز بعد', 'hedayati-core' ),
-			'shield',
 		];
 
 		echo '<section class="hd-manager-section">';
@@ -1157,6 +1147,14 @@ class Hedayati_Staff_Portal {
 		) {
 			self::form_open( 'verify', [ 'student_id' => $user_id ] );
 			self::submit( __( 'ارسال برای بررسی احراز هویت', 'hedayati-core' ) );
+		}
+
+		// D53 / Phase E: reviewer actions (approve/reject, national-ID reveal,
+		// private-document review) — self-gates on hedayati_verify_students /
+		// hedayati_view_private_documents. Reception (which holds neither) sees
+		// nothing new here.
+		if ( class_exists( 'Hedayati_Verification_Panel' ) ) {
+			Hedayati_Verification_Panel::render_reviewer_section( $user_id );
 		}
 	}
 

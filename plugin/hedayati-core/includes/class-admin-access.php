@@ -40,13 +40,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Hedayati_Admin_Access {
 
 	/**
-	 * Roles whose wp-admin redirect is enforced today. `reception` and
-	 * `hedayati_manager` are added by the `hedayati_admin_redirect_roles` filter
-	 * once Phase E ships (or immediately, per deployment, via that filter).
+	 * Roles whose interactive wp-admin redirect is enforced. As of the Phase E
+	 * front-end port (teachers, courses, academic operations, student
+	 * verification / private documents, settings) every non-administrator
+	 * Hedayati role now has complete panel/account coverage, so the policy is
+	 * FULLY enforced. The `hedayati_admin_redirect_roles` filter can still
+	 * narrow or widen the set per deployment.
 	 *
 	 * @var string[]
 	 */
-	private const ENFORCED_ROLES = [ 'student', 'teacher', 'teacher_assistant' ];
+	private const ENFORCED_ROLES = [ 'student', 'teacher', 'teacher_assistant', 'reception', 'hedayati_manager' ];
 
 	public static function init(): void {
 		// Priority 1: decide before any screen-specific admin_init runs.
@@ -90,8 +93,10 @@ class Hedayati_Admin_Access {
 
 		// admin-post.php + admin-ajax.php are how the front-end panels submit
 		// every mutation; async-upload.php backs the media uploader an admin may
-		// still legitimately trigger. None are a "screen" to redirect.
-		if ( in_array( $pagenow, [ 'admin-post.php', 'admin-ajax.php', 'async-upload.php' ], true ) ) {
+		// still legitimately trigger. profile.php is a user's own-account screen
+		// (there is no panel equivalent yet — see docs/ROADMAP.md), so it stays
+		// reachable for everyone. None of these are a "screen" to redirect.
+		if ( in_array( $pagenow, [ 'admin-post.php', 'admin-ajax.php', 'async-upload.php', 'profile.php' ], true ) ) {
 			return false;
 		}
 

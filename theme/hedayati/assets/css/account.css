@@ -1575,3 +1575,15 @@ details.hd-course-fieldset > form:last-child { margin-bottom: 16px; }
 	.hd-attendance-row { grid-template-columns: 1fr; }
 }
 
+/* ── Phase E: verification / document reviewer ── */
+
+.hd-verify-panel { border: 1px solid var(--hd-red-border, #d99); }
+.hd-verify-decision { margin-bottom: 10px; }
+.hd-portal-btn-quiet {
+	background: var(--hd-surface2);
+	color: inherit;
+	border: 1px solid var(--hd-border, #ccc);
+}
+.hd-portal-btn-danger { background: #b91c1c; }
+.hd-portal-btn-danger:hover, .hd-portal-btn-danger:focus-visible { background: #991b1b; }
+

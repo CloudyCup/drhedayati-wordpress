@@ -3,7 +3,7 @@
  * Plugin Name:       Hedayati Core
  * Plugin URI:        https://mystik.ir
  * Description:       هسته عملکردی مجتمع آموزشی دکتر هدایتی — دوره‌ها، طبقه‌بندی‌ها، احراز هویت، متادیتا و توابع کمکی.
- * Version:           1.12.0
+ * Version:           1.13.0
  * Author:            مجتمع آموزشی دکتر هدایتی
  * Author URI:        https://mystik.ir
  * Text Domain:       hedayati-core
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_CORE_VERSION', '1.12.0' );
+define( 'HEDAYATI_CORE_VERSION', '1.13.0' );
 define( 'HEDAYATI_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HEDAYATI_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -90,6 +90,7 @@ require_once HEDAYATI_CORE_DIR . 'includes/class-teacher-panel.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-audit-panel.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-course-panel.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-academic-panel.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-verification-panel.php';
 
 // ── Hook Registration ─────────────────────────────────────────────────────────
 
@@ -148,6 +149,7 @@ Hedayati_Teacher_Panel::init();
 Hedayati_Audit_Panel::init();
 Hedayati_Course_Panel::init();
 Hedayati_Academic_Panel::init();
+Hedayati_Verification_Panel::init();
 
 // ── Shared helpers (callable from theme without knowing internals) ─────────────
 

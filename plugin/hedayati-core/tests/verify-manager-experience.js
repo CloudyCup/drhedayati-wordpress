@@ -50,7 +50,7 @@ assert('admin bar hidden for non-admins via show_admin_bar filter', adminAccess.
 	assert('interactive check excludes wp_doing_cron()', fn.includes('wp_doing_cron()'));
 	assert('interactive check excludes WP_CLI', fn.includes('WP_CLI'));
 	assert('interactive check excludes REST_REQUEST', fn.includes('REST_REQUEST'));
-	assert('interactive check excludes admin-post.php + admin-ajax.php + async-upload.php explicitly', fn.includes("'admin-post.php'") && fn.includes("'admin-ajax.php'") && fn.includes("'async-upload.php'"));
+	assert('interactive check excludes admin-post.php + admin-ajax.php + async-upload.php + profile.php explicitly', fn.includes("'admin-post.php'") && fn.includes("'admin-ajax.php'") && fn.includes("'async-upload.php'") && fn.includes("'profile.php'"));
 	assert('interactive check ultimately requires is_admin()', /return is_admin\(\);/.test(fn));
 }
 {
@@ -68,8 +68,7 @@ assert('admin bar hidden for non-admins via show_admin_bar filter', adminAccess.
 	assert('workspace_url_for returns "" for a non-Hedayati role (no forced routing)', /return '';/.test(fn));
 	assert('workspace_url_for excludes manage_options FIRST (admin is augmented with every hedayati_* cap — a probe alone would misroute them)', /function workspace_url_for\( WP_User \$user \)[\s\S]{0,220}user_can\( \$user, 'manage_options' \)[\s\S]{0,40}return '';/.test(adminAccessCode));
 }
-assert('staged rollout: ENFORCED_ROLES is exactly student + teacher + teacher_assistant', /ENFORCED_ROLES = \[\s*'student',\s*'teacher',\s*'teacher_assistant'\s*\]/.test(adminAccess));
-assert('staged rollout: reception / hedayati_manager are NOT in the enforced constant', !/ENFORCED_ROLES = \[[^\]]*hedayati_manager/.test(adminAccess));
+assert('D53 FULLY enforced: ENFORCED_ROLES = student + teacher + teacher_assistant + reception + hedayati_manager', /ENFORCED_ROLES = \[\s*'student',\s*'teacher',\s*'teacher_assistant',\s*'reception',\s*'hedayati_manager'\s*\]/.test(adminAccess));
 assert('Phase E gate is a public filter (hedayati_admin_redirect_roles)', adminAccess.includes("apply_filters( 'hedayati_admin_redirect_roles'"));
 assert('is_enforced_for() requires ALL of a user\'s roles to be in the enforced set (array_diff === [])', /\[\] === array_diff\( \$roles, self::enforced_roles\(\) \)/.test(adminAccess));
 
@@ -77,17 +76,17 @@ assert('is_enforced_for() requires ALL of a user\'s roles to be in the enforced 
 
 console.log('\n2. hedayati-core.php bootstrap wiring:');
 const boot = readPlugin('hedayati-core.php');
-assert('requires class-admin-access.php', boot.includes('includes/class-admin-access.php'));
-assert('requires class-teacher-panel.php', boot.includes('includes/class-teacher-panel.php'));
-assert('requires class-audit-panel.php', boot.includes('includes/class-audit-panel.php'));
-assert('boots Hedayati_Admin_Access::init()', boot.includes('Hedayati_Admin_Access::init()'));
-assert('boots Hedayati_Teacher_Panel::init()', boot.includes('Hedayati_Teacher_Panel::init()'));
-assert('boots Hedayati_Audit_Panel::init()', boot.includes('Hedayati_Audit_Panel::init()'));
-assert('plugin version >= 1.10.0', (() => {
+for (const c of ['admin-access', 'teacher-panel', 'audit-panel', 'course-panel', 'academic-panel', 'verification-panel']) {
+	assert(`requires class-${c}.php`, boot.includes(`includes/class-${c}.php`));
+}
+for (const c of ['Hedayati_Admin_Access', 'Hedayati_Teacher_Panel', 'Hedayati_Audit_Panel', 'Hedayati_Course_Panel', 'Hedayati_Academic_Panel', 'Hedayati_Verification_Panel']) {
+	assert(`boots ${c}::init()`, boot.includes(`${c}::init()`));
+}
+assert('plugin version >= 1.13.0', (() => {
 	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.\d+'/);
 	if (!m) return false;
 	const [maj, min] = [Number(m[1]), Number(m[2])];
-	return maj > 1 || (maj === 1 && min >= 10);
+	return maj > 1 || (maj === 1 && min >= 13);
 })());
 assert("plugin header 'Version:' matches HEDAYATI_CORE_VERSION", (() => {
 	const v = boot.match(/HEDAYATI_CORE_VERSION', '([0-9.]+)'/);
@@ -163,17 +162,14 @@ assert('the settings wp-admin escape link is gone from the staff portal', !staff
 assert('the standalone audit <aside> was removed (module card is the single entry point)', !staffPortal.includes('hd-manager-audit'));
 assert('courses list "new" button now targets the in-panel course-new view (Phase C)', /self::url\(\s*\[\s*'view' => 'course-new'\s*\]\s*\)/.test(staffPortal));
 assert('courses list row edit targets the in-panel course-edit view', /self::url\(\s*\[\s*'view' => 'course-edit', 'course_id' => \$course_id\s*\]\s*\)/.test(staffPortal));
-assert('the only wp-admin course link left is the manage_options-gated Gutenberg shortcut', /current_user_can\( 'manage_options' \)[\s\S]{0,80}get_edit_post_link/.test(staffPortalCode) && !staffPortalCode.includes('post-new.php?post_type=course'));
+assert('no post-new.php course link anywhere in the staff portal', !staffPortalCode.includes('post-new.php?post_type=course'));
 assert('academic operations wp-admin link is GONE from the staff portal (Phase E ported)', !staffPortalCode.includes('admin.php?page=hedayati-academic'));
-{
-	// The ONE screen with no front-end port yet is the verification queue.
-	const remainingAdminLinks = (staffPortalCode.match(/admin_url\(\s*'admin\.php\?page=hedayati-[a-z-]+'/g) || []);
-	assert('the only remaining wp-admin operational link is the verification queue (hedayati-students)', remainingAdminLinks.every((l) => l.includes('hedayati-students')));
-}
+assert('student verification wp-admin link is GONE from the staff portal (Phase E ported)', !staffPortalCode.includes('admin.php?page=hedayati-students'));
+assert('ZERO wp-admin operational links remain in the staff portal for non-admins', (staffPortalCode.match(/admin_url\(\s*'admin\.php\?page=hedayati-[a-z-]+'/g) || []).length === 0);
+assert('the only wp-admin course link left is the manage_options-gated Gutenberg shortcut', /current_user_can\( 'manage_options' \)[\s\S]{0,80}get_edit_post_link/.test(staffPortalCode));
 
 const pagePanel = readTheme('page-panel.php');
-assert('page-panel.php has no hard wp-admin nav item for teacher/course/academic', !pagePanel.includes('edit.php?post_type=teacher') && !pagePanel.includes('page=hedayati-academic'));
-assert('page-panel.php: only the verification-queue legacy nav item remains, «موقت»-tagged', pagePanel.includes('hedayati-students') && pagePanel.includes('hd-portal-nav-tag') && (pagePanel.match(/hd-portal-nav-legacy/g) || []).length === 1);
+assert('page-panel.php has NO wp-admin nav item at all (D53 fully enforced)', !/admin_url\(/.test(pagePanel) && !pagePanel.includes('hd-portal-nav-legacy') && !pagePanel.includes('hd-portal-nav-tag'));
 assert('page-panel.php still renders module-view nav (teachers / audit / academic come through here)', pagePanel.includes('Hedayati_Staff_Portal::module_views()'));
 
 const featured = readTheme('template-parts/featured-courses.php');
@@ -252,6 +248,30 @@ assert('plugin version >= 1.12.0 (Phase E)', (() => {
 	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.\d+'/);
 	return m && (Number(m[1]) > 1 || (Number(m[1]) === 1 && Number(m[2]) >= 12));
 })());
+
+// ── 9. class-verification-panel.php (Phase E) ────────────────────────────
+
+console.log('\n9. class-verification-panel.php (Hedayati_Verification_Panel — Phase E):');
+const vPanel = readPlugin('includes/class-verification-panel.php');
+const vPanelCode = codeOnly(vPanel);
+assert('declares strict_types', vPanel.includes('declare( strict_types=1 );'));
+assert('has ABSPATH guard', vPanel.includes("if ( ! defined( 'ABSPATH' ) ) {"));
+{
+	const b = braces(vPanel);
+	assert(`braces balanced (${b.ob}/${b.cb})`, b.balanced);
+}
+assert('reviewer section renders inside the existing /panel/?view=students detail (called by staff-portal)', vPanel.includes('function render_reviewer_section') && staffPortal.includes('Hedayati_Verification_Panel::render_reviewer_section( $user_id )'));
+assert('approve/reject gated on hedayati_verify_students; doc archive/purge on hedayati_view_private_documents', /'approve'\s*=>\s*'hedayati_verify_students'/.test(vPanel) && /'reject'\s*=>\s*'hedayati_verify_students'/.test(vPanel) && /'doc_archive'\s*=>\s*'hedayati_view_private_documents'/.test(vPanel));
+assert('every mutation handler: POST method + per-object nonce + capability re-check', /function verify\( string \$nonce_action, string \$cap \)[\s\S]{0,200}REQUEST_METHOD[\s\S]{0,120}wp_verify_nonce[\s\S]{0,120}current_user_can\( \$cap \)/.test(vPanel));
+assert('staff-assisted actions re-check the target is a real student (require_student)', vPanel.includes('function require_student') && (vPanelCode.match(/self::require_student\(/g) || []).length >= 2);
+assert('NATIONAL-ID REVEAL: POST-only, per-user nonce, capability re-checked HERE, then get_national_id_decrypted', /handle_reveal\(\)[\s\S]{0,200}self::verify\( 'hedayati_vpanel_reveal_' \. \$user_id, 'hedayati_verify_students' \)[\s\S]{0,200}Hedayati_Verification_Service::get_national_id_decrypted\(/.test(vPanelCode));
+assert('reveal emits no-store headers and audits identity.viewed, never persists the value', /handle_reveal\(\)[\s\S]*?Cache-Control: no-store[\s\S]*?Hedayati_Audit_Log::record\( 'identity\.viewed'/.test(vPanelCode) && !/set_transient|update_(user_meta|option)/.test((vPanelCode.match(/function handle_reveal\(\)[\s\S]*?\n\t\}/) || [''])[0]));
+assert('reveal value never enters a URL query arg (only rendered in the page body)', !/add_query_arg\([^)]*\$value|\$value[^;]*add_query_arg/.test(vPanelCode));
+assert('documents are streamed only through the existing nonced Hedayati_Student_Admin download handler (no public URL, no new stream path)', vPanel.includes("'hedayati_document_download'") && vPanel.includes("'hedayati_document_download_' . \$doc['id']") && !/readfile|fpassthru|Content-Disposition/.test(vPanelCode));
+assert('reception (no verify/private-doc caps) is a no-op — the section self-gates', /render_reviewer_section\( int \$user_id \)[\s\S]{0,220}! \$can_review && ! \$can_docs[\s\S]{0,40}return;/.test(vPanel));
+assert('no national ID / crypto reimplementation — only the service is called', !/openssl_|hash_hmac|Hedayati_Crypto::/.test(vPanelCode));
+assert('the wp-admin Hedayati_Student_Admin screen is untouched as an administrator fallback', readPlugin('includes/class-student-admin.php').includes('add_menu_page(') && readPlugin('includes/class-student-admin.php').includes('handle_identity_reveal'));
+assert('admin-access carve-out: profile.php stays reachable so every role keeps its own account/password screen', adminAccess.includes("'profile.php'"));
 
 console.log(`\n========================================`);
 console.log(`MANAGER EXPERIENCE SUMMARY: ${passed} PASSED, ${failed} FAILED`);

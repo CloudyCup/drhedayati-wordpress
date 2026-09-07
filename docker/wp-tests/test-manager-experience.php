@@ -61,11 +61,9 @@ function hdit_run_manager_experience(): void {
 	HDIT::eq( 'administrator -> no forced workspace ("")', '', $url_for( $adm ) );
 
 	$roles = Hedayati_Admin_Access::enforced_roles();
-	HDIT::ok( 'enforced set includes student', in_array( 'student', $roles, true ) );
-	HDIT::ok( 'enforced set includes teacher', in_array( 'teacher', $roles, true ) );
-	HDIT::ok( 'enforced set includes teacher_assistant', in_array( 'teacher_assistant', $roles, true ) );
-	HDIT::ok( 'enforced set EXCLUDES hedayati_manager (staged — Phase E gate)', ! in_array( 'hedayati_manager', $roles, true ) );
-	HDIT::ok( 'enforced set EXCLUDES reception (staged — Phase E gate)', ! in_array( 'reception', $roles, true ) );
+	foreach ( [ 'student', 'teacher', 'teacher_assistant', 'reception', 'hedayati_manager' ] as $role ) {
+		HDIT::ok( "D53 fully enforced: enforced set includes {$role}", in_array( $role, $roles, true ) );
+	}
 
 	$pred = static function ( int $uid ): bool {
 		wp_set_current_user( $uid );
@@ -76,19 +74,17 @@ function hdit_run_manager_experience(): void {
 	HDIT::ok( 'redirect ENFORCED for a student-only user', $pred( $stu ) );
 	HDIT::ok( 'redirect ENFORCED for a teacher-only user', $pred( $tchr ) );
 	HDIT::ok( 'redirect ENFORCED for a teacher_assistant-only user', $pred( $ta ) );
-	HDIT::ok( 'redirect NOT YET enforced for hedayati_manager (Phase E)', ! $pred( $mgr ) );
-	HDIT::ok( 'redirect NOT YET enforced for reception (Phase E)', ! $pred( $rcpt ) );
+	HDIT::ok( 'redirect ENFORCED for a hedayati_manager (Phase E complete)', $pred( $mgr ) );
+	HDIT::ok( 'redirect ENFORCED for a reception user (Phase E complete)', $pred( $rcpt ) );
 	HDIT::ok( 'redirect NEVER enforced for administrator', ! $pred( $adm ) );
 
-	// The Phase E gate is a one-line filter flip, provably:
-	$flip = static function ( array $r ): array {
-		return array_merge( $r, [ 'reception', 'hedayati_manager' ] );
-	};
-	add_filter( 'hedayati_admin_redirect_roles', $flip );
-	HDIT::ok( 'filter can add hedayati_manager to the enforced set', in_array( 'hedayati_manager', Hedayati_Admin_Access::enforced_roles(), true ) );
-	HDIT::ok( 'with the filter on, the manager predicate flips to enforced', $pred( $mgr ) );
-	HDIT::ok( 'administrator still never enforced even with the filter on', ! $pred( $adm ) );
-	remove_filter( 'hedayati_admin_redirect_roles', $flip );
+	// The filter can still NARROW the policy per deployment.
+	$narrow = static fn( array $r ): array => array_values( array_diff( $r, [ 'hedayati_manager' ] ) );
+	add_filter( 'hedayati_admin_redirect_roles', $narrow );
+	HDIT::ok( 'filter can remove hedayati_manager from the enforced set', ! in_array( 'hedayati_manager', Hedayati_Admin_Access::enforced_roles(), true ) );
+	HDIT::ok( 'with the filter narrowing it, the manager predicate goes back to not-enforced', ! $pred( $mgr ) );
+	HDIT::ok( 'administrator still never enforced regardless of the filter', ! $pred( $adm ) );
+	remove_filter( 'hedayati_admin_redirect_roles', $narrow );
 
 	// ── D53.B — Teachers panel view ──────────────────────────────────────────
 	HDIT::section( 'D53.B — Hedayati_Teacher_Panel (canonical teacher CPT, in-panel)' );
@@ -425,4 +421,56 @@ function hdit_run_manager_experience(): void {
 	// Run delete cascades via the service.
 	HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $AP( 'run_delete' ), 'run_id' => (string) $run_id ], [ 'Hedayati_Academic_Panel', 'handle_run_delete' ] );
 	HDIT::eq( 'manager deletes the run through the panel (service cascade)', null, Hedayati_Course_Run_Service::get( $run_id ) );
+
+	// ── D53.F — Phase E: in-panel verification / private-document reviewer ──
+	HDIT::section( 'D53.F — Hedayati_Verification_Panel (Phase E, Phase 2C invariants preserved)' );
+
+	$vp_stu = HDIT_Env::make_user( 'vp_stu', 'student' );
+	HDIT::not_wp_error( 'national ID set for the reviewer test (encrypted at rest by the service)', Hedayati_Verification_Service::set_national_id( $vp_stu, '0451739442', $mgr ) );
+	HDIT::not_wp_error( 'verification initiated', Hedayati_Verification_Service::initiate( $vp_stu, $mgr ) );
+
+	// Reception can never decrypt — invariant unchanged, checked at the service AND the panel.
+	HDIT::is_wp_error( 'service: reception viewer cannot decrypt the national ID', Hedayati_Verification_Service::get_national_id_decrypted( $vp_stu, $rcpt ), 'forbidden' );
+	HDIT_AdminPost::run( $rcpt, [ '_wpnonce' => $nonce_as( $rcpt, 'hedayati_vpanel_reveal_' . $vp_stu ), 'user_id' => (string) $vp_stu ], [ 'Hedayati_Verification_Panel', 'handle_reveal' ] );
+	HDIT::eq( 'panel: reception POST to reveal -> 403', 403, HDIT_AdminPost::$result['status'] ?? 0 );
+
+	// Manager (hedayati_verify_students) reveal: value rendered once, audited, PII-free note.
+	$views_before = Hedayati_Audit_Log::count( [ 'action' => 'identity.viewed', 'object_id' => $vp_stu ] );
+	ob_start();
+	try {
+		HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $nonce_as( $mgr, 'hedayati_vpanel_reveal_' . $vp_stu ), 'user_id' => (string) $vp_stu ], [ 'Hedayati_Verification_Panel', 'handle_reveal' ] );
+	} finally {
+		$reveal_out = ob_get_clean();
+	}
+	HDIT::ok( 'manager reveal: not 403', 403 !== ( HDIT_AdminPost::$result['status'] ?? 0 ) );
+	HDIT::ok( 'manager reveal: response body contains the decrypted value', str_contains( (string) $reveal_out, '0451739442' ) );
+	HDIT::eq( 'manager reveal: exactly one identity.viewed audit row added', $views_before + 1, Hedayati_Audit_Log::count( [ 'action' => 'identity.viewed', 'object_id' => $vp_stu ] ) );
+	$last_view = Hedayati_Audit_Log::query( [ 'action' => 'identity.viewed', 'object_id' => $vp_stu, 'per_page' => 1 ] );
+	HDIT::ok( 'the identity.viewed note carries no national-ID value', ! empty( $last_view ) && ! str_contains( $last_view[0]['note'], '0451739442' ) );
+
+	// Approve / reject.
+	HDIT_AdminPost::run( $rcpt, [ '_wpnonce' => $nonce_as( $rcpt, 'hedayati_vpanel_approve_' . $vp_stu ), 'user_id' => (string) $vp_stu ], [ 'Hedayati_Verification_Panel', 'handle_approve' ] );
+	HDIT::eq( 'reception POST to approve -> 403 (lacks hedayati_verify_students)', 403, HDIT_AdminPost::$result['status'] ?? 0 );
+
+	HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $nonce_as( $mgr, 'hedayati_vpanel_approve_' . $vp_stu ), 'user_id' => (string) $vp_stu, 'note' => 'مدارک کامل بود' ], [ 'Hedayati_Verification_Panel', 'handle_approve' ] );
+	HDIT::eq( 'manager approves the pending verification via the panel', 'verified', Hedayati_Verification_Service::get_status( $vp_stu )['status'] );
+
+	// The reviewer section self-gates: reception sees nothing, manager sees it.
+	wp_set_current_user( $rcpt );
+	ob_start();
+	Hedayati_Verification_Panel::render_reviewer_section( $vp_stu );
+	$rcpt_section = ob_get_clean();
+	wp_set_current_user( $mgr );
+	ob_start();
+	Hedayati_Verification_Panel::render_reviewer_section( $vp_stu );
+	$mgr_section = ob_get_clean();
+	wp_set_current_user( 0 );
+	HDIT::eq( 'reception: reviewer section renders nothing', '', trim( (string) $rcpt_section ) );
+	HDIT::ok( 'manager: reviewer section renders the verification/documents block', str_contains( (string) $mgr_section, 'بررسی احراز هویت و مدارک' ) );
+	HDIT::ok( 'reviewer section never emits a public document URL (download only via the nonced handler)', ! str_contains( (string) $mgr_section, 'wp-content/uploads' ) );
+
+	// Administrator keeps the native wp-admin verification screen.
+	wp_set_current_user( $adm );
+	HDIT::ok( 'administrator retains hedayati_verify_students + hedayati_view_private_documents (native screen intact)', current_user_can( 'hedayati_verify_students' ) && current_user_can( 'hedayati_view_private_documents' ) );
+	wp_set_current_user( 0 );
 }

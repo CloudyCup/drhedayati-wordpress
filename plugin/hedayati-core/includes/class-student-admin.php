@@ -536,7 +536,7 @@ class Hedayati_Student_Admin {
 
 	// ── Label maps ───────────────────────────────────────────────────────────
 
-	private static function verification_status_label( string $status ): string {
+	public static function verification_status_label( string $status ): string {
 		$map = [
 			'unverified' => __( 'احراز نشده', 'hedayati-core' ),
 			'pending'    => __( 'در حال بررسی', 'hedayati-core' ),
@@ -547,7 +547,7 @@ class Hedayati_Student_Admin {
 		return $map[ $status ] ?? $status;
 	}
 
-	private static function doc_type_label( string $type ): string {
+	public static function doc_type_label( string $type ): string {
 		$map = [
 			'national_card'      => __( 'کارت ملی', 'hedayati-core' ),
 			'birth_certificate'  => __( 'شناسنامه', 'hedayati-core' ),
@@ -557,7 +557,7 @@ class Hedayati_Student_Admin {
 		return $map[ $type ] ?? $type;
 	}
 
-	private static function archive_status_label( array $doc ): string {
+	public static function archive_status_label( array $doc ): string {
 		if ( null !== $doc['deleted_at'] ) {
 			return __( 'حذف‌شده', 'hedayati-core' );
 		}
@@ -571,7 +571,7 @@ class Hedayati_Student_Admin {
 			: __( 'منتقل‌شده', 'hedayati-core' );
 	}
 
-	private static function is_purge_eligible( array $doc ): bool {
+	public static function is_purge_eligible( array $doc ): bool {
 		if ( null === $doc['archived_at'] ) {
 			return false;
 		}
