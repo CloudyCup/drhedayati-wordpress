@@ -119,7 +119,7 @@ assert('creates no database table (no dbDelta / CREATE TABLE / $wpdb->insert)', 
 	assert('handle_save enforces the 1:1 WP-user link rule via Hedayati_Teacher::find_by_user_id (mirrors the CPT save)', save.includes('Hedayati_Teacher::find_by_user_id( $linked )'));
 	assert('handle_save writes an audit entry (teacher.updated)', save.includes("Hedayati_Audit_Log::record( 'teacher.updated'"));
 	assert('handle_save sanitises the biography with wp_kses_post', /wp_kses_post\(\s*\$str\(\s*'biography'\s*\)\s*\)/.test(save));
-	assert('handle_save reads every $_POST field through an is_string guard (no array-type crash)', save.includes("is_string( \$_POST[ \$key ] )"));
+	assert('handle_save reads every $_POST field through an is_scalar guard (no array-type crash)', save.includes("is_scalar( \$_POST[ \$key ] )"));
 }
 {
 	const trash = (teacherPanelCode.match(/function handle_trash\(\)[\s\S]*?\n\t\}/) || [''])[0];

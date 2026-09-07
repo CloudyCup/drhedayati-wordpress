@@ -264,7 +264,7 @@ class Hedayati_Teacher_Panel {
 	public static function handle_save(): void {
 		Hedayati_Staff_Portal::guard_action( self::NONCE_SAVE, self::CAPABILITY );
 
-		$str = static fn( string $key ): string => isset( $_POST[ $key ] ) && is_string( $_POST[ $key ] )
+		$str = static fn( string $key ): string => isset( $_POST[ $key ] ) && is_scalar( $_POST[ $key ] )
 			? (string) wp_unslash( $_POST[ $key ] )
 			: '';
 
