@@ -102,8 +102,16 @@ function hdit_run_manager_experience(): void {
 	HDIT::ok( 'student cannot (hedayati_manage_teachers)', ! current_user_can( 'hedayati_manage_teachers' ) );
 	wp_set_current_user( 0 );
 
-	$save_nonce  = wp_create_nonce( 'hedayati_teacher_panel_save' );
-	$trash_nonce = wp_create_nonce( 'hedayati_teacher_panel_trash' );
+	// A WordPress nonce is bound to the current user — it must be minted while the
+	// acting user is set (matching how HDIT_AdminPost::run re-sets that same user).
+	$nonce_as = static function ( int $uid, string $action ): string {
+		wp_set_current_user( $uid );
+		$n = wp_create_nonce( $action );
+		wp_set_current_user( 0 );
+		return $n;
+	};
+	$SAVE  = 'hedayati_teacher_panel_save';
+	$TRASH = 'hedayati_teacher_panel_trash';
 
 	$all_teachers = static fn(): array => get_posts( [
 		'post_type'   => 'teacher',
@@ -124,7 +132,7 @@ function hdit_run_manager_experience(): void {
 	// Create (manager, valid) — success path redirects, so assert the record.
 	$before = count( $all_teachers() );
 	HDIT_AdminPost::run( $mgr, [
-		'_wpnonce'   => $save_nonce,
+		'_wpnonce'   => $nonce_as( $mgr, $SAVE ),
 		'teacher_id' => 0,
 		'title'      => 'استاد آزمایشی مدیریت',
 		'headline'   => 'مدرس شبکه',
@@ -146,7 +154,7 @@ function hdit_run_manager_experience(): void {
 
 	// Missing title -> WP_Error notice (redirect), no new post.
 	$count_now = count( $all_teachers() );
-	HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $save_nonce, 'teacher_id' => 0, 'title' => '' ], [ 'Hedayati_Teacher_Panel', 'handle_save' ] );
+	HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $nonce_as( $mgr, $SAVE ), 'teacher_id' => 0, 'title' => '' ], [ 'Hedayati_Teacher_Panel', 'handle_save' ] );
 	HDIT::eq( 'empty title creates no teacher post', $count_now, count( $all_teachers() ) );
 
 	// No nonce -> 403.
@@ -154,32 +162,32 @@ function hdit_run_manager_experience(): void {
 	HDIT::eq( 'handle_save without a nonce -> 403', 403, HDIT_AdminPost::$result['status'] ?? 0 );
 
 	// Wrong role -> 403 (student).
-	HDIT_AdminPost::run( $stu, [ '_wpnonce' => wp_create_nonce( 'hedayati_teacher_panel_save' ), 'teacher_id' => 0, 'title' => 'x' ], [ 'Hedayati_Teacher_Panel', 'handle_save' ] );
+	HDIT_AdminPost::run( $stu, [ '_wpnonce' => $nonce_as( $stu, $SAVE ), 'teacher_id' => 0, 'title' => 'x' ], [ 'Hedayati_Teacher_Panel', 'handle_save' ] );
 	HDIT::eq( 'student POST to handle_save -> 403', 403, HDIT_AdminPost::$result['status'] ?? 0 );
 
 	// 1:1 WP-user link conflict — mirrors Hedayati_Teacher::save().
 	$link_target = HDIT_Env::make_user( 'mx_linkme', 'teacher' );
 	$owner_id    = $new_teacher ? (int) $new_teacher->ID : 0;
 	HDIT_AdminPost::run( $mgr, [
-		'_wpnonce' => $save_nonce, 'teacher_id' => $owner_id, 'title' => 'استاد آزمایشی مدیریت',
+		'_wpnonce' => $nonce_as( $mgr, $SAVE ), 'teacher_id' => $owner_id, 'title' => 'استاد آزمایشی مدیریت',
 		'linked_user' => $link_target,
 	], [ 'Hedayati_Teacher_Panel', 'handle_save' ] );
 	HDIT::eq( 'first teacher successfully links the WP user', $link_target, (int) get_post_meta( $owner_id, Hedayati_Teacher::META_USER_ID, true ) );
 
 	$second_teacher = HDIT_Env::make_teacher( 'دومین استاد' );
 	HDIT_AdminPost::run( $mgr, [
-		'_wpnonce' => $save_nonce, 'teacher_id' => $second_teacher, 'title' => 'دومین استاد',
+		'_wpnonce' => $nonce_as( $mgr, $SAVE ), 'teacher_id' => $second_teacher, 'title' => 'دومین استاد',
 		'linked_user' => $link_target,
 	], [ 'Hedayati_Teacher_Panel', 'handle_save' ] );
 	HDIT::eq( 'a second teacher CANNOT claim an already-linked WP user (stays 0)', 0, (int) get_post_meta( $second_teacher, Hedayati_Teacher::META_USER_ID, true ) );
 	HDIT::eq( 'the original link is untouched by the rejected claim', $link_target, (int) get_post_meta( $owner_id, Hedayati_Teacher::META_USER_ID, true ) );
 
 	// Trash — manager can, student cannot.
-	HDIT_AdminPost::run( $stu, [ '_wpnonce' => wp_create_nonce( 'hedayati_teacher_panel_trash' ), 'teacher_id' => $second_teacher ], [ 'Hedayati_Teacher_Panel', 'handle_trash' ] );
+	HDIT_AdminPost::run( $stu, [ '_wpnonce' => $nonce_as( $stu, $TRASH ), 'teacher_id' => $second_teacher ], [ 'Hedayati_Teacher_Panel', 'handle_trash' ] );
 	HDIT::eq( 'student POST to handle_trash -> 403', 403, HDIT_AdminPost::$result['status'] ?? 0 );
 	HDIT::ok( 'teacher post survives the unauthorised trash attempt (not trashed)', 'trash' !== get_post_status( $second_teacher ) );
 
-	HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $trash_nonce, 'teacher_id' => $second_teacher ], [ 'Hedayati_Teacher_Panel', 'handle_trash' ] );
+	HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $nonce_as( $mgr, $TRASH ), 'teacher_id' => $second_teacher ], [ 'Hedayati_Teacher_Panel', 'handle_trash' ] );
 	HDIT::eq( 'manager trashes the teacher via the safe lifecycle', 'trash', get_post_status( $second_teacher ) );
 
 	// ── D53.C — Audit panel view (read-only) ─────────────────────────────────
