@@ -1,0 +1,177 @@
+/*
+ * Phase F (D53) — the dedicated front-end /login/ experience.
+ *
+ * Loaded only on the `login` page (functions.php). Uses the site's existing
+ * --hd-* design tokens (main.css) so light/dark, RTL and typography match the
+ * public NavigatorHome site and the /panel/ + /account/ shells exactly. No new
+ * palette, no @media dark block of its own (dark mode stays centralised in
+ * main.css via the token redefinitions).
+ */
+
+.hd-auth-main {
+	min-height: calc(100vh - 220px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 48px 20px;
+}
+
+.hd-auth-shell {
+	width: min(960px, 100%);
+	display: grid;
+	grid-template-columns: 1.05fr 1fr;
+	background: var(--hd-surface);
+	border: 1px solid var(--hd-line);
+	border-radius: calc(var(--hd-radius) + 6px);
+	box-shadow: var(--hd-shadow-lg);
+	overflow: hidden;
+}
+
+/* ── Brand side ── */
+
+.hd-auth-brandside {
+	position: relative;
+	padding: 44px 40px;
+	background: linear-gradient(150deg, var(--hd-red) 0%, var(--hd-red-dark) 100%);
+	color: #fff;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 14px;
+	overflow: hidden;
+}
+
+.hd-auth-brandmark {
+	width: 54px;
+	height: 54px;
+	display: grid;
+	place-items: center;
+	border-radius: 16px;
+	background: rgba(255, 255, 255, .16);
+	font-size: 1.5rem;
+	font-weight: 800;
+}
+
+.hd-auth-brandside h2 { font-size: 1.35rem; font-weight: 800; margin: 4px 0 0; }
+.hd-auth-brandside p { font-size: .92rem; line-height: 1.9; opacity: .92; max-width: 34ch; margin: 0; }
+
+.hd-auth-pattern {
+	position: absolute;
+	inset-inline-start: -80px;
+	inset-block-end: -80px;
+	width: 260px;
+	height: 260px;
+	border-radius: 50%;
+	border: 40px solid rgba(255, 255, 255, .08);
+	pointer-events: none;
+}
+
+/* ── Form panel ── */
+
+.hd-auth-panel {
+	padding: 44px 44px 36px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.hd-auth-logo {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 800;
+	font-size: 1rem;
+	color: var(--hd-red-dark);
+	text-decoration: none;
+}
+.hd-auth-logo span {
+	width: 30px; height: 30px;
+	display: grid; place-items: center;
+	border-radius: 9px;
+	background: var(--hd-red-light);
+}
+
+.hd-auth-title { font-size: 1.5rem; font-weight: 800; margin: 8px 0 0; color: var(--hd-ink); }
+.hd-auth-lead { font-size: .92rem; line-height: 1.9; color: var(--hd-muted); margin: 0; }
+
+.hd-auth-form { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+
+.hd-auth-field { display: flex; flex-direction: column; gap: 6px; }
+.hd-auth-field > span { font-size: .82rem; font-weight: 700; color: var(--hd-ink); }
+.hd-auth-field input {
+	width: 100%;
+	padding: 11px 13px;
+	font: inherit;
+	font-size: .95rem;
+	color: var(--hd-ink);
+	background: var(--hd-bg);
+	border: 1.5px solid var(--hd-line);
+	border-radius: var(--hd-radius-sm);
+	transition: border-color var(--hd-transition), box-shadow var(--hd-transition);
+}
+.hd-auth-field input:focus-visible {
+	outline: none;
+	border-color: var(--hd-red);
+	box-shadow: 0 0 0 3px var(--hd-red-light);
+}
+
+.hd-auth-remember {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: .85rem;
+	color: var(--hd-muted);
+}
+.hd-auth-remember input { width: 16px; height: 16px; accent-color: var(--hd-red); }
+
+.hd-auth-btn {
+	margin-top: 4px;
+	padding: 12px 18px;
+	font: inherit;
+	font-size: .98rem;
+	font-weight: 800;
+	color: #fff;
+	background: var(--hd-red);
+	border: 0;
+	border-radius: var(--hd-radius-sm);
+	cursor: pointer;
+	transition: background var(--hd-transition), transform var(--hd-transition);
+}
+.hd-auth-btn:hover { background: var(--hd-red-dark); }
+.hd-auth-btn:active { transform: translateY(1px); }
+.hd-auth-btn:focus-visible { outline: 3px solid var(--hd-red-light); outline-offset: 2px; }
+
+.hd-auth-link { color: var(--hd-red-dark); font-size: .86rem; font-weight: 700; text-decoration: none; }
+.hd-auth-link:hover { text-decoration: underline; }
+
+.hd-auth-notice {
+	padding: 11px 14px;
+	border-radius: var(--hd-radius-sm);
+	font-size: .88rem;
+	line-height: 1.7;
+	border: 1px solid transparent;
+}
+.hd-auth-notice-error   { background: var(--hd-red-light); border-color: var(--hd-red-border); color: var(--hd-red-dark); }
+.hd-auth-notice-success { background: #e7f5ec; border-color: #b7dfc5; color: #1c6b3a; }
+
+.hd-auth-foot {
+	margin-top: auto;
+	padding-top: 14px;
+	border-top: 1px solid var(--hd-line);
+	font-size: .82rem;
+	line-height: 1.9;
+	color: var(--hd-muted);
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 720px) {
+	.hd-auth-shell { grid-template-columns: 1fr; }
+	.hd-auth-brandside { padding: 30px 28px; }
+	.hd-auth-brandside p { display: none; }
+	.hd-auth-panel { padding: 32px 26px 28px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.hd-auth-btn, .hd-auth-field input { transition: none; }
+}

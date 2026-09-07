@@ -134,6 +134,17 @@ function hedayati_enqueue_assets(): void {
 			&& Hedayati_Account_Security::must_change( get_current_user_id() )
 		);
 
+	// Phase F (D53) — the dedicated /login/ page.
+	$hd_login_id = class_exists( 'Hedayati_Login' ) ? Hedayati_Login::get_page_id() : 0;
+	if ( ( $hd_login_id > 0 && is_page( $hd_login_id ) ) || is_page( 'login' ) ) {
+		wp_enqueue_style(
+			'hedayati-auth',
+			HEDAYATI_URI . '/assets/css/auth.css',
+			[ 'hedayati-main' ],
+			HEDAYATI_VERSION
+		);
+	}
+
 	if ( $hd_needs_portal ) {
 		wp_enqueue_style(
 			'hedayati-account',

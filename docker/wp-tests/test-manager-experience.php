@@ -473,4 +473,42 @@ function hdit_run_manager_experience(): void {
 	wp_set_current_user( $adm );
 	HDIT::ok( 'administrator retains hedayati_verify_students + hedayati_view_private_documents (native screen intact)', current_user_can( 'hedayati_verify_students' ) && current_user_can( 'hedayati_view_private_documents' ) );
 	wp_set_current_user( 0 );
+
+	// ── D53.G — Phase F: the /login/ front-end auth experience ──────────────
+	HDIT::section( 'D53.G — Hedayati_Login (Phase F, reuses the WordPress auth stack)' );
+
+	HDIT::ok( 'the /login/ page exists (created on activation)', Hedayati_Login::get_page_id() > 0 && 'login' === get_post_field( 'post_name', Hedayati_Login::get_page_id() ) );
+
+	// One-shot PRG notice round-trips (redirect_with_notice() exits, so seed the
+	// transient the same way the class keys it and read it back).
+	$nk = new ReflectionMethod( 'Hedayati_Login', 'notice_key' );
+	$nk->setAccessible( true );
+	set_transient( $nk->invoke( null ), [ 'type' => 'error', 'text' => 'پیام آزمایشی' ], 45 );
+	$taken = Hedayati_Login::take_notice();
+	HDIT::eq( 'take_notice() returns the stored one-shot message', 'پیام آزمایشی', $taken['text'] ?? '' );
+	HDIT::eq( 'take_notice() is one-shot (second read is empty)', [], Hedayati_Login::take_notice() );
+
+	// The reset link is only RE-POINTED — core token + key are unchanged.
+	$sample = "Someone requested...\n<" . network_site_url( 'wp-login.php?action=rp&key=ABCDEF&login=someuser', 'login' ) . ">\n";
+	$rewritten = apply_filters( 'retrieve_password_message', $sample, 'ABCDEF', 'someuser', new WP_User( $stu ) );
+	HDIT::ok( 'reset email now points at /login/?action=rp with the SAME key', str_contains( $rewritten, '/login/' ) && str_contains( $rewritten, 'key=ABCDEF' ) && ! str_contains( $rewritten, 'wp-login.php?action=rp' ) );
+
+	// Core reset-token security is untouched: a bogus key is refused by core.
+	HDIT::is_wp_error( 'a forged reset key is rejected by WordPress core check_password_reset_key()', check_password_reset_key( 'totally-fake-key', get_userdata( $stu )->user_login ) );
+
+	// resetpass_user() with no cookie present -> WP_Error (never a user).
+	unset( $_COOKIE[ 'wp-resetpass-' . COOKIEHASH ] );
+	HDIT::is_wp_error( 'resetpass_user() with no reset cookie returns WP_Error, never a user', Hedayati_Login::resetpass_user() );
+
+	// A real end-to-end reset: request a key via core, feed it through the panel path.
+	$rp_user = get_userdata( $stu );
+	$rp_key  = get_password_reset_key( $rp_user );
+	HDIT::not_wp_error( 'core issues a reset key', $rp_key );
+	if ( ! is_wp_error( $rp_key ) ) {
+		$_COOKIE[ 'wp-resetpass-' . COOKIEHASH ] = $rp_user->user_login . ':' . $rp_key;
+		$resolved = Hedayati_Login::resetpass_user();
+		HDIT::ok( 'resetpass_user() resolves the (login:key) cookie to the right user via core', $resolved instanceof WP_User && (int) $resolved->ID === $stu );
+		unset( $_COOKIE[ 'wp-resetpass-' . COOKIEHASH ] );
+	}
+
 }

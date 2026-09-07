@@ -273,6 +273,50 @@ assert('no national ID / crypto reimplementation — only the service is called'
 assert('the wp-admin Hedayati_Student_Admin screen is untouched as an administrator fallback', readPlugin('includes/class-student-admin.php').includes('add_menu_page(') && readPlugin('includes/class-student-admin.php').includes('handle_identity_reveal'));
 assert('admin-access carve-out: profile.php stays reachable so every role keeps its own account/password screen', adminAccess.includes("'profile.php'"));
 
+// ── 10. class-login.php + page-login.php + auth.css (Phase F) ─────────────
+
+console.log('\n10. Phase F — the /login/ front-end auth experience:');
+const login = readPlugin('includes/class-login.php');
+const loginCode = codeOnly(login);
+assert('declares strict_types', login.includes('declare( strict_types=1 );'));
+assert('has ABSPATH guard', login.includes("if ( ! defined( 'ABSPATH' ) ) {"));
+{
+	const b = braces(login);
+	assert(`braces balanced (${b.ob}/${b.cb})`, b.balanced);
+}
+assert('NOT a parallel auth system — login goes through wp_signon()', login.includes('wp_signon( $creds'));
+assert('post-login routing reuses the existing login_redirect filter chain', /apply_filters\(\s*'login_redirect'/.test(login));
+assert('redirect_to is validated with wp_validate_redirect (no open redirect)', (loginCode.match(/wp_validate_redirect\(/g) || []).length >= 3);
+assert('forgot-password calls WordPress core retrieve_password() and NEVER inspects its result', login.includes('retrieve_password();') && !/retrieve_password\(\)[\s\S]{0,60}(is_wp_error|if\s*\(|has_errors)/.test(loginCode));
+assert('forgot-password is enumeration-safe: one unconditional redirect for existing AND unknown accounts', /wp_safe_redirect\(\s*self::url\(\s*\[\s*'checkemail' => 'confirm'\s*\]\s*\)\s*\);\s*exit;/.test(loginCode));
+assert('forgot-password shares the same rate-limit bucket the wp-login path uses (reset: prefix)', login.includes("'reset:' . strtolower( \$login )") && login.includes('Hedayati_Rate_Limiter::record_failure'));
+assert('reset link landing uses core check_password_reset_key (token security untouched)', login.includes('check_password_reset_key( $key, $login )'));
+assert('new password is set via core reset_password() — no custom hashing', login.includes('reset_password( $user, $pass1 )') && !/wp_set_password|password_hash|Hedayati_Crypto/.test(loginCode));
+assert('the reset email link is only RE-POINTED at /login/ (str_replace of the core url), not regenerated', /filter_reset_message[\s\S]{0,400}str_replace\( \$core_url, \$our_url, \$message \)/.test(login));
+assert('a bare wp-login.php GET is bounced to /login/ (logout / rp / admin-email left to core)', login.includes("add_action( 'login_init', [ self::class, 'maybe_bounce_wp_login' ] )") && /maybe_bounce_wp_login[\s\S]{0,400}in_array\( \$action, \[ 'login', 'lostpassword', 'retrievepassword' \]/.test(login));
+assert('login_url filter leaves admin-context + REST callers alone', /function login_url[\s\S]{0,140}is_admin\(\)[\s\S]{0,40}REST_REQUEST[\s\S]{0,40}return \$url;/.test(login));
+assert('an already-authenticated visitor is never shown a login form', /handle\(\)[\s\S]{0,400}get_current_user_id\(\)[\s\S]{0,200}wp_safe_redirect\( self::post_login_destination/.test(loginCode));
+assert('a forced-first-login user is NOT bounced off /login/ before the change screen can run', /must_change\( \$user_id \)/.test(login));
+assert('nonces on every POST form (login / lostpassword / resetpass)', login.includes("wp_verify_nonce( \$nonce, 'hedayati_login' )") && login.includes("'hedayati_lostpassword'") && login.includes("'hedayati_resetpass'"));
+assert('bootstrap requires + boots Hedayati_Login and creates the /login/ page on activation', boot.includes('includes/class-login.php') && boot.includes('Hedayati_Login::init()') && boot.includes('Hedayati_Login::maybe_create_page()'));
+assert('plugin version >= 1.14.0 (Phase F)', (() => {
+	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.\d+'/);
+	return m && (Number(m[1]) > 1 || (Number(m[1]) === 1 && Number(m[2]) >= 14));
+})());
+
+const pageLogin = readTheme('page-login.php');
+assert('page-login.php only renders — all handling is in Hedayati_Login::handle() (no wp_signon / auth logic in the template)', !/wp_signon|retrieve_password|reset_password\(|check_password_reset_key/.test(codeOnly(pageLogin)));
+assert('page-login.php renders every state: login / lostpassword / resetpass / checkemail / password=reset', pageLogin.includes("'lostpassword' === $hd_action") && pageLogin.includes("'resetpass' === $hd_action") && pageLogin.includes('$hd_checkemail') && pageLogin.includes('$hd_pwreset'));
+assert('page-login.php uses get_header()/get_footer() — one product with the public site, not a wp-login re-skin', /get_header\(\s*\);/.test(pageLogin) && /get_footer\(\s*\);/.test(pageLogin));
+assert('login form posts username OR Iranian phone (single field, dir=ltr), remember-me, redirect_to hidden', pageLogin.includes('نام کاربری یا شمارهٔ همراه') && pageLogin.includes('name="rememberme"') && pageLogin.includes('name="redirect_to"'));
+assert('no WordPress branding / wp-login language in the template', !/wordpress|wp-login|Powered by/i.test(pageLogin));
+
+const authCss = readTheme('assets/css/auth.css');
+assert('auth.css reuses the existing --hd-* tokens (no new palette)', /var\(--hd-red\)/.test(authCss) && /var\(--hd-ink\)/.test(authCss) && /var\(--hd-surface\)/.test(authCss));
+assert('auth.css defines no @media dark block of its own (dark mode stays centralised in main.css)', !/prefers-color-scheme|\[data-theme/.test(authCss));
+assert('auth.css is responsive (mobile breakpoint collapses the split layout)', /@media \(max-width: 720px\)[\s\S]{0,120}grid-template-columns: 1fr/.test(authCss));
+assert('functions.php enqueues auth.css on the login page only', readTheme('functions.php').includes("'hedayati-auth'") && readTheme('functions.php').includes("assets/css/auth.css"));
+
 console.log(`\n========================================`);
 console.log(`MANAGER EXPERIENCE SUMMARY: ${passed} PASSED, ${failed} FAILED`);
 console.log(`========================================`);
