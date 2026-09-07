@@ -306,7 +306,8 @@ function hdit_run_manager_experience(): void {
 
 	$ap_course = HDIT_Env::make_course( 'دورهٔ عملیات آزمایشی' );
 	update_post_meta( $ap_course, HDIT::POST_MARKER, 1 );
-	$ap_teacher = HDIT_Env::make_teacher( 'استاد عملیات' );
+	$ap_instr   = HDIT_Env::make_user( 'ap_instr', 'teacher' ); // has hedayati_record_attendance (manager does NOT)
+	$ap_teacher = HDIT_Env::make_teacher( 'استاد عملیات', $ap_instr ); // CPT linked to the instructor account
 	$ap_stu1    = HDIT_Env::make_user( 'ap_stu1', 'student' );
 	$ap_stu2    = HDIT_Env::make_user( 'ap_stu2', 'student' );
 	$other_run  = Hedayati_Course_Run_Service::create( [ 'course_id' => $ap_course, 'label' => 'کلاس دیگر' ] );
@@ -377,21 +378,31 @@ function hdit_run_manager_experience(): void {
 		HDIT::eq( 'IDOR: an enrollment from a different run cannot be mutated through this run', 'active', $fe['status'] );
 	}
 
-	// Attendance: valid batch records; a forged foreign enrollment id -> 400, nothing written.
+	// Attendance is recorded by the assigned INSTRUCTOR (hedayati_record_attendance);
+	// the manager intentionally lacks that capability, matching the wp-admin class.
+	HDIT::ok( 'the linked instructor account counts as staff on the run', Hedayati_Run_Staff_Service::user_is_staff_on_run( $ap_instr, $run_id ) );
+	$att_nonce = static fn(): string => $nonce_as( $ap_instr, 'hedayati_apanel_attendance_save' );
 	$my_enr = Hedayati_Enrollment_Service::get_by_run_user( $run_id, $ap_stu1 );
 	$my_enr_id = $my_enr ? (int) $my_enr['id'] : 0;
-	HDIT_AdminPost::run( $mgr, [
-		'_wpnonce' => $AP( 'attendance_save' ), 'session_id' => (string) $session_id,
+	HDIT_AdminPost::run( $ap_instr, [
+		'_wpnonce' => $att_nonce(), 'session_id' => (string) $session_id,
 		'mark' => [ (string) $my_enr_id => 'present' ], 'note' => [ (string) $my_enr_id => 'به‌موقع' ],
 	], [ 'Hedayati_Academic_Panel', 'handle_attendance_save' ] );
 	$att = Hedayati_Attendance_Service::list_for_session( $session_id );
 	HDIT::eq( 'attendance recorded for the enrolled student', 'present', $att[ $my_enr_id ]['status'] ?? '' );
 
-	HDIT_AdminPost::run( $mgr, [
-		'_wpnonce' => $AP( 'attendance_save' ), 'session_id' => (string) $session_id,
+	HDIT_AdminPost::run( $ap_instr, [
+		'_wpnonce' => $att_nonce(), 'session_id' => (string) $session_id,
 		'mark' => [ (string) ( $foreign_enr ?: 999999 ) => 'absent' ],
 	], [ 'Hedayati_Academic_Panel', 'handle_attendance_save' ] );
 	HDIT::eq( 'attendance batch with a foreign/forged enrollment id -> 400', 400, HDIT_AdminPost::$result['status'] ?? 0 );
+
+	// The manager (no hedayati_record_attendance) is denied — faithful to the wp-admin policy.
+	HDIT_AdminPost::run( $mgr, [
+		'_wpnonce' => $AP( 'attendance_save' ), 'session_id' => (string) $session_id,
+		'mark' => [ (string) $my_enr_id => 'late' ],
+	], [ 'Hedayati_Academic_Panel', 'handle_attendance_save' ] );
+	HDIT::eq( 'manager POST to attendance_save -> 403 (lacks hedayati_record_attendance)', 403, HDIT_AdminPost::$result['status'] ?? 0 );
 
 	// Public opt-in toggle writes the canonical course meta allow-list.
 	HDIT_AdminPost::run( $mgr, [
