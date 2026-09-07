@@ -296,4 +296,122 @@ function hdit_run_manager_experience(): void {
 	if ( $cat_id > 0 ) {
 		wp_delete_term( $cat_id, 'course-category' );
 	}
+
+	// ── D53.E — Phase E: academic operations in the panel ───────────────────
+	HDIT::section( 'D53.E — Hedayati_Academic_Panel (Phase E, reuses Phase 2B services)' );
+
+	$views = Hedayati_Staff_Portal::module_views();
+	HDIT::ok( 'panel registers the "academic" module view', isset( $views['academic'] ) );
+	HDIT::eq( 'academic view gated on hedayati_manage_course_runs', 'hedayati_manage_course_runs', $views['academic']['capability'] ?? '' );
+
+	$ap_course = HDIT_Env::make_course( 'دورهٔ عملیات آزمایشی' );
+	update_post_meta( $ap_course, HDIT::POST_MARKER, 1 );
+	$ap_teacher = HDIT_Env::make_teacher( 'استاد عملیات' );
+	$ap_stu1    = HDIT_Env::make_user( 'ap_stu1', 'student' );
+	$ap_stu2    = HDIT_Env::make_user( 'ap_stu2', 'student' );
+	$other_run  = Hedayati_Course_Run_Service::create( [ 'course_id' => $ap_course, 'label' => 'کلاس دیگر' ] );
+	$other_run  = is_wp_error( $other_run ) ? 0 : (int) $other_run;
+
+	$AP = static fn( string $a ): string => $nonce_as( $mgr, 'hedayati_apanel_' . $a );
+
+	// Create a run through the panel.
+	$runs_before = count( Hedayati_Course_Run_Service::query( [ 'limit' => 500 ] ) );
+	HDIT_AdminPost::run( $mgr, [
+		'_wpnonce' => $AP( 'run_save' ), 'run_id' => '0',
+		'course_id' => (string) $ap_course, 'label' => 'پاییز آزمایشی',
+	], [ 'Hedayati_Academic_Panel', 'handle_run_save' ] );
+	$runs_after = Hedayati_Course_Run_Service::query( [ 'limit' => 500, 'orderby' => 'created_at', 'order' => 'DESC' ] );
+	HDIT::eq( 'manager creates a run via the panel', $runs_before + 1, count( $runs_after ) );
+	$run = null;
+	foreach ( $runs_after as $r ) {
+		if ( 'پاییز آزمایشی' === $r['label'] ) { $run = $r; break; }
+	}
+	$run_id = $run ? (int) $run['id'] : 0;
+	HDIT::ok( 'new run belongs to the chosen catalog course', $run && (int) $run['course_id'] === $ap_course );
+
+	// Edit the run: status + Shamsi start date.
+	HDIT_AdminPost::run( $mgr, [
+		'_wpnonce' => $AP( 'run_save' ), 'run_id' => (string) $run_id,
+		'run_status' => 'scheduled', 'registration_status' => 'open',
+		'start_date' => '۱۴۰۵/۰۷/۰۱', 'capacity' => '2',
+	], [ 'Hedayati_Academic_Panel', 'handle_run_save' ] );
+	$run = Hedayati_Course_Run_Service::get( $run_id );
+	HDIT::eq( 'run status updated', 'scheduled', $run['run_status'] );
+	HDIT::eq( 'Shamsi start date stored as Gregorian ISO', '2026-09-23', (string) $run['start_date'] );
+	HDIT::eq( 'capacity stored', 2, (int) $run['capacity'] );
+
+	// Staff assignment.
+	HDIT_AdminPost::run( $mgr, [
+		'_wpnonce' => $AP( 'staff_assign' ), 'run_id' => (string) $run_id,
+		'staff_role' => 'primary_instructor', 'teacher_id' => (string) $ap_teacher, 'user_id' => '0',
+	], [ 'Hedayati_Academic_Panel', 'handle_staff_assign' ] );
+	HDIT::ok( 'primary instructor assigned to the run', Hedayati_Run_Staff_Service::has_primary_instructor( $run_id ) );
+
+	// Session create (Shamsi date + time).
+	HDIT_AdminPost::run( $mgr, [
+		'_wpnonce' => $AP( 'session_save' ), 'run_id' => (string) $run_id, 'session_id' => '0',
+		'session_number' => '1', 'date' => '۱۴۰۵/۰۷/۰۳', 'time' => '18:00', 'topic' => 'جلسهٔ اول', 'status' => 'scheduled',
+	], [ 'Hedayati_Academic_Panel', 'handle_session_save' ] );
+	$sessions = Hedayati_Session_Service::list_for_run( $run_id );
+	HDIT::eq( 'one session created via the panel', 1, count( $sessions ) );
+	$session_id = $sessions ? (int) $sessions[0]['id'] : 0;
+	HDIT::ok( 'session start stored as Gregorian datetime', str_starts_with( (string) $sessions[0]['starts_at'], '2026-09-25 18:00' ) );
+
+	// Enrollment + capacity.
+	HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $AP( 'enroll_add' ), 'run_id' => (string) $run_id, 'user_id' => (string) $ap_stu1 ], [ 'Hedayati_Academic_Panel', 'handle_enroll_add' ] );
+	HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $AP( 'enroll_add' ), 'run_id' => (string) $run_id, 'user_id' => (string) $ap_stu2 ], [ 'Hedayati_Academic_Panel', 'handle_enroll_add' ] );
+	HDIT::eq( 'both students enrolled (capacity 2)', 2, Hedayati_Enrollment_Service::count_active( $run_id ) );
+	$stu3 = HDIT_Env::make_user( 'ap_stu3', 'student' );
+	HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $AP( 'enroll_add' ), 'run_id' => (string) $run_id, 'user_id' => (string) $stu3 ], [ 'Hedayati_Academic_Panel', 'handle_enroll_add' ] );
+	HDIT::eq( 'capacity is enforced by the service — a 3rd enrollment is refused', 2, Hedayati_Enrollment_Service::count_active( $run_id ) );
+
+	// IDOR: an enrollment id from another run must be rejected for status change.
+	$foreign_enr = $other_run > 0 ? Hedayati_Enrollment_Service::enroll( $other_run, $ap_stu1 ) : 0;
+	$foreign_enr = is_wp_error( $foreign_enr ) ? 0 : (int) $foreign_enr;
+	if ( $foreign_enr > 0 ) {
+		HDIT_AdminPost::run( $mgr, [
+			'_wpnonce' => $AP( 'enroll_status' ), 'run_id' => (string) $run_id,
+			'enrollment_id' => (string) $foreign_enr, 'status' => 'withdrawn',
+		], [ 'Hedayati_Academic_Panel', 'handle_enroll_status' ] );
+		$fe = Hedayati_Enrollment_Service::get( $foreign_enr );
+		HDIT::eq( 'IDOR: an enrollment from a different run cannot be mutated through this run', 'active', $fe['status'] );
+	}
+
+	// Attendance: valid batch records; a forged foreign enrollment id -> 400, nothing written.
+	$my_enr = Hedayati_Enrollment_Service::get_by_run_user( $run_id, $ap_stu1 );
+	$my_enr_id = $my_enr ? (int) $my_enr['id'] : 0;
+	HDIT_AdminPost::run( $mgr, [
+		'_wpnonce' => $AP( 'attendance_save' ), 'session_id' => (string) $session_id,
+		'mark' => [ (string) $my_enr_id => 'present' ], 'note' => [ (string) $my_enr_id => 'به‌موقع' ],
+	], [ 'Hedayati_Academic_Panel', 'handle_attendance_save' ] );
+	$att = Hedayati_Attendance_Service::list_for_session( $session_id );
+	HDIT::eq( 'attendance recorded for the enrolled student', 'present', $att[ $my_enr_id ]['status'] ?? '' );
+
+	HDIT_AdminPost::run( $mgr, [
+		'_wpnonce' => $AP( 'attendance_save' ), 'session_id' => (string) $session_id,
+		'mark' => [ (string) ( $foreign_enr ?: 999999 ) => 'absent' ],
+	], [ 'Hedayati_Academic_Panel', 'handle_attendance_save' ] );
+	HDIT::eq( 'attendance batch with a foreign/forged enrollment id -> 400', 400, HDIT_AdminPost::$result['status'] ?? 0 );
+
+	// Public opt-in toggle writes the canonical course meta allow-list.
+	HDIT_AdminPost::run( $mgr, [
+		'_wpnonce' => $AP( 'run_public' ), 'run_id' => (string) $run_id, 'make_public' => '1',
+	], [ 'Hedayati_Academic_Panel', 'handle_run_public' ] );
+	$approved = array_map( 'intval', (array) get_post_meta( $ap_course, Hedayati_Public_Content::META_PUBLIC_RUN_IDS, true ) );
+	HDIT::ok( 'public opt-in adds the run id to _hedayati_public_run_ids', in_array( $run_id, $approved, true ) );
+
+	// Role matrix: student and reception (lacks manage_course_runs) are denied.
+	HDIT_AdminPost::run( $stu, [ '_wpnonce' => $nonce_as( $stu, 'hedayati_apanel_run_save' ), 'run_id' => '0', 'course_id' => (string) $ap_course ], [ 'Hedayati_Academic_Panel', 'handle_run_save' ] );
+	HDIT::eq( 'student POST to academic run_save -> 403', 403, HDIT_AdminPost::$result['status'] ?? 0 );
+	HDIT_AdminPost::run( $rcpt, [ '_wpnonce' => $nonce_as( $rcpt, 'hedayati_apanel_session_save' ), 'run_id' => (string) $run_id, 'session_id' => '0' ], [ 'Hedayati_Academic_Panel', 'handle_session_save' ] );
+	HDIT::eq( 'reception POST to academic session_save -> 403 (lacks hedayati_manage_course_runs)', 403, HDIT_AdminPost::$result['status'] ?? 0 );
+
+	// Administrator keeps the native wp-admin academic screen.
+	wp_set_current_user( $adm );
+	HDIT::ok( 'administrator retains hedayati_manage_course_runs (native screen intact)', current_user_can( 'hedayati_manage_course_runs' ) );
+	wp_set_current_user( 0 );
+
+	// Run delete cascades via the service.
+	HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $AP( 'run_delete' ), 'run_id' => (string) $run_id ], [ 'Hedayati_Academic_Panel', 'handle_run_delete' ] );
+	HDIT::eq( 'manager deletes the run through the panel (service cascade)', null, Hedayati_Course_Run_Service::get( $run_id ) );
 }

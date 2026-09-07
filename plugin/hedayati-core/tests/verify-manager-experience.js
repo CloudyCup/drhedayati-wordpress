@@ -157,23 +157,24 @@ const staffPortal = readPlugin('includes/class-staff-portal.php');
 const staffPortalCode = codeOnly(staffPortal);
 assert('staff portal no longer links managers to edit.php?post_type=teacher', !staffPortalCode.includes("edit.php?post_type=teacher"));
 assert('staff portal no longer links to the wp-admin audit screen (hedayati-academic-audit)', !staffPortalCode.includes('hedayati-academic-audit'));
-assert('the «اساتید» manager card now points at the in-panel teachers view', /self::url\(\s*\[\s*'view' => 'teachers'\s*\]\s*\)/.test(staffPortal));
-assert('the audit card now points at the in-panel audit view', /self::url\(\s*\[\s*'view' => 'audit'\s*\]\s*\)/.test(staffPortal));
-assert('the settings card now points at the in-panel settings view (not options-general.php)', /self::url\(\s*\[\s*'view' => 'settings'\s*\]\s*\)/.test(staffPortal) && !staffPortalCode.includes('options-general.php?page=hedayati-settings'));
+assert('teachers / audit / settings / academic are NOT hardcoded manager-home cards (they self-register via the module-view loop — no duplicates)', !/\$actions\[?\s*'?hedayati_manage_teachers'?\s*'?\]?\s*=>?\s*\[[\s\S]{0,120}view' => 'teachers'/.test(staffPortalCode) && !staffPortalCode.includes("__( 'اساتید', 'hedayati-core' ),\n\t\t\t\t__( 'پروفایل"));
+assert('the manager-home card loop renders every module view that declares a title', /foreach \( self::module_views\(\) as \$slug => \$module \)[\s\S]{0,200}empty\( \$module\['title'\] \)/.test(staffPortal));
+assert('the settings wp-admin escape link is gone from the staff portal', !staffPortalCode.includes('options-general.php?page=hedayati-settings'));
+assert('the standalone audit <aside> was removed (module card is the single entry point)', !staffPortal.includes('hd-manager-audit'));
 assert('courses list "new" button now targets the in-panel course-new view (Phase C)', /self::url\(\s*\[\s*'view' => 'course-new'\s*\]\s*\)/.test(staffPortal));
 assert('courses list row edit targets the in-panel course-edit view', /self::url\(\s*\[\s*'view' => 'course-edit', 'course_id' => \$course_id\s*\]\s*\)/.test(staffPortal));
 assert('the only wp-admin course link left is the manage_options-gated Gutenberg shortcut', /current_user_can\( 'manage_options' \)[\s\S]{0,80}get_edit_post_link/.test(staffPortalCode) && !staffPortalCode.includes('post-new.php?post_type=course'));
+assert('academic operations wp-admin link is GONE from the staff portal (Phase E ported)', !staffPortalCode.includes('admin.php?page=hedayati-academic'));
 {
-	// The two screens with no front-end port yet (Phase E) may still be linked,
-	// but ONLY for the manager and ONLY with an explicit interim marker.
-	const remainingAdminLinks = (staffPortalCode.match(/admin_url\(\s*'admin\.php\?page=hedayati-(academic|students)'/g) || []);
-	assert('the only remaining wp-admin links are the two Phase-E screens (academic ops + verification queue)', remainingAdminLinks.every((l) => /hedayati-(academic|students)/.test(l)));
+	// The ONE screen with no front-end port yet is the verification queue.
+	const remainingAdminLinks = (staffPortalCode.match(/admin_url\(\s*'admin\.php\?page=hedayati-[a-z-]+'/g) || []);
+	assert('the only remaining wp-admin operational link is the verification queue (hedayati-students)', remainingAdminLinks.every((l) => l.includes('hedayati-students')));
 }
 
 const pagePanel = readTheme('page-panel.php');
-assert('page-panel.php dropped the hard «اساتید» wp-admin nav item (now via the module loop)', !pagePanel.includes("edit.php?post_type=teacher"));
-assert('page-panel.php marks the remaining legacy wp-admin nav items with the «موقت» tag', pagePanel.includes('hd-portal-nav-tag') && pagePanel.includes('موقت'));
-assert('page-panel.php still renders module-view nav (teachers + audit come through here)', pagePanel.includes('Hedayati_Staff_Portal::module_views()'));
+assert('page-panel.php has no hard wp-admin nav item for teacher/course/academic', !pagePanel.includes('edit.php?post_type=teacher') && !pagePanel.includes('page=hedayati-academic'));
+assert('page-panel.php: only the verification-queue legacy nav item remains, «موقت»-tagged', pagePanel.includes('hedayati-students') && pagePanel.includes('hd-portal-nav-tag') && (pagePanel.match(/hd-portal-nav-legacy/g) || []).length === 1);
+assert('page-panel.php still renders module-view nav (teachers / audit / academic come through here)', pagePanel.includes('Hedayati_Staff_Portal::module_views()'));
 
 const featured = readTheme('template-parts/featured-courses.php');
 assert('featured-courses empty-state hint points at /panel/?view=featured, not wp-admin', featured.includes("home_url( '/panel/?view=featured' )") && !featured.includes("admin_url( 'edit.php?post_type=course' )"));
@@ -222,6 +223,34 @@ assert('bootstrap requires + boots Hedayati_Course_Panel', boot.includes('includ
 assert('plugin version >= 1.11.0 (Phase C)', (() => {
 	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.\d+'/);
 	return m && (Number(m[1]) > 1 || (Number(m[1]) === 1 && Number(m[2]) >= 11));
+})());
+
+// ── 8. class-academic-panel.php (Phase E) ────────────────────────────────
+
+console.log('\n8. class-academic-panel.php (Hedayati_Academic_Panel — Phase E):');
+const acadPanel = readPlugin('includes/class-academic-panel.php');
+const acadPanelCode = codeOnly(acadPanel);
+assert('declares strict_types', acadPanel.includes('declare( strict_types=1 );'));
+assert('has ABSPATH guard', acadPanel.includes("if ( ! defined( 'ABSPATH' ) ) {"));
+{
+	const b = braces(acadPanel);
+	assert(`braces balanced (${b.ob}/${b.cb})`, b.balanced);
+}
+assert('registers the "academic" module view (nav + manager card), cap hedayati_manage_course_runs', acadPanel.includes("VIEW = 'academic'") && acadPanel.includes("CAP  = 'hedayati_manage_course_runs'") && acadPanel.includes("add_filter( 'hedayati_panel_module_views'") && /'nav'\s*=>/.test(acadPanel));
+assert('NO new data model — calls only the existing Phase 2B services', ['Hedayati_Course_Run_Service::', 'Hedayati_Run_Staff_Service::', 'Hedayati_Session_Service::', 'Hedayati_Enrollment_Service::', 'Hedayati_Attendance_Service::'].every((s) => acadPanel.includes(s)) && !/register_post_type|dbDelta|CREATE TABLE|\$wpdb->(insert|update|query)/i.test(acadPanelCode));
+assert('per-action capability map matches the wp-admin class (assign_staff / record_attendance / manage_enrollments / create_enrollments / manage_course_runs)', ['hedayati_assign_staff', 'hedayati_record_attendance', 'hedayati_manage_enrollments', 'hedayati_create_enrollments', 'hedayati_manage_course_runs'].every((c) => acadPanel.includes(c)));
+assert('every mutation handler goes through guard_action (POST + cap + nonce)', /function guard\( string \$action \)[\s\S]{0,160}Hedayati_Staff_Portal::guard_action\(/.test(acadPanel) && (acadPanelCode.match(/self::guard\( '/g) || []).length >= 10);
+assert('every run mutation re-checks require_run_scope (manager passes; defence in depth)', acadPanel.includes('require_run_scope') && acadPanel.includes('user_is_staff_on_run') && (acadPanelCode.match(/self::require_run_scope\(/g) || []).length >= 8);
+assert('attendance handler validates the whole batch (foreign enrollment ids, active status, allowed status) BEFORE any write', /handle_attendance_save\(\)[\s\S]{0,1200}wp_die\([\s\S]{0,80}response.{0,6}400/.test(acadPanelCode) && acadPanelCode.includes('Hedayati_Academic_Validation::ATTENDANCE_STATUSES'));
+assert('dates render/parse Shamsi via the existing Hedayati_Jalali helper, storage stays Gregorian', acadPanel.includes('Hedayati_Jalali::format') && acadPanel.includes('Hedayati_Jalali::parse_input') && acadPanel.includes('Hedayati_Academic_Validation::parse_iso_date'));
+assert('public-run opt-in toggles the canonical course meta allow-list, never a new field', acadPanel.includes('Hedayati_Public_Content::META_PUBLIC_RUN_IDS'));
+assert('reuses the wp-admin class\'s (now public) label/choice maps — no duplicated Persian strings', acadPanel.includes('Hedayati_Academic_Admin::run_status_choices()') && acadPanel.includes('Hedayati_Academic_Admin::staff_role_label('));
+assert('render_panel re-checks the view capability (defense in depth vs guard())', /function render_panel\(\)[\s\S]{0,120}current_user_can\( self::CAP \)/.test(acadPanel));
+assert('the wp-admin Hedayati_Academic_Admin class is untouched as an administrator fallback (still registers its menu)', readPlugin('includes/class-academic-admin.php').includes("add_menu_page(") && readPlugin('includes/class-academic-admin.php').includes("self::MENU_SLUG"));
+assert('bootstrap requires + boots Hedayati_Academic_Panel', boot.includes('includes/class-academic-panel.php') && boot.includes('Hedayati_Academic_Panel::init()'));
+assert('plugin version >= 1.12.0 (Phase E)', (() => {
+	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.\d+'/);
+	return m && (Number(m[1]) > 1 || (Number(m[1]) === 1 && Number(m[2]) >= 12));
 })());
 
 console.log(`\n========================================`);

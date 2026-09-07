@@ -460,7 +460,7 @@ class Hedayati_Staff_Portal {
 		$cards = [
 			'hedayati_lookup_students'    => [ self::url( [ 'view' => 'students' ] ), __( 'پذیرش و پروندهٔ دانشجو', 'hedayati-core' ) ],
 			'hedayati_manage_courses'     => [ self::url( [ 'view' => 'courses' ] ), __( 'مدیریت دوره‌ها', 'hedayati-core' ) ],
-			'hedayati_manage_course_runs' => [ admin_url( 'admin.php?page=hedayati-academic' ), __( 'عملیات آموزشی', 'hedayati-core' ) ],
+			'hedayati_manage_course_runs' => [ self::url( [ 'view' => 'academic' ] ), __( 'عملیات آموزشی', 'hedayati-core' ) ],
 			'hedayati_manage_teachers'    => [ self::url( [ 'view' => 'teachers' ] ), __( 'مدیریت اساتید', 'hedayati-core' ) ],
 			'hedayati_manage_settings'    => [ self::url( [ 'view' => 'settings' ] ), __( 'اطلاعات تماس مجتمع', 'hedayati-core' ) ],
 			'hedayati_verify_students'    => [ admin_url( 'admin.php?page=hedayati-students' ), __( 'بررسی احراز هویت', 'hedayati-core' ) ],
@@ -522,18 +522,15 @@ class Hedayati_Staff_Portal {
 		}
 		echo '</section>';
 
+		// Non-module operational areas. Teachers / audit / settings / academic
+		// operations register their own card through the module-view loop below,
+		// so they are NOT hardcoded here (avoids duplicate cards).
 		$actions = [
 			'hedayati_manage_courses' => [
 				self::url( [ 'view' => 'courses' ] ),
 				__( 'دوره‌ها و محتوای آموزشی', 'hedayati-core' ),
-				__( 'فهرست دوره‌ها، انتشار و انتخاب دوره‌های ویژهٔ صفحه نخست', 'hedayati-core' ),
+				__( 'ایجاد و ویرایش دوره‌ها، انتشار و انتخاب دوره‌های ویژهٔ صفحه نخست', 'hedayati-core' ),
 				'book',
-			],
-			'hedayati_manage_course_runs' => [
-				admin_url( 'admin.php?page=hedayati-academic' ),
-				__( 'عملیات آموزشی', 'hedayati-core' ),
-				__( 'دوره‌های اجرایی، استادها، جلسات، ثبت‌نام و حضور و غیاب', 'hedayati-core' ),
-				'calendar',
 			],
 			'hedayati_lookup_students' => [
 				self::url( [ 'view' => 'students' ] ),
@@ -541,24 +538,15 @@ class Hedayati_Staff_Portal {
 				__( 'جستجو، ایجاد حساب، ثبت‌نام و دریافت امن مدارک', 'hedayati-core' ),
 				'users',
 			],
-			'hedayati_verify_students' => [
-				admin_url( 'admin.php?page=hedayati-students' ),
-				__( 'احراز هویت دانشجویان (موقت — پنل کلاسیک)', 'hedayati-core' ),
-				__( 'بررسی درخواست‌ها و مدیریت وضعیت تأیید هویت — نسخهٔ درون‌پنلی در فاز بعد', 'hedayati-core' ),
-				'shield',
-			],
-			'hedayati_manage_teachers' => [
-				self::url( [ 'view' => 'teachers' ] ),
-				__( 'اساتید', 'hedayati-core' ),
-				__( 'پروفایل استادها و وضعیت انتشار عمومی اطلاعات', 'hedayati-core' ),
-				'teacher',
-			],
-			'hedayati_manage_settings' => [
-				self::url( [ 'view' => 'settings' ] ),
-				__( 'تنظیمات مجتمع', 'hedayati-core' ),
-				__( 'شماره‌های تماس و نشانی‌های نمایش‌داده‌شده در سایت', 'hedayati-core' ),
-				'settings',
-			],
+		];
+
+		// The student verification queue is still a classic wp-admin screen
+		// (ported to the panel in the next increment).
+		$actions['hedayati_verify_students'] = [
+			admin_url( 'admin.php?page=hedayati-students' ),
+			__( 'احراز هویت دانشجویان (موقت — پنل کلاسیک)', 'hedayati-core' ),
+			__( 'بررسی درخواست‌ها و مدیریت وضعیت تأیید هویت — نسخهٔ درون‌پنلی در فاز بعد', 'hedayati-core' ),
+			'shield',
 		];
 
 		echo '<section class="hd-manager-section">';
@@ -600,16 +588,8 @@ class Hedayati_Staff_Portal {
 			);
 		}
 		echo '</div></section>';
-
-		if ( current_user_can( Hedayati_Audit_Log::VIEW_CAPABILITY ) ) {
-			printf(
-				'<aside class="hd-manager-audit"><div><strong>%1$s</strong><p>%2$s</p></div><a href="%3$s">%4$s</a></aside>',
-				esc_html__( 'گزارش فعالیت‌های مدیریتی', 'hedayati-core' ),
-				esc_html__( 'رویدادهای حساس سامانه بدون نمایش اطلاعات خصوصی ثبت می‌شوند.', 'hedayati-core' ),
-				esc_url( self::url( [ 'view' => 'audit' ] ) ),
-				esc_html__( 'مشاهدهٔ گزارش', 'hedayati-core' )
-			);
-		}
+		// «گزارش فعالیت‌ها» (audit) now registers its own card + sidebar entry
+		// through the module-view loop above — no separate aside needed.
 	}
 
 	/** @return array<int, array{label:string,value:int,hint:string,url:string}> */
@@ -651,7 +631,7 @@ class Hedayati_Staff_Portal {
 				'label' => __( 'کلاس‌های فعال', 'hedayati-core' ),
 				'value' => $active_runs,
 				'hint'  => __( 'برنامه‌ریزی و اجرا', 'hedayati-core' ),
-				'url'   => admin_url( 'admin.php?page=hedayati-academic' ),
+				'url'   => self::url( [ 'view' => 'academic' ] ),
 			],
 			[
 				'label' => __( 'دانشجویان فعال', 'hedayati-core' ),

@@ -19,13 +19,11 @@ get_header();
      <li><a class="hd-portal-nav-link<?php echo 'featured' === $hd_view ? ' is-active' : ''; ?>" href="<?php echo esc_url( Hedayati_Staff_Portal::url( [ 'view' => 'featured' ] ) ); ?>">دوره‌های ویژهٔ صفحهٔ نخست</a></li>
     <?php endif; ?>
     <?php
-    // D53: «اساتید» and «گزارش فعالیت‌ها» are now first-class in-panel views,
-    // rendered by the module-view loop below (Hedayati_Teacher_Panel /
-    // Hedayati_Audit_Panel). «عملیات آموزشی» and «احراز هویت» remain classic
-    // wp-admin screens until the Phase E front-end port; they are shown only to
-    // the manager (who is intentionally NOT yet in the wp-admin redirect set).
+    // D53: «اساتید», «گزارش فعالیت‌ها» and «عملیات آموزشی» are first-class in-panel
+    // views rendered by the module-view loop below (Hedayati_Teacher_Panel /
+    // Hedayati_Audit_Panel / Hedayati_Academic_Panel). «احراز هویت» remains a
+    // classic wp-admin screen until the next front-end-port increment.
     ?>
-    <?php if ( $hd_is_manager && current_user_can( 'hedayati_manage_course_runs' ) ) : ?><li><a class="hd-portal-nav-link hd-portal-nav-legacy" href="<?php echo esc_url( admin_url( 'admin.php?page=hedayati-academic' ) ); ?>">عملیات آموزشی<span class="hd-portal-nav-tag">موقت</span></a></li><?php endif; ?>
     <?php if ( $hd_is_manager && current_user_can( 'hedayati_verify_students' ) ) : ?><li><a class="hd-portal-nav-link hd-portal-nav-legacy" href="<?php echo esc_url( admin_url( 'admin.php?page=hedayati-students' ) ); ?>">احراز هویت<span class="hd-portal-nav-tag">موقت</span></a></li><?php endif; ?>
     <?php
     // AI-Studio-parity modules (consultations, certificates, materials, support,

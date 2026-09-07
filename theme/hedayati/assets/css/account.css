@@ -1548,3 +1548,30 @@ a.hd-portal-card:focus-visible::after {
 
 .hd-manager-row-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
+/* ── Phase E: academic operations ── */
+
+details.hd-course-fieldset { padding: 0; }
+details.hd-course-fieldset > summary {
+	cursor: pointer;
+	padding: 12px 18px;
+	list-style-position: inside;
+	font-size: .9rem;
+}
+details.hd-course-fieldset[open] > summary { border-bottom: 1px solid var(--hd-border, #e5e7eb); margin-bottom: 12px; }
+details.hd-course-fieldset > *:not(summary) { margin-inline: 18px; }
+details.hd-course-fieldset > form:last-child { margin-bottom: 16px; }
+
+.hd-attendance-row {
+	display: grid;
+	grid-template-columns: minmax(120px, 1fr) 140px minmax(120px, 2fr);
+	gap: 10px;
+	align-items: center;
+	padding: 6px 0;
+	border-bottom: 1px solid var(--hd-border, #eee);
+}
+.hd-attendance-row select, .hd-attendance-row input { margin: 0; }
+
+@media (max-width: 640px) {
+	.hd-attendance-row { grid-template-columns: 1fr; }
+}
+

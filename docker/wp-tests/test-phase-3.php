@@ -226,7 +226,8 @@ function hdit_run_phase_3(): void {
 	HDIT::ok( 'manager dashboard renders live KPI and operations sections',
 		str_contains( $manager_home, 'hd-manager-kpis' )
 		&& str_contains( $manager_home, 'مرکز عملیات' )
-		&& str_contains( $manager_home, 'hedayati-academic' ) );
+		// D53 / Phase E: academic operations is now an in-panel view, not a wp-admin link.
+		&& str_contains( $manager_home, 'view=academic' ) );
 	HDIT::ok( 'manager dashboard shows the AI-Studio-parity module cards now that they are built (D46–D52)',
 		str_contains( $manager_home, 'گواهینامه' )
 		&& str_contains( $manager_home, 'تیکت' )
