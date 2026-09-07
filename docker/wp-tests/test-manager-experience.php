@@ -219,4 +219,81 @@ function hdit_run_manager_experience(): void {
 		'every returned row is metadata-only (no ip / user_agent key)',
 		array_reduce( $entries, static fn( $carry, $row ) => $carry && ! isset( $row['ip'] ) && ! isset( $row['user_agent'] ), true )
 	);
+
+	// ── D53.D — Phase C: in-panel course create/edit ────────────────────────
+	HDIT::section( 'D53.D — Hedayati_Course_Panel (Phase C, canonical course CPT)' );
+
+	$views = Hedayati_Staff_Portal::module_views();
+	HDIT::ok( 'panel registers course-new + course-edit views', isset( $views['course-new'], $views['course-edit'] ) );
+	HDIT::eq( 'course editor gated on hedayati_manage_courses', 'hedayati_manage_courses', $views['course-edit']['capability'] ?? '' );
+
+	$CSAVE = 'hedayati_course_panel_save';
+	$cat   = wp_insert_term( 'hdit-cat-' . wp_generate_password( 6, false ), 'course-category' );
+	$cat_id = is_wp_error( $cat ) ? 0 : (int) $cat['term_id'];
+
+	$course_titles = static fn(): array => get_posts( [ 'post_type' => 'course', 'post_status' => [ 'publish', 'draft', 'pending' ], 'numberposts' => -1, 'fields' => 'ids' ] );
+	$before_c = count( $course_titles() );
+
+	HDIT_AdminPost::run( $mgr, [
+		'_wpnonce'            => $nonce_as( $mgr, $CSAVE ),
+		'course_id'          => '0',
+		'title'              => 'دورهٔ آزمایشی پنل',
+		'content'            => '<p>متن معرفی.</p>',
+		'excerpt'            => 'خلاصه.',
+		'english_name'       => 'Panel Test Course',
+		'duration'           => '۳۰ ساعت',
+		'registration_state' => 'open',
+		'next_start_date'    => '۱۴۰۵/۰۶/۱۵',
+		'syllabus'           => "ماژول یک\nماژول دو\n\nماژول سه",
+		'menu_order'         => '5',
+		'published'          => '1',
+		'course_category'    => [ (string) $cat_id ],
+	], [ 'Hedayati_Course_Panel', 'handle_save' ] );
+
+	HDIT::eq( 'manager create adds exactly one course post', $before_c + 1, count( $course_titles() ) );
+	$new_course = get_posts( [ 'post_type' => 'course', 'post_status' => 'any', 'numberposts' => 1, 'title' => 'دورهٔ آزمایشی پنل' ] )[0] ?? null;
+	if ( $new_course ) {
+		update_post_meta( $new_course->ID, HDIT::POST_MARKER, 1 );
+	}
+	HDIT::ok( 'created post is a course', $new_course && 'course' === $new_course->post_type );
+	HDIT::eq( 'published checkbox -> publish', 'publish', $new_course ? $new_course->post_status : '' );
+	$cid = $new_course ? (int) $new_course->ID : 0;
+	HDIT::eq( 'english_name meta stored via the canonical key', 'Panel Test Course', (string) get_post_meta( $cid, '_course_english_name', true ) );
+	HDIT::eq( 'registration_state stored + allowlist-sanitised', 'open', (string) get_post_meta( $cid, '_course_registration_state', true ) );
+	HDIT::eq( 'Shamsi start date normalised to canonical Gregorian ISO', '2026-09-06', (string) get_post_meta( $cid, '_course_next_start_date', true ) );
+	$syl = get_post_meta( $cid, '_course_syllabus', true );
+	HDIT::eq( 'syllabus lines -> clean string array (blank line dropped)', [ 'ماژول یک', 'ماژول دو', 'ماژول سه' ], is_array( $syl ) ? array_values( $syl ) : $syl );
+	HDIT::eq( 'menu_order applied', 5, (int) get_post_field( 'menu_order', $cid ) );
+	HDIT::ok( 'category assigned on the canonical taxonomy', $cat_id > 0 && has_term( $cat_id, 'course-category', $cid ) );
+
+	// Edit the same course.
+	HDIT_AdminPost::run( $mgr, [
+		'_wpnonce'            => $nonce_as( $mgr, $CSAVE ),
+		'course_id'          => (string) $cid,
+		'title'              => 'دورهٔ آزمایشی پنل — ویرایش‌شده',
+		'registration_state' => 'closed',
+		'published'          => '1',
+	], [ 'Hedayati_Course_Panel', 'handle_save' ] );
+	HDIT::eq( 'edit updates the same post (no new post)', $before_c + 1, count( $course_titles() ) );
+	HDIT::eq( 'edit changes the title', 'دورهٔ آزمایشی پنل — ویرایش‌شده', get_post_field( 'post_title', $cid ) );
+	HDIT::eq( 'edit changes registration_state', 'closed', (string) get_post_meta( $cid, '_course_registration_state', true ) );
+
+	// No nonce -> 403. Student -> 403.
+	HDIT_AdminPost::run( $mgr, [ 'course_id' => '0', 'title' => 'x' ], [ 'Hedayati_Course_Panel', 'handle_save' ] );
+	HDIT::eq( 'course handle_save without a nonce -> 403', 403, HDIT_AdminPost::$result['status'] ?? 0 );
+	HDIT_AdminPost::run( $stu, [ '_wpnonce' => $nonce_as( $stu, $CSAVE ), 'course_id' => '0', 'title' => 'x' ], [ 'Hedayati_Course_Panel', 'handle_save' ] );
+	HDIT::eq( 'student POST to course handle_save -> 403', 403, HDIT_AdminPost::$result['status'] ?? 0 );
+
+	// Administrator still edits courses natively.
+	wp_set_current_user( $adm );
+	HDIT::ok( 'administrator retains native edit_post on a course (Gutenberg path intact)', current_user_can( 'edit_post', $cid ) );
+	wp_set_current_user( 0 );
+
+	$course_audit = Hedayati_Audit_Log::query( [ 'object_type' => 'course', 'per_page' => 20, 'page' => 1 ] );
+	HDIT::ok( 'course.created / course.updated audit rows exist', array_reduce( $course_audit, static fn( $c, $r ) => $c || in_array( $r['action'], [ 'course.created', 'course.updated' ], true ), false ) );
+
+	// Synthetic taxonomy term is not namespaced by HDIT_Env — remove it here.
+	if ( $cat_id > 0 ) {
+		wp_delete_term( $cat_id, 'course-category' );
+	}
 }

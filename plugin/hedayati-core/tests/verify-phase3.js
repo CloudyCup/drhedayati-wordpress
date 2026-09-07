@@ -102,7 +102,10 @@ assert('in-panel course + featured views are capability-gated in the guard and t
 assert('course feature/publish toggles are nonce+capability guarded admin-post actions', staff.includes("'course_feature' => 'hedayati_manage_courses'") && staff.includes("'course_publish' => 'hedayati_manage_courses'") && staff.includes('public static function handle_course_feature()') && staff.includes('public static function handle_course_publish()') && staff.includes("self::verify( 'course_feature' )") && staff.includes("self::verify( 'course_publish' )"));
 assert('feature toggle re-checks edit_post ownership and enforces the 8-slot cap server-side', staff.includes("current_user_can( 'edit_post', $course_id )") && staff.includes('self::featured_count() >= self::FEATURED_LIMIT') && staff.includes("const FEATURED_LIMIT = 8"));
 assert('course list reads real course data, not mock fixtures', staff.includes("'post_type'      => 'course'") && staff.includes("get_post_meta( $course_id, '_course_english_name', true )") && staff.includes("get_the_term_list( $course_id, 'course-category'") && !staff.includes('initialCourses') && !staff.includes('studentList'));
-assert('full course editing stays in the WordPress editor (no field mutation form in the panel)', staff.includes('ویرایش در ویرایشگر') && staff.includes("get_edit_post_link( $course_id )"));
+// D53 / Phase C: full course create/edit is now an in-panel form (Hedayati_Course_Panel);
+// the courses list links to ?view=course-new / ?view=course-edit, and the Gutenberg link
+// survives only as a manage_options-gated shortcut for the real administrator.
+assert('course list links to the in-panel course editor (Phase C), Gutenberg link is admin-only', staff.includes("'view' => 'course-new'") && staff.includes("'view' => 'course-edit', 'course_id' => $course_id") && /current_user_can\( 'manage_options' \)[\s\S]{0,80}get_edit_post_link\( \$course_id \)/.test(staff));
 
 // ── 4. class-public-content.php ────────────────────────────────────────────
 console.log('\n4. class-public-content.php (Hedayati_Public_Content):');

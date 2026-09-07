@@ -776,24 +776,19 @@ class Hedayati_Staff_Portal {
 			esc_html(
 				sprintf(
 					/* translators: 1: featured course count, 2: featured slot limit */
-					__( 'ویرایش کامل هر دوره در ویرایشگر وردپرس انجام می‌شود. %1$s دوره از %2$s جایگاه ویژهٔ صفحهٔ نخست انتخاب شده است.', 'hedayati-core' ),
+					__( 'ایجاد و ویرایش کامل دوره‌ها در همین پنل انجام می‌شود. %1$s دوره از %2$s جایگاه ویژهٔ صفحهٔ نخست انتخاب شده است.', 'hedayati-core' ),
 					Hedayati_Text::digits_to_persian( (string) $featured_now ),
 					Hedayati_Text::digits_to_persian( (string) self::FEATURED_LIMIT )
 				)
 			)
 		);
 		echo '</div>';
-		// D53 / Phase C: an in-panel course create/edit form is not built yet.
-		// Only the actual administrator gets the classic-editor shortcut; a
-		// non-admin manager sees an honest "coming next" note instead of being
-		// pushed into wp-admin.
-		if ( current_user_can( 'manage_options' ) ) {
-			printf(
-				'<a class="hd-manager-primary" href="%s">%s</a>',
-				esc_url( admin_url( 'post-new.php?post_type=course' ) ),
-				esc_html__( 'دورهٔ جدید (ویرایشگر وردپرس)', 'hedayati-core' )
-			);
-		}
+		// D53 / Phase C: in-panel course create/edit (Hedayati_Course_Panel).
+		printf(
+			'<a class="hd-manager-primary" href="%s">%s</a>',
+			esc_url( self::url( [ 'view' => 'course-new' ] ) ),
+			esc_html__( 'دورهٔ جدید', 'hedayati-core' )
+		);
 		echo '</header>';
 
 		echo '<form class="hd-manager-toolbar" method="get" action="' . esc_url( self::url() ) . '">';
@@ -854,20 +849,23 @@ class Hedayati_Staff_Portal {
 			echo '<span role="cell">';
 			self::toggle_button( 'course_feature', $course_id, $featured ? __( 'ویژه', 'hedayati-core' ) : __( 'عادی', 'hedayati-core' ), $featured );
 			echo '</span>';
-			// D53 / Phase C: classic-editor link only for the real administrator.
-			$edit_link = current_user_can( 'manage_options' ) ? get_edit_post_link( $course_id ) : '';
-			if ( $edit_link ) {
+			// D53 / Phase C: full in-panel course editor for everyone who can
+			// manage courses. The administrator additionally keeps the Gutenberg
+			// link as a maintenance shortcut.
+			echo '<span role="cell" class="hd-manager-row-actions">';
+			printf(
+				'<a class="hd-manager-row-edit" href="%s">%s</a>',
+				esc_url( self::url( [ 'view' => 'course-edit', 'course_id' => $course_id ] ) ),
+				esc_html__( 'ویرایش در پنل', 'hedayati-core' )
+			);
+			if ( current_user_can( 'manage_options' ) && ( $edit_link = get_edit_post_link( $course_id ) ) ) {
 				printf(
-					'<span role="cell"><a class="hd-manager-row-edit" href="%s">%s</a></span>',
+					' <a class="hd-portal-note" href="%s">%s</a>',
 					esc_url( $edit_link ),
-					esc_html__( 'ویرایش در ویرایشگر', 'hedayati-core' )
-				);
-			} else {
-				printf(
-					'<span role="cell" class="hd-portal-note">%s</span>',
-					esc_html__( 'ویرایش کامل به‌زودی در پنل', 'hedayati-core' )
+					esc_html__( 'ویرایشگر وردپرس', 'hedayati-core' )
 				);
 			}
+			echo '</span>';
 			echo '</div>';
 		}
 		echo '</div>';

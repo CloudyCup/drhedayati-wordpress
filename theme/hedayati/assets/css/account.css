@@ -1497,3 +1497,54 @@ a.hd-portal-card:focus-visible::after {
 	font-size: .85rem;
 }
 
+/* ── Phase C: in-panel course editor ── */
+
+.hd-course-form .hd-course-fieldset {
+	border: 1px solid var(--hd-border, #e5e7eb);
+	border-radius: var(--hd-radius, 12px);
+	padding: 16px 18px;
+	margin: 0 0 18px;
+}
+
+.hd-course-form .hd-course-fieldset > legend {
+	padding: 0 8px;
+	font-weight: 700;
+	font-size: .9rem;
+	color: var(--hd-red-dark);
+}
+
+.hd-course-checkboxes {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: 6px 14px;
+	margin-bottom: 10px;
+}
+
+.hd-course-media {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.hd-course-media-item {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	padding: 6px;
+	border: 2px solid transparent;
+	border-radius: var(--hd-radius-sm, 8px);
+	cursor: pointer;
+	font-size: .7rem;
+}
+
+.hd-course-media-item:has(input:checked) {
+	border-color: var(--hd-red-border, #c0392b);
+	background: var(--hd-surface2);
+}
+
+.hd-course-media-item img { border-radius: 6px; display: block; }
+.hd-course-media-item input { margin: 0; }
+
+.hd-manager-row-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+

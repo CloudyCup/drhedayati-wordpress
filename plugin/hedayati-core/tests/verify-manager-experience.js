@@ -160,7 +160,9 @@ assert('staff portal no longer links to the wp-admin audit screen (hedayati-acad
 assert('the «اساتید» manager card now points at the in-panel teachers view', /self::url\(\s*\[\s*'view' => 'teachers'\s*\]\s*\)/.test(staffPortal));
 assert('the audit card now points at the in-panel audit view', /self::url\(\s*\[\s*'view' => 'audit'\s*\]\s*\)/.test(staffPortal));
 assert('the settings card now points at the in-panel settings view (not options-general.php)', /self::url\(\s*\[\s*'view' => 'settings'\s*\]\s*\)/.test(staffPortal) && !staffPortalCode.includes('options-general.php?page=hedayati-settings'));
-assert('course create/edit wp-admin links are gated behind current_user_can( manage_options ) (admin-only fallback)', /current_user_can\( 'manage_options' \)[\s\S]{0,120}post-new\.php\?post_type=course/.test(staffPortalCode) || /manage_options[\s\S]{0,200}get_edit_post_link/.test(staffPortalCode));
+assert('courses list "new" button now targets the in-panel course-new view (Phase C)', /self::url\(\s*\[\s*'view' => 'course-new'\s*\]\s*\)/.test(staffPortal));
+assert('courses list row edit targets the in-panel course-edit view', /self::url\(\s*\[\s*'view' => 'course-edit', 'course_id' => \$course_id\s*\]\s*\)/.test(staffPortal));
+assert('the only wp-admin course link left is the manage_options-gated Gutenberg shortcut', /current_user_can\( 'manage_options' \)[\s\S]{0,80}get_edit_post_link/.test(staffPortalCode) && !staffPortalCode.includes('post-new.php?post_type=course'));
 {
 	// The two screens with no front-end port yet (Phase E) may still be linked,
 	// but ONLY for the manager and ONLY with an explicit interim marker.
@@ -184,6 +186,42 @@ assert('no global wp-admin disable (no "add_filter( \'admin_init\' ... wp_die" p
 assert('Hedayati_Teacher CPT still registers its native show_ui/show_in_menu screens for the administrator', (() => {
 	const t = readPlugin('includes/class-teacher.php');
 	return /'show_ui'\s*=>\s*true/.test(t) && /'show_in_menu'\s*=>\s*true/.test(t);
+})());
+
+// ── 7. class-course-panel.php (Phase C) ──────────────────────────────────
+
+console.log('\n7. class-course-panel.php (Hedayati_Course_Panel — Phase C):');
+const coursePanel = readPlugin('includes/class-course-panel.php');
+const coursePanelCode = codeOnly(coursePanel);
+assert('declares strict_types', coursePanel.includes('declare( strict_types=1 );'));
+assert('has ABSPATH guard', coursePanel.includes("if ( ! defined( 'ABSPATH' ) ) {"));
+{
+	const b = braces(coursePanel);
+	assert(`braces balanced (${b.ob}/${b.cb})`, b.balanced);
+}
+assert('registers course-new + course-edit as module views (existing plumbing)', coursePanel.includes("VIEW_NEW       = 'course-new'") && coursePanel.includes("VIEW_EDIT      = 'course-edit'") && coursePanel.includes("add_filter( 'hedayati_panel_module_views'"));
+assert('gated on the EXISTING hedayati_manage_courses capability (no new cap)', coursePanel.includes("CAP            = 'hedayati_manage_courses'"));
+assert('uses the canonical course CPT + Hedayati_Course_Meta keys/sanitizers (no second store)', /wp_insert_post\(\s*\[\s*'post_type'\s*=>\s*'course'/.test(coursePanel) && coursePanel.includes('Hedayati_Course_Meta::sanitize_registration_state') && coursePanel.includes('Hedayati_Course_Meta::sanitize_iso_date') && coursePanel.includes('Hedayati_Course_Meta::sanitize_string_array') && !/register_post_meta|dbDelta|CREATE TABLE/i.test(coursePanelCode));
+assert('writes every _course_* meta key the meta box does', ['_course_english_name','_course_teacher','_course_duration','_course_level','_course_price','_course_prerequisites','_course_registration_state','_course_next_start_date','_course_syllabus','_course_target_audience','_course_learning_outcomes','_course_is_featured'].every((k) => coursePanel.includes(k)));
+{
+	const save = (coursePanelCode.match(/function handle_save\(\)[\s\S]*?\n\t\}/) || [''])[0];
+	assert('handle_save guards via guard_action (POST + hedayati_manage_courses + nonce)', save.includes('Hedayati_Staff_Portal::guard_action( self::NONCE, self::CAP )'));
+	assert('handle_save re-checks per-object edit_post before wp_update_post', /current_user_can\( 'edit_post', \$course_id \)/.test(save));
+	assert('handle_save enforces the 8-slot homepage featured cap server-side', save.includes('self::FEATURED_LIMIT') && /featured_count\(\)\s*>=\s*self::FEATURED_LIMIT/.test(save));
+	assert('handle_save assigns categories via wp_set_post_terms on the canonical taxonomy', /wp_set_post_terms\( \$course_id, \$cat_ids, 'course-category'/.test(save));
+	assert('handle_save featured image path only accepts an existing IMAGE attachment (wp_attachment_is_image), never an upload', save.includes('wp_attachment_is_image( $thumb )') && !/media_handle_upload|wp_handle_upload|\$_FILES/.test(save));
+	assert('handle_save records a course.created / course.updated audit entry', /Hedayati_Audit_Log::record\(\s*\$is_new \? 'course\.created' : 'course\.updated'/.test(save));
+	assert('handle_save content sanitised with wp_kses_post, excerpt with sanitize_textarea_field', save.includes('wp_kses_post( $str(') && save.includes("sanitize_textarea_field( \$str( 'excerpt' ) )"));
+}
+{
+	const rp = (coursePanelCode.match(/function render_panel\(\)[\s\S]*?\n\t\}/) || [''])[0];
+	assert('render_panel re-checks self::CAP and per-object edit_post (defense in depth vs guard())', rp.includes('current_user_can( self::CAP )') && /current_user_can\( 'edit_post', \$course_id \)/.test(rp));
+}
+assert('next_start_date accepts Shamsi OR ISO via the existing Jalali helper, stores ISO', coursePanel.includes('Hedayati_Jalali::parse_input') && /update_post_meta\( \$course_id, '_course_next_start_date', Hedayati_Course_Meta::sanitize_iso_date/.test(coursePanel));
+assert('bootstrap requires + boots Hedayati_Course_Panel', boot.includes('includes/class-course-panel.php') && boot.includes('Hedayati_Course_Panel::init()'));
+assert('plugin version >= 1.11.0 (Phase C)', (() => {
+	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.\d+'/);
+	return m && (Number(m[1]) > 1 || (Number(m[1]) === 1 && Number(m[2]) >= 11));
 })());
 
 console.log(`\n========================================`);
