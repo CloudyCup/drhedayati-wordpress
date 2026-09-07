@@ -696,28 +696,49 @@ wp-admin (D45–D52 manager cards that pointed at `edit.php` / `admin.php?page=�
 so every panel/account mutation keeps working. No capability is revoked and `map_meta_cap` is
 not filtered — routing only.
 
-**Staged rollout.** Enforcement is ON now for `student` / `teacher` / `teacher_assistant`
-(complete front-end coverage). `reception` / `hedayati_manager` still reach wp-admin for the two
-screens that exist **only** there — `Hedayati_Academic_Admin` (course-runs / sessions / staff /
-enrollments / attendance) and `Hedayati_Student_Admin` (verification queue). Those panel nav
-items carry a «موقت» tag. The `hedayati_admin_redirect_roles` filter flips the remaining roles
-on in one line once the **Phase E** front-end port of those two screens lands (see
-`docs/ROADMAP.md`).
+**Rollout — COMPLETE (plugin 1.14.0, 2026-09-08).** Enforcement is ON for **every**
+non-administrator Hedayati role — `student`, `teacher`, `teacher_assistant`, `reception`,
+`hedayati_manager` (`ENFORCED_ROLES`; the `hedayati_admin_redirect_roles` filter can still
+narrow/widen it per deployment). Zero «موقت» wp-admin escape links remain. **Carve-out:**
+`profile.php` stays reachable for every role so a user can always manage their own
+account/password (an in-panel staff account view is a ROADMAP follow-up).
 
-**New in-panel views** (reuse existing services/CPTs — no second data store):
+**In-panel views delivered** (Phases B–F — all reuse existing services/CPTs, **no second data
+store**, `hedayati-core` 1.10.0 → 1.14.0):
 
-- `/panel/?view=teachers` — `Hedayati_Teacher_Panel`. List / search / create / edit / 1:1
-  WP-user link / safe trash over the canonical `teacher` CPT, gated on the existing
-  `hedayati_manage_teachers` + per-object `edit_post`/`delete_post`. Fixes the confirmed «اساتید»
-  wp-admin leak. The native CPT screens stay available to the administrator.
-- `/panel/?view=audit` — `Hedayati_Audit_Panel`. Read-only, paginated, filterable
-  (object-type / action / actor), metadata-only (actor / action / object / time / note — **no IP,
-  no user-agent**, D16 unchanged). Calls only `Hedayati_Audit_Log::query()/count()`.
+- **`?view=teachers`** (`Hedayati_Teacher_Panel`, D53.B) — list/search/create/edit/1:1-WP-user-link/
+  safe-trash over the canonical `teacher` CPT; `hedayati_manage_teachers` + per-object
+  `edit_post`/`delete_post`.
+- **`?view=audit`** (`Hedayati_Audit_Panel`, D53.B) — read-only, paginated, filterable,
+  metadata-only (**no IP, no user-agent** — D16 unchanged); only `Hedayati_Audit_Log::query()/count()`.
+- **`?view=course-new` / `?view=course-edit`** (`Hedayati_Course_Panel`, **Phase C**) — full course
+  editor over the canonical `course` CPT + every `_course_*` meta key & its `Hedayati_Course_Meta`
+  sanitizer + `course-category` + `menu_order` + publish/draft + the 8-slot homepage-featured cap +
+  featured image from an **existing** attachment (no upload path, no new cap). Shamsi-or-ISO dates
+  via `Hedayati_Jalali`, stored Gregorian. `hedayati_manage_courses` + per-object `edit_post`.
+- **`?view=academic`** (`Hedayati_Academic_Panel`, **Phase E**) — faithful front-end port of
+  `Hedayati_Academic_Admin`: course-runs, staff assignment, sessions, enrollments, attendance,
+  per-run public opt-in. Same Phase 2B services, same capability map
+  (`hedayati_manage_course_runs` / `hedayati_assign_staff` / `hedayati_record_attendance` /
+  `hedayati_manage_enrollments` / `hedayati_create_enrollments`), same `require_run_scope`,
+  attendance batch fully validated before any write.
+- **`?view=students` reviewer actions** (`Hedayati_Verification_Panel`, **Phase E**) — approve/
+  reject a pending verification, the one-shot national-ID reveal, private-document list/download/
+  archive/purge. **Every Phase 2C invariant preserved:** national ID encrypted at rest, HMAC dup
+  detection, reception cannot decrypt, only `hedayati_verify_students` reaches
+  `get_national_id_decrypted()` (re-checked at the controller), plaintext rendered once with
+  no-store headers, never persisted / never in a URL, audited `identity.viewed`; documents streamed
+  only through the existing nonced download handler; rejection note stays staff-only.
 
-**Deferred, tracked in ROADMAP:** Phase C (in-panel course create/edit, replacing
-«ویرایش در ویرایشگر» for the manager) and Phase F (a dedicated `/login/` front-end page — the
-forced-password-change screen is already a front-end flow and a branded `wp-login` already
-exists via `theme/hedayati/assets/css/login.css`).
+**`/login/`** (`Hedayati_Login` + `theme/hedayati/page-login.php` + `auth.css`, **Phase F**) — a
+branded front-end auth page that drives WordPress's own primitives, **not** a parallel system and
+**not** a `wp-login.php` re-skin: `wp_signon()` for login (full `authenticate` chain reused),
+`retrieve_password()` for forgot-password (result never inspected, enumeration-safe, same
+rate-limit bucket), core `check_password_reset_key()` + `reset_password()` for the reset link (the
+email link is only re-pointed at `/login/`, the token is untouched), `wp_validate_redirect()` on
+`redirect_to`. A bare `wp-login.php` GET by a normal visitor is bounced to `/login/`; the
+administrator's `wp-login.php` stays fully functional. Post-login routing = the existing
+`login_redirect` filters. Design reuses the site's `--hd-*` tokens (light/dark, RTL, Vazirmatn).
 
 ### Panel architecture
 

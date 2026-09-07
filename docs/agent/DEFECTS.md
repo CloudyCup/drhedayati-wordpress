@@ -1,24 +1,31 @@
 # Defects and acceptance gaps
 
-## Manager Experience — D53 (2026-09-07) — OPEN ITEMS
+## Manager Experience — D53 (2026-09-08) — STATUS
 
-- **MX-1 — `Hedayati_Admin_Access` `admin_init` redirect not runtime-proven in a browser.** The
-  guard needs a real interactive wp-admin HTTP request; the WP-CLI Docker harness has none.
-  `test-manager-experience.php` proves the decision logic (`workspace_url_for`, `enforced_roles`,
-  the staged-enforcement predicate + filter flip). The actual browser redirect for
-  student/teacher/TA hitting `/wp-admin/…` directly is a **staging/browser acceptance item**.
-- **MX-2 — reception + hedayati_manager still reach wp-admin** for `hedayati-academic`
-  (academic ops) and `hedayati-students` (verification queue) — intentional, staged. Those nav
-  items carry a «موقت» tag. Closes with **Phase E** (front-end port), which then adds both roles
-  to `hedayati_admin_redirect_roles`.
-- **MX-3 — no in-panel course create/edit yet (Phase C).** «دورهٔ جدید» / «ویرایش در ویرایشگر»
-  are gated to `manage_options` (administrator-only interim). A non-admin manager currently sees
-  “ویرایش کامل به‌زودی در پنل”. Course publish/feature toggles already work in-panel.
-- **MX-4 — dedicated `/login/` page not built (Phase F).** Branded `wp-login` + the front-end
-  forced-password-change screen exist; the standalone route/template is the upgrade.
-- **MX-5 — resolved.** Docker CI on PR #1 is GREEN: run `34154472653`, 623/0 PASS, cleanup
-  verified. (Getting there took 4 harness fixes: `$_SERVER['REQUEST_METHOD']='POST'`, nonces
-  minted as the acting user, title-based read-backs, string-typed `$_POST` values.)
+- **MX-1 — `Hedayati_Admin_Access` `admin_init` redirect not runtime-proven in a browser.**
+  Still OPEN as a **staging/browser acceptance item** — the guard needs a real interactive
+  wp-admin HTTP request; the WP-CLI Docker harness has none. The decision logic
+  (`workspace_url_for`, `enforced_roles`, the full-enforcement predicate + filter narrowing) is
+  runtime-proven (D53.A). Browser-test: log in as each non-admin role, hit `/wp-admin/…`
+  directly, confirm the bounce to `/panel/` or `/account/`; confirm `admin-post.php` forms
+  (every panel mutation) and `profile.php` still work.
+- **MX-2 — CLOSED (Phase E, 2026-09-08).** Academic operations (`Hedayati_Academic_Panel`) and the
+  verification/private-document reviewer actions (`Hedayati_Verification_Panel`) are ported to
+  `/panel/`. `reception` + `hedayati_manager` are now in `ENFORCED_ROLES`; zero «موقت» links
+  remain. Runtime-verified D53.E / D53.F.
+- **MX-3 — CLOSED (Phase C, 2026-09-08).** `Hedayati_Course_Panel` — full in-panel course
+  create/edit over the canonical `course` CPT. Runtime-verified D53.D. The `manage_options`-gated
+  Gutenberg link is retained only as an administrator shortcut.
+- **MX-4 — CLOSED (Phase F, 2026-09-08).** `/login/` (`Hedayati_Login` + `page-login.php` +
+  `auth.css`) — branded front-end auth over `wp_signon` / core reset tokens. Runtime-verified
+  D53.G.
+- **MX-5 — CLOSED.** Docker CI on PR #1 GREEN through every increment; final run `34161338173`
+  (HEAD `399b94d`) 686/0 PASS, cleanup verified.
+- **MX-6 — NEW, P3 non-blocking.** `profile.php` is deliberately left reachable by non-admins so
+  every role can change its own password. An in-panel staff account/password view would let it be
+  redirected too (`docs/ROADMAP.md`). Voluntary password change works today via `profile.php`;
+  forced first-login change is already a front-end flow, and `/login/` reset flows through core
+  tokens.
 
 ## AI Studio parity modules D46–D52 (2026-09-06) — OPEN GATES
 

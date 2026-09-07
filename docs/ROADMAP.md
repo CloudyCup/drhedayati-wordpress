@@ -10,30 +10,20 @@ several items still need institute decisions (marked ❓, see the bottom of this
 
 ---
 
-## Manager Experience (D53) — remaining phases
+## Manager Experience (D53) — DONE (2026-09-08, `feature/manager-experience`, plugin 1.14.0)
 
-Owner decision **D53** (2026-09-07): wp-admin is administrator-only; all non-admin roles use
-`/panel/` or `/account/`. First increment shipped on `feature/manager-experience` (plugin 1.10.0):
-`Hedayati_Admin_Access` redirect policy (staged: student/teacher/TA enforced now), in-panel
-`?view=teachers` and `?view=audit`, nav de-leaked. Remaining:
+Owner decision **D53**: wp-admin is administrator-only; all non-admin roles use `/panel/` or
+`/account/`. **Fully delivered & fully enforced** — Phases B (`?view=teachers`, `?view=audit` +
+redirect policy), C (in-panel course editor), E (`?view=academic` + `?view=students` reviewer
+actions), F (`/login/` + reset UX). Node 940/0, Docker CI 686/0. See `docs/DECISIONS.md` D53.
 
-- **Phase C (P1) — in-panel course create/edit.** A `/panel/?view=course-edit` form over the
-  **existing** `course` CPT + `_course_*` meta (`Hedayati_Course_Meta`) + `course-category`
-  taxonomy + featured image, mirroring `Hedayati_Meta_Box::save()` semantics. Replaces
-  «ویرایش در ویرایشگر» / «دورهٔ جدید» for the manager (currently gated to `manage_options` as an
-  admin-only interim). No second course store.
-- **Phase E (P1) — academic-operations + verification-queue front-end port.** Port
-  `Hedayati_Academic_Admin` (course-runs, sessions, staff assignment, enrollments, attendance)
-  and `Hedayati_Student_Admin` (verification review/approve/reject queue, private-document view)
-  to `/panel/` views over their existing services. On landing, add `reception` +
-  `hedayati_manager` to the `hedayati_admin_redirect_roles` filter → the D53 redirect becomes
-  total for every non-admin role. Remove the «موقت» nav tags.
-- **Phase F (P2) — dedicated `/login/` front-end page.** A route + theme template using the
-  existing `Hedayati_Auth` stack (username **or** Iranian phone, normalization, rate limiting,
-  privacy-safe errors, WP-core reset tokens untouched), in the public-site design language.
-  Post-login routing already correct (`Hedayati_Auth_UI` + `Hedayati_Staff_Portal::login_redirect`).
-  The forced-password-change screen is already a front-end flow (`Hedayati_Account_Security`); a
-  branded `wp-login` already exists (`theme/hedayati/assets/css/login.css`) — F is the upgrade.
+Remaining follow-up:
+
+- **(P3) In-panel staff account/password view.** Today `profile.php` is left reachable so every
+  role can change its own password. A `/panel/?view=account` (or `/account/?view=profile` reuse
+  for staff) that wraps `wp_update_user` / a password-change form would let `profile.php` be added
+  to the `Hedayati_Admin_Access` redirect set too. Non-blocking — voluntary password change still
+  works via `profile.php`; forced first-login change is already a front-end flow.
 
 ---
 

@@ -1,29 +1,34 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
-## Manager Experience — D53 wp-admin access policy, first increment (2026-09-07) — FEATURE BRANCH, static GREEN, NOT MERGED
+## Manager Experience — D53 COMPLETE (2026-09-08) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
 
-After the first integrated browser review, owner decision **D53** landed: classic wp-admin is
-**administrator-only**; every non-admin Hedayati role uses `/panel/` (manager/reception/teacher/TA)
-or `/account/` (student). PR **#1 retargeted `base: feature/phase-2b-academic-operations` →
-`base: main`** (the old base was stale; `main` fully contains phase-2b; branch was 0 behind main).
+Owner decision **D53**: classic wp-admin is **administrator-only**; every non-administrator
+Hedayati role uses `/panel/` (manager/reception/teacher/TA) or `/account/` (student), redirected
+out of interactive wp-admin, and **every operational workflow has an in-panel view**. PR **#1
+base = `main`** (retargeted from the stale `feature/phase-2b-academic-operations`).
 
-Delivered on `feature/manager-experience` (plugin **1.10.0**):
+Delivered on `feature/manager-experience`, HEAD `399b94d`, plugin **1.10.0 → 1.14.0**:
 
 | Piece | What |
 |---|---|
-| `Hedayati_Admin_Access` (`class-admin-access.php`) | `admin_init` p1 redirect of interactive wp-admin → workspace; admin bar off for non-admins. **Staged:** enforced for student/teacher/teacher_assistant; reception/manager gated on Phase E via `hedayati_admin_redirect_roles` filter. Transport endpoints (`admin-post.php`/`admin-ajax.php`/`async-upload.php`/REST/cron/WP-CLI) untouched. No cap revoked, no `map_meta_cap` filter. |
-| `Hedayati_Teacher_Panel` (`class-teacher-panel.php`) | `/panel/?view=teachers` — list/search/create/edit/1:1-link/trash over the canonical `teacher` CPT. Fixes the confirmed «اساتید» leak. |
-| `Hedayati_Audit_Panel` (`class-audit-panel.php`) | `/panel/?view=audit` — read-only, paginated, filterable, metadata-only. |
-| nav de-leak | `page-panel.php` + `Hedayati_Staff_Portal` manager-home cards repointed to `?view=teachers`/`audit`/`settings`; `hedayati-academic` + `hedayati-students` keep a manager-only «موقت» link (Phase E); course editor links gated to `manage_options` (Phase C). |
+| `Hedayati_Admin_Access` | `admin_init` p1 redirect of interactive wp-admin → workspace, admin bar off. **Fully enforced** for student + teacher + teacher_assistant + reception + hedayati_manager (`hedayati_admin_redirect_roles` filter can re-tune). Transport endpoints + `profile.php` pass through. No cap revoked, no `map_meta_cap` filter, no global wp-admin disable. |
+| `Hedayati_Teacher_Panel` — `?view=teachers` | Teacher CRUD over the canonical `teacher` CPT. |
+| `Hedayati_Audit_Panel` — `?view=audit` | read-only, paginated, metadata-only. |
+| `Hedayati_Course_Panel` — `?view=course-new` / `course-edit` (**Phase C**) | full course editor over the canonical `course` CPT + all `_course_*` meta + category + featured image (existing media only) + menu_order + publish + 8-slot featured cap. |
+| `Hedayati_Academic_Panel` — `?view=academic` (**Phase E**) | course-runs / staff / sessions / enrollments / attendance / public opt-in; same Phase 2B services + capability map + `require_run_scope`; attendance batch validated before any write. Reuses `Hedayati_Academic_Admin`'s (now public) label helpers. |
+| `Hedayati_Verification_Panel` — `?view=students` reviewer actions (**Phase E**) | approve/reject, one-shot national-ID reveal, private-doc list/download/archive/purge. All Phase 2C invariants preserved (encrypted-at-rest, HMAC dup, reception-cannot-decrypt, reveal audited + never persisted, docs via the existing nonced handler, rejection note staff-only). |
+| `Hedayati_Login` + `page-login.php` + `auth.css` (**Phase F**) | branded `/login/` over `wp_signon` / `retrieve_password` / core reset tokens; `redirect_to` via `wp_validate_redirect`; enumeration-safe; `wp-login.php` bounced for normal visitors, intact for the admin. |
 
-**Node static 953/0** (9 suites; new `verify-manager-experience.js` **77/0**; also fixed a
+Manager home cleaned up (module cards self-register — no more duplicate teacher/audit cards; the
+standalone audit `<aside>` removed). `page-panel.php` has **zero** wp-admin links.
+
+**Node static 940/0** (9 suites; `verify-manager-experience.js` **164/0**; also fixed a
 double-digit-minor version-regex bug in `verify-phase2c/audit-log/jalali`). **Docker CI GREEN** —
-`Acceptance (Docker WordPress)` on PR #1, run `34154472653`, HEAD `e7b47b9`: **623 / 0 PASS,
-cleanup verified** (new `docker/wp-tests/test-manager-experience.php`).
+`Acceptance (Docker WordPress)` on PR #1, run `34161338173`, HEAD `399b94d`: **686 / 0 PASS,
+cleanup verified** (D53.A–G in `docker/wp-tests/test-manager-experience.php`).
 
-**Remaining:** Phase C (in-panel course create/edit), Phase E (academic-ops + verification-queue
-front-end port → then flip reception/manager into the redirect set), Phase F (dedicated
-`/login/` page). See `docs/ROADMAP.md`. NOT browser-reviewed, NOT merged, NOT deployed.
+**Follow-up (P3, non-blocking):** an in-panel staff account/password view so `profile.php` can be
+redirected too. NOT browser-reviewed, NOT merged, NOT deployed.
 
 ## AI Studio parity modules D46–D52 (2026-09-06) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
 

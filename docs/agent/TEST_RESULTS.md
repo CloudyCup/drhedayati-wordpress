@@ -1,5 +1,19 @@
 # Test results
 
+## Manager Experience — D53 COMPLETE (2026-09-08) — STATIC + DOCKER CI GREEN, NOT MERGED
+
+Branch `feature/manager-experience`, HEAD `399b94d`, plugin **1.14.0**. PR #1 base `main`.
+
+| Check | Result |
+|---|---|
+| Node static suites | **940 / 0** across 9 suites. `verify-manager-experience.js` = **164 / 0** (sections 1–10: admin-access full-enforcement + `profile.php` carve-out + filter narrowing; teacher panel; audit panel; zero-wp-admin-leak in staff-portal + `page-panel.php`; administrator exception; course panel Phase C; academic panel Phase E; verification panel Phase E — reveal/approve/doc security; `/login/` Phase F — `wp_signon`/`retrieve_password`/core-reset-token reuse, enumeration safety, `redirect_to` validation, no wp-login branding). |
+| `php -l` on changed PHP | not run (no PHP in the agent env). Brace balance verified by the Node suite for all 6 new classes. |
+| Local real WordPress/PHP acceptance | **GitHub Actions `Acceptance (Docker WordPress)` GREEN** — run `34161338173` (HEAD `399b94d`): **686 passed / 0 failed, RESULT: PASS, cleanup verified**. New sections D53.A–G in `docker/wp-tests/test-manager-experience.php` (~110 assertions): per-role routing, full-enforcement predicate + filter narrowing, teacher CRUD + 403 + 1:1-link conflict + trash, audit read-only + metadata-only, course create/edit + meta + Shamsi date + category + featured cap + 403s, academic run/staff/session/enrollment/attendance CRUD + capacity + IDOR + attendance-batch-400 + role matrix + run-delete cascade, national-ID reveal (403-for-reception, audit +1, PII-free note, service-level decrypt denial) + approve/reject + reviewer-section self-gating, `/login/` page exists + PRG notice + reset-email re-pointing + core-key rejection + `resetpass_user()` cookie resolution. Progression of clean runs: `34154472653` (623/0) → `34157860037` (642/0) → `34159561729` (664/0) → `34160689489` (678/0) → `34161338173` (686/0). |
+| Real browser review | NOT DONE — see the "browser pages to test next" list in the handoff report. |
+| Staging / production | NOT CONTACTED. |
+
+---
+
 ## Manager Experience — D53 first increment (2026-09-07) — STATIC GREEN, DOCKER CI PENDING
 
 Branch `feature/manager-experience`, plugin **1.10.0**. PR #1 base changed to `main`.

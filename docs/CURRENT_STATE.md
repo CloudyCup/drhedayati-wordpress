@@ -1,29 +1,27 @@
 # CURRENT_STATE.md
 
-**2026-09-07 — Manager Experience, first increment on `feature/manager-experience` (D53).**
-Following the first integrated browser review, the authoritative owner decision **D53** landed:
-classic wp-admin is administrator-only; every non-admin Hedayati role uses `/panel/` or
-`/account/`. Delivered this increment (plugin **1.10.0**):
+**2026-09-08 — Manager Experience COMPLETE on `feature/manager-experience` (D53, plugin 1.14.0).**
+Owner decision **D53** is fully delivered and **fully enforced**: classic wp-admin is an
+administrator-only interface; every non-administrator Hedayati role
+(`student` → `/account/`, `teacher` / `teacher_assistant` / `reception` / `hedayati_manager` →
+`/panel/`) is redirected out of interactive wp-admin. Zero «موقت» escape links remain.
 
-- `Hedayati_Admin_Access` — `admin_init` redirect of interactive wp-admin → `/panel/` /
-  `/account/` for **`student` / `teacher` / `teacher_assistant`** (staged; `reception` /
-  `hedayati_manager` gated on Phase E via the `hedayati_admin_redirect_roles` filter), admin bar
-  hidden for all non-admin routed roles, all transport endpoints (`admin-post.php`,
-  `admin-ajax.php`, `async-upload.php`, REST, cron, WP-CLI) preserved.
-- `/panel/?view=teachers` (`Hedayati_Teacher_Panel`) — full in-panel Teacher CRUD over the
-  canonical `teacher` CPT; fixes the confirmed «اساتید» wp-admin leak.
-- `/panel/?view=audit` (`Hedayati_Audit_Panel`) — read-only, paginated, filterable,
-  metadata-only audit viewer.
-- Panel/manager-home/`page-panel.php` nav links repointed away from wp-admin; the two
-  un-ported screens (`hedayati-academic`, `hedayati-students`) keep a manager-only «موقت» link
-  pending **Phase C/E**.
+| Piece | What |
+|---|---|
+| `Hedayati_Admin_Access` | `admin_init` p1 redirect for all 5 non-admin roles; admin bar hidden; transport endpoints + `profile.php` preserved; no cap revoked, no `map_meta_cap` filter; `hedayati_admin_redirect_roles` filter can re-tune the set |
+| `?view=teachers` (`Hedayati_Teacher_Panel`) | full Teacher CRUD over the canonical `teacher` CPT |
+| `?view=audit` (`Hedayati_Audit_Panel`) | read-only, paginated, metadata-only audit viewer |
+| `?view=course-new` / `course-edit` (`Hedayati_Course_Panel`, **Phase C**) | full course editor over the canonical `course` CPT + all `_course_*` meta + category + featured image (existing media) + menu_order + publish + 8-slot featured cap |
+| `?view=academic` (`Hedayati_Academic_Panel`, **Phase E**) | course-runs / staff / sessions / enrollments / attendance / public opt-in — same Phase 2B services + capability map |
+| `?view=students` reviewer actions (`Hedayati_Verification_Panel`, **Phase E**) | approve/reject, one-shot national-ID reveal, private-doc list/download/archive/purge — every Phase 2C invariant preserved |
+| `/login/` (`Hedayati_Login` + `page-login.php` + `auth.css`, **Phase F**) | branded front-end auth over `wp_signon` / `retrieve_password` / core reset tokens; `wp-login.php` bounced for normal visitors, intact for the admin |
 
-**Node static 953/0** (9 suites, incl. new `verify-manager-experience.js` 77/0; fixed a
-double-digit-minor version-regex fragility in three older suites). **Docker CI GREEN** —
-`Acceptance (Docker WordPress)` on PR #1 (retargeted to `base: main`), run `34154472653`,
-HEAD `e7b47b9`: **623 / 0 PASS, cleanup verified** (new `docker/wp-tests/test-manager-experience.php`).
-**Not browser-reviewed, not merged, not deployed.** Phases C (in-panel course editor), E
-(academic-ops + verification front-end port), F (dedicated `/login/`) remain — see `docs/ROADMAP.md`.
+**Node static 940/0** (9 suites; `verify-manager-experience.js` **164/0**). **Docker CI GREEN** —
+`Acceptance (Docker WordPress)` on PR #1, run `34161338173`, HEAD `399b94d`:
+**686 / 0 PASS, cleanup verified**. Versions: plugin **1.14.0**, theme **1.3.0** (assets only),
+DB/roles unchanged. New pages on activation: `/login/`. **Not browser-reviewed, not merged, not
+deployed.** Remaining follow-up: an in-panel staff account/password view (so `profile.php` can be
+redirected too) — `docs/ROADMAP.md`.
 
 ---
 
@@ -69,7 +67,7 @@ and the student schedule, were browser-reviewed at desktop/mobile widths in Pers
 light/dark modes with no page-level horizontal overflow. See D44 and
 `docs/AI_STUDIO_INTEGRATION.md`. This branch has not been merged, pushed, or deployed.
 
-**Last documentation update:** 2026-09-07 (manager-experience: D53 wp-admin access policy + in-panel Teachers/Audit).
+**Last documentation update:** 2026-09-08 (manager-experience: D53 COMPLETE — Phases B–F, wp-admin fully administrator-only).
 
 **Prior — 2026-09-05 (Phase 3):** **Phase 3 "launch completion" is implemented
 and merged into `main`, followed by the plugin `1.8.1` lockout-expiry hotfix, with GREEN local
