@@ -246,7 +246,9 @@ function hdit_run_phase_3(): void {
 	// D53 / Phase C: a non-admin manager no longer gets the classic-editor link —
 	// per-field course editing moves in-panel in Phase C; the interim note is shown.
 	HDIT::ok( 'manager (non-admin) courses view does NOT expose the wp-admin editor link (D53)', ! str_contains( $courses_view, 'ویرایش در ویرایشگر' ) );
-	HDIT::ok( 'manager courses view shows the in-panel-editing-coming note instead', str_contains( $courses_view, 'ویرایش کامل به‌زودی در پنل' ) );
+	// D53 / Phase C: the courses list now links to the in-panel editor.
+	HDIT::ok( 'manager courses view links to the in-panel course editor (?view=course-edit)', str_contains( $courses_view, 'view=course-edit' ) || str_contains( $courses_view, 'view%3Dcourse-edit' ) );
+	HDIT::ok( 'manager courses view "new course" button targets the in-panel editor (?view=course-new)', str_contains( $courses_view, 'view=course-new' ) || str_contains( $courses_view, 'view%3Dcourse-new' ) );
 
 	$_GET['view'] = 'featured';
 	ob_start();
