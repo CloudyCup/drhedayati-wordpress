@@ -18,12 +18,12 @@ classic wp-admin is administrator-only; every non-admin Hedayati role uses `/pan
   un-ported screens (`hedayati-academic`, `hedayati-students`) keep a manager-only «موقت» link
   pending **Phase C/E**.
 
-**Node static 951/0** (9 suites, incl. new `verify-manager-experience.js` 75/0; fixed a
-double-digit-minor version-regex fragility in three older suites). New Docker runtime suite
-`docker/wp-tests/test-manager-experience.php` added — **runs in GitHub Actions on PR #1**
-(retargeted to `base: main`), not executed locally (no PHP/Docker here). **Not browser-reviewed,
-not merged, not deployed.** Phases C (in-panel course editor), E (academic-ops + verification
-front-end port), F (dedicated `/login/`) remain — see `docs/ROADMAP.md`.
+**Node static 953/0** (9 suites, incl. new `verify-manager-experience.js` 77/0; fixed a
+double-digit-minor version-regex fragility in three older suites). **Docker CI GREEN** —
+`Acceptance (Docker WordPress)` on PR #1 (retargeted to `base: main`), run `34154472653`,
+HEAD `e7b47b9`: **623 / 0 PASS, cleanup verified** (new `docker/wp-tests/test-manager-experience.php`).
+**Not browser-reviewed, not merged, not deployed.** Phases C (in-panel course editor), E
+(academic-ops + verification front-end port), F (dedicated `/login/`) remain — see `docs/ROADMAP.md`.
 
 ---
 

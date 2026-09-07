@@ -16,10 +16,10 @@ Delivered on `feature/manager-experience` (plugin **1.10.0**):
 | `Hedayati_Audit_Panel` (`class-audit-panel.php`) | `/panel/?view=audit` — read-only, paginated, filterable, metadata-only. |
 | nav de-leak | `page-panel.php` + `Hedayati_Staff_Portal` manager-home cards repointed to `?view=teachers`/`audit`/`settings`; `hedayati-academic` + `hedayati-students` keep a manager-only «موقت» link (Phase E); course editor links gated to `manage_options` (Phase C). |
 
-**Node static 951/0** (9 suites; new `verify-manager-experience.js` **75/0**; also fixed a
-double-digit-minor version-regex bug in `verify-phase2c/audit-log/jalali`). New Docker runtime
-suite `docker/wp-tests/test-manager-experience.php` wired into `run.php` — **runs in GitHub
-Actions on PR #1** (now that base is `main`); not run locally (no PHP/Docker in the agent env).
+**Node static 953/0** (9 suites; new `verify-manager-experience.js` **77/0**; also fixed a
+double-digit-minor version-regex bug in `verify-phase2c/audit-log/jalali`). **Docker CI GREEN** —
+`Acceptance (Docker WordPress)` on PR #1, run `34154472653`, HEAD `e7b47b9`: **623 / 0 PASS,
+cleanup verified** (new `docker/wp-tests/test-manager-experience.php`).
 
 **Remaining:** Phase C (in-panel course create/edit), Phase E (academic-ops + verification-queue
 front-end port → then flip reception/manager into the redirect set), Phase F (dedicated

@@ -16,8 +16,9 @@
   “ویرایش کامل به‌زودی در پنل”. Course publish/feature toggles already work in-panel.
 - **MX-4 — dedicated `/login/` page not built (Phase F).** Branded `wp-login` + the front-end
   forced-password-change screen exist; the standalone route/template is the upgrade.
-- **MX-5 — Docker CI for this increment not yet observed.** `test-manager-experience.php` is
-  written and wired but has not run here; first signal comes from GitHub Actions on PR #1.
+- **MX-5 — resolved.** Docker CI on PR #1 is GREEN: run `34154472653`, 623/0 PASS, cleanup
+  verified. (Getting there took 4 harness fixes: `$_SERVER['REQUEST_METHOD']='POST'`, nonces
+  minted as the acting user, title-based read-backs, string-typed `$_POST` values.)
 
 ## AI Studio parity modules D46–D52 (2026-09-06) — OPEN GATES
 
