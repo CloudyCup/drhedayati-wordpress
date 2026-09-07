@@ -1455,3 +1455,45 @@ a.hd-portal-card:focus-visible::after {
 	.hd-material-list li,
 	.hd-material-list article { flex-direction: column; }
 }
+
+/* ── Manager Experience (D53): in-panel Teachers, Audit, staged legacy links ── */
+
+.hd-portal-nav-legacy { opacity: .82; }
+
+.hd-portal-nav-tag {
+	display: inline-block;
+	margin-inline-start: 6px;
+	padding: 1px 6px;
+	font-size: .62rem;
+	font-weight: 700;
+	border-radius: 999px;
+	background: var(--hd-surface2);
+	color: var(--hd-text-muted, inherit);
+	vertical-align: middle;
+}
+
+.hd-manager-inline-form { display: inline; margin: 0; }
+
+.hd-manager-row-delete {
+	background: none;
+	border: 0;
+	padding: 0;
+	margin-inline-start: 10px;
+	font: inherit;
+	font-size: .78rem;
+	font-weight: 700;
+	color: var(--hd-text-muted, #6b7280);
+	cursor: pointer;
+}
+
+.hd-manager-row-delete:hover,
+.hd-manager-row-delete:focus-visible { color: var(--hd-red-dark); }
+
+.hd-manager-pagination {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-top: 18px;
+	font-size: .85rem;
+}
+

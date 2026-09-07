@@ -5,6 +5,22 @@ the custom AI-Studio-inspired panel is now the authoritative manager/staff UX di
 wp-admin remains available as an underlying/admin fallback but is no longer the intended
 primary manager experience. See `docs/DECISIONS.md` D44 / D45 and `docs/AI_STUDIO_INTEGRATION.md`.
 
+**Owner decision D53 (2026-09-07, hardens the above):** classic wp-admin is **administrator-only**.
+Every non-admin Hedayati role uses `/panel/` or `/account/` and is redirected out of interactive
+wp-admin (`Hedayati_Admin_Access`, staged — student/teacher/TA now, reception/manager on Phase E).
+Rows below marked `WP-ADMIN` are now either DONE-in-panel or an explicit interim pending Phase C/E:
+
+- **Teachers** → `WP-ADMIN` ⟹ **DONE (D53)** — `/panel/?view=teachers` (`Hedayati_Teacher_Panel`),
+  canonical `teacher` CPT, full CRUD + 1:1 link + trash. Native CPT screens = admin fallback.
+- **Audit history** → `WP-ADMIN` ⟹ **DONE (D53)** — `/panel/?view=audit` (`Hedayati_Audit_Panel`),
+  read-only, paginated, metadata-only. wp-admin viewer = admin fallback.
+- **Course create / edit drawer** → `WP-ADMIN` ⟹ **Phase C** (interim: `manage_options`-only link).
+- **Course runs / sessions / staff / enrolments / attendance / capacity / fees** → `WP-ADMIN` ⟹
+  **Phase E** (interim: manager-only «موقت» link to `hedayati-academic`).
+- **Verification workflow / national-ID reveal / private documents (staff review queue)** →
+  `WP-ADMIN` ⟹ **Phase E** (interim: manager-only «موقت» link to `hedayati-students`).
+- **Institute settings** — already **DONE (D52)**, wp-admin screen is the admin fallback.
+
 Source inspected: the owner-supplied ZIP `دکتر-هدایتی-—-کانسپت_های-بازطراحی.zip`. Its `src/`
 tree is byte-identical to `reference-react/src/` (verified). The management panel is
 `src/components/Panels.jsx` → `AdminPanel` (7 tabs) and `StudentPanel` (6 tabs). Every list,

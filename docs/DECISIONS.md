@@ -673,6 +673,52 @@ sanitizer, nonce-guarded. Two legitimate fields added (`institute_name`, `addres
 demo-only settings. The wp-admin Settings → هدایتی screen remains as an administrator fallback
 reading/writing the identical values. The manager gains no native administrator capability.
 
+### D53 — Classic wp-admin is an administrator-only interface
+
+**Authoritative owner decision (2026-09-07).** Only the real WordPress `administrator`
+(`manage_options`) uses classic wp-admin / Gutenberg / the native CPT & taxonomy editors /
+WordPress settings & maintenance tools. Every other Hedayati role uses the professional
+front-end experience and must never be routed into wp-admin for normal work:
+
+| Role | Front-end workspace |
+|---|---|
+| `hedayati_manager`, `reception`, `teacher`, `teacher_assistant` | `/panel/` |
+| `student` | `/account/` |
+
+This **supersedes** earlier decisions where manager operations were allowed to link back into
+wp-admin (D45–D52 manager cards that pointed at `edit.php` / `admin.php?page=…` /
+`options-general.php`).
+
+**Mechanism** — `Hedayati_Admin_Access`: an `admin_init` (priority 1) guard redirects an
+*interactive* wp-admin page view by a non-admin routed role to its workspace, and
+`show_admin_bar` is forced off for those roles. Transport endpoints are never touched:
+`admin-post.php`, `admin-ajax.php`, `async-upload.php`, REST, cron and WP-CLI all pass through,
+so every panel/account mutation keeps working. No capability is revoked and `map_meta_cap` is
+not filtered — routing only.
+
+**Staged rollout.** Enforcement is ON now for `student` / `teacher` / `teacher_assistant`
+(complete front-end coverage). `reception` / `hedayati_manager` still reach wp-admin for the two
+screens that exist **only** there — `Hedayati_Academic_Admin` (course-runs / sessions / staff /
+enrollments / attendance) and `Hedayati_Student_Admin` (verification queue). Those panel nav
+items carry a «موقت» tag. The `hedayati_admin_redirect_roles` filter flips the remaining roles
+on in one line once the **Phase E** front-end port of those two screens lands (see
+`docs/ROADMAP.md`).
+
+**New in-panel views** (reuse existing services/CPTs — no second data store):
+
+- `/panel/?view=teachers` — `Hedayati_Teacher_Panel`. List / search / create / edit / 1:1
+  WP-user link / safe trash over the canonical `teacher` CPT, gated on the existing
+  `hedayati_manage_teachers` + per-object `edit_post`/`delete_post`. Fixes the confirmed «اساتید»
+  wp-admin leak. The native CPT screens stay available to the administrator.
+- `/panel/?view=audit` — `Hedayati_Audit_Panel`. Read-only, paginated, filterable
+  (object-type / action / actor), metadata-only (actor / action / object / time / note — **no IP,
+  no user-agent**, D16 unchanged). Calls only `Hedayati_Audit_Log::query()/count()`.
+
+**Deferred, tracked in ROADMAP:** Phase C (in-panel course create/edit, replacing
+«ویرایش در ویرایشگر» for the manager) and Phase F (a dedicated `/login/` front-end page — the
+forced-password-change screen is already a front-end flow and a branded `wp-login` already
+exists via `theme/hedayati/assets/css/login.css`).
+
 ### Panel architecture
 
 `Hedayati_Staff_Portal` gained a filter-based module-view registry

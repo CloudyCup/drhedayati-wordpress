@@ -1,5 +1,17 @@
 # Test results
 
+## Manager Experience — D53 first increment (2026-09-07) — STATIC GREEN, DOCKER CI PENDING
+
+Branch `feature/manager-experience`, plugin **1.10.0**. PR #1 base changed to `main`.
+
+| Check | Result |
+|---|---|
+| Node static suites | **951 / 0** across 9 suites. New `verify-manager-experience.js` = **75 / 0** (admin-access routing + staged enforcement + Phase-E filter, teacher-panel guards/CRUD/link-rule/trash, audit-panel read-only + metadata-only, no-wp-admin-leak, administrator exception). Fixed a latent double-digit-minor version-regex bug in `verify-phase2c.js` / `verify-audit-log.js` / `verify-jalali.js` (they rejected `1.10.0`). |
+| `php -l` on changed PHP | **not run** — no PHP in the agent environment. Brace balance verified by the Node suite for all 3 new classes. |
+| Local real WordPress/PHP acceptance | **not run here** (no Docker/WSL2). New suite `docker/wp-tests/test-manager-experience.php` written + wired into `run.php`; expected to run in `Acceptance (Docker WordPress)` on **PR #1** (triggers on `pull_request → main`). Result to be recorded when the run completes. |
+| Real browser review | NOT DONE — see the "browser pages to test next" list in the handoff report. |
+| Staging / production | NOT CONTACTED. |
+
 ## AI Studio manager panel — course/featured in-panel tabs (2026-09-06) — STATIC + DOCKER CI GREEN
 
 Branch `feature/manager-experience` (`59ce4ee` baseline = recovered Codex WIP):

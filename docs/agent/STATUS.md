@@ -1,5 +1,30 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
+## Manager Experience — D53 wp-admin access policy, first increment (2026-09-07) — FEATURE BRANCH, static GREEN, NOT MERGED
+
+After the first integrated browser review, owner decision **D53** landed: classic wp-admin is
+**administrator-only**; every non-admin Hedayati role uses `/panel/` (manager/reception/teacher/TA)
+or `/account/` (student). PR **#1 retargeted `base: feature/phase-2b-academic-operations` →
+`base: main`** (the old base was stale; `main` fully contains phase-2b; branch was 0 behind main).
+
+Delivered on `feature/manager-experience` (plugin **1.10.0**):
+
+| Piece | What |
+|---|---|
+| `Hedayati_Admin_Access` (`class-admin-access.php`) | `admin_init` p1 redirect of interactive wp-admin → workspace; admin bar off for non-admins. **Staged:** enforced for student/teacher/teacher_assistant; reception/manager gated on Phase E via `hedayati_admin_redirect_roles` filter. Transport endpoints (`admin-post.php`/`admin-ajax.php`/`async-upload.php`/REST/cron/WP-CLI) untouched. No cap revoked, no `map_meta_cap` filter. |
+| `Hedayati_Teacher_Panel` (`class-teacher-panel.php`) | `/panel/?view=teachers` — list/search/create/edit/1:1-link/trash over the canonical `teacher` CPT. Fixes the confirmed «اساتید» leak. |
+| `Hedayati_Audit_Panel` (`class-audit-panel.php`) | `/panel/?view=audit` — read-only, paginated, filterable, metadata-only. |
+| nav de-leak | `page-panel.php` + `Hedayati_Staff_Portal` manager-home cards repointed to `?view=teachers`/`audit`/`settings`; `hedayati-academic` + `hedayati-students` keep a manager-only «موقت» link (Phase E); course editor links gated to `manage_options` (Phase C). |
+
+**Node static 951/0** (9 suites; new `verify-manager-experience.js` **75/0**; also fixed a
+double-digit-minor version-regex bug in `verify-phase2c/audit-log/jalali`). New Docker runtime
+suite `docker/wp-tests/test-manager-experience.php` wired into `run.php` — **runs in GitHub
+Actions on PR #1** (now that base is `main`); not run locally (no PHP/Docker in the agent env).
+
+**Remaining:** Phase C (in-panel course create/edit), Phase E (academic-ops + verification-queue
+front-end port → then flip reception/manager into the redirect set), Phase F (dedicated
+`/login/` page). See `docs/ROADMAP.md`. NOT browser-reviewed, NOT merged, NOT deployed.
+
 ## AI Studio parity modules D46–D52 (2026-09-06) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
 
 `feature/manager-experience` HEAD `6a5abf7` (docs pinned; runtime unchanged since `f6ad232`). The owner brought the whole

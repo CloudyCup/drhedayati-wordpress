@@ -101,7 +101,7 @@ if ( class_exists( 'Hedayati_Query' ) ) {
 					<!-- Empty state: displayed when no course-category terms exist -->
 					<div class="console-empty-state">
 						<p><?php esc_html_e( 'دسته‌بندی‌های دوره هنوز تنظیم نشده‌اند.', 'hedayati' ); ?></p>
-						<?php if ( current_user_can( 'manage_categories' ) ) : ?>
+						<?php if ( current_user_can( 'manage_options' ) ) : ?>
 							<a href="<?php echo esc_url( admin_url( 'edit-tags.php?taxonomy=course-category&post_type=course' ) ); ?>">
 								<?php esc_html_e( 'افزودن دسته‌بندی در پنل مدیریت', 'hedayati' ); ?>
 							</a>

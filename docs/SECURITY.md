@@ -259,3 +259,33 @@ capability + audit + private-storage infrastructure.
 
 Runtime-verified by `docker/wp-tests/test-ai-studio.php` (unauthorized issue/manage denied,
 IDOR denied, no-PII-in-verification, rate-limit paths, cross-user notification isolation).
+
+## wp-admin access policy (2026-09-07, D53) — feature branch
+
+`Hedayati_Admin_Access` (plugin 1.10.0). Classic wp-admin is administrator-only; non-admin
+Hedayati roles are routed to `/panel/` or `/account/`.
+
+- **Redirect** is on `admin_init` priority 1, only for a *human interactive* wp-admin page view
+  (`is_admin()` true, and NOT `wp_doing_ajax()` / `wp_doing_cron()` / `WP_CLI` / `REST_REQUEST`,
+  and `pagenow` not `admin-post.php` / `admin-ajax.php` / `async-upload.php`). `wp_safe_redirect`
+  (open-redirect-safe) + `exit`, `nocache_headers()` first. **No redirect loop** — the targets
+  are front-end pages, `admin_init` does not fire there.
+- **Never** revokes a capability, filters `map_meta_cap`, or globally disables wp-admin. The
+  administrator keeps everything. The `teacher` CPT keeps its native `show_ui` screens for the
+  admin.
+- **Staged:** enforced for `student` / `teacher` / `teacher_assistant` (all-roles-in-enforced-set
+  predicate); `reception` / `hedayati_manager` are added via the `hedayati_admin_redirect_roles`
+  filter when the Phase E screens are ported. Admin bar forced off for every non-admin routed
+  role.
+- **New in-panel views** — `?view=teachers` (`Hedayati_Teacher_Panel`): canonical `teacher` CPT,
+  `hedayati_manage_teachers` + per-object `edit_post`/`delete_post` re-checked in every handler,
+  `guard_action()` (POST + cap + nonce), 1:1 WP-user link rule mirrored from `Hedayati_Teacher`,
+  `wp_trash_post` (safe lifecycle, not force-delete), audit `teacher.updated`/`teacher.trashed`
+  (no PII in the note). `?view=audit` (`Hedayati_Audit_Panel`): strictly read-only — only
+  `Hedayati_Audit_Log::query()/count()`, no `admin_post_` handler, filter inputs validated
+  against the known safe enums, metadata-only (D16 unchanged — **no IP, no user-agent**).
+
+Runtime-verified by `docker/wp-tests/test-manager-experience.php` (per-role workspace routing,
+staged-enforcement predicate + filter flip, teacher CRUD + 403 paths + link conflict + trash,
+audit read-only). The `admin_init` redirect firing on a real browser request is a staging
+acceptance item (bare WP-CLI has no interactive admin request).

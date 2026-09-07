@@ -71,7 +71,12 @@ assert("exposes a read API Hedayati_Student_Profile::get()", /public static func
 
 assert("plugin requires the class", boot.includes('includes/class-student-profile.php'));
 assert("plugin boots Hedayati_Student_Profile::init()", boot.includes('Hedayati_Student_Profile::init()'));
-assert("plugin version >= 1.3.0 (student profile present)", /HEDAYATI_CORE_VERSION', '1\.[3-9]\.\d+'/.test(boot));
+assert("plugin version >= 1.3.0 (student profile present)", (() => {
+	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.(\d+)'/);
+	if (!m) return false;
+	const [maj, min] = [Number(m[1]), Number(m[2])];
+	return maj > 1 || (maj === 1 && min >= 3);
+})());
 
 // ── 3. Hedayati_Crypto ───────────────────────────────────────────────────────
 
@@ -234,7 +239,12 @@ assert("requires class-student-admin.php", boot.includes('includes/class-student
 assert("boots Hedayati_Verification_Service::init()", boot.includes('Hedayati_Verification_Service::init()'));
 assert("boots Hedayati_Document_Service::init()", boot.includes('Hedayati_Document_Service::init()'));
 assert("boots Hedayati_Student_Admin::init()", boot.includes('Hedayati_Student_Admin::init()'));
-assert("plugin version >= 1.6.0 (Phase 2C baseline retained; later phases may bump further)", /HEDAYATI_CORE_VERSION', '1\.\d+\.\d+'/.test(boot) && !boot.includes("HEDAYATI_CORE_VERSION', '1.5.") && !/HEDAYATI_CORE_VERSION', '1\.[0-4]\./.test(boot));
+assert("plugin version >= 1.6.0 (Phase 2C baseline retained; later phases may bump further)", (() => {
+	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.(\d+)'/);
+	if (!m) return false;
+	const [maj, min] = [Number(m[1]), Number(m[2])];
+	return maj > 1 || (maj === 1 && min >= 6);
+})());
 {
 	const versionMatch = boot.match(/HEDAYATI_CORE_VERSION', '([0-9.]+)'/);
 	const headerMatch  = boot.match(/Version:\s+([0-9.]+)/);

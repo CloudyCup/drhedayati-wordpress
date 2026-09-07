@@ -1,5 +1,24 @@
 # Defects and acceptance gaps
 
+## Manager Experience — D53 (2026-09-07) — OPEN ITEMS
+
+- **MX-1 — `Hedayati_Admin_Access` `admin_init` redirect not runtime-proven in a browser.** The
+  guard needs a real interactive wp-admin HTTP request; the WP-CLI Docker harness has none.
+  `test-manager-experience.php` proves the decision logic (`workspace_url_for`, `enforced_roles`,
+  the staged-enforcement predicate + filter flip). The actual browser redirect for
+  student/teacher/TA hitting `/wp-admin/…` directly is a **staging/browser acceptance item**.
+- **MX-2 — reception + hedayati_manager still reach wp-admin** for `hedayati-academic`
+  (academic ops) and `hedayati-students` (verification queue) — intentional, staged. Those nav
+  items carry a «موقت» tag. Closes with **Phase E** (front-end port), which then adds both roles
+  to `hedayati_admin_redirect_roles`.
+- **MX-3 — no in-panel course create/edit yet (Phase C).** «دورهٔ جدید» / «ویرایش در ویرایشگر»
+  are gated to `manage_options` (administrator-only interim). A non-admin manager currently sees
+  “ویرایش کامل به‌زودی در پنل”. Course publish/feature toggles already work in-panel.
+- **MX-4 — dedicated `/login/` page not built (Phase F).** Branded `wp-login` + the front-end
+  forced-password-change screen exist; the standalone route/template is the upgrade.
+- **MX-5 — Docker CI for this increment not yet observed.** `test-manager-experience.php` is
+  written and wired but has not run here; first signal comes from GitHub Actions on PR #1.
+
 ## AI Studio parity modules D46–D52 (2026-09-06) — OPEN GATES
 
 Not defects in delivered code (static 876/0, Docker CI 576/0 PASS cleanup-verified), but the

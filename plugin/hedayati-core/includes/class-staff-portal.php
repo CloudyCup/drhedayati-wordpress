@@ -459,10 +459,10 @@ class Hedayati_Staff_Portal {
 
 		$cards = [
 			'hedayati_lookup_students'    => [ self::url( [ 'view' => 'students' ] ), __( 'پذیرش و پروندهٔ دانشجو', 'hedayati-core' ) ],
-			'hedayati_manage_courses'     => [ admin_url( 'edit.php?post_type=course' ), __( 'مدیریت دوره‌ها', 'hedayati-core' ) ],
+			'hedayati_manage_courses'     => [ self::url( [ 'view' => 'courses' ] ), __( 'مدیریت دوره‌ها', 'hedayati-core' ) ],
 			'hedayati_manage_course_runs' => [ admin_url( 'admin.php?page=hedayati-academic' ), __( 'عملیات آموزشی', 'hedayati-core' ) ],
-			'hedayati_manage_teachers'    => [ admin_url( 'edit.php?post_type=teacher' ), __( 'مدیریت اساتید', 'hedayati-core' ) ],
-			'hedayati_manage_settings'    => [ admin_url( 'options-general.php?page=hedayati-settings' ), __( 'اطلاعات تماس مجتمع', 'hedayati-core' ) ],
+			'hedayati_manage_teachers'    => [ self::url( [ 'view' => 'teachers' ] ), __( 'مدیریت اساتید', 'hedayati-core' ) ],
+			'hedayati_manage_settings'    => [ self::url( [ 'view' => 'settings' ] ), __( 'اطلاعات تماس مجتمع', 'hedayati-core' ) ],
 			'hedayati_verify_students'    => [ admin_url( 'admin.php?page=hedayati-students' ), __( 'بررسی احراز هویت', 'hedayati-core' ) ],
 		];
 
@@ -504,8 +504,8 @@ class Hedayati_Staff_Portal {
 		if ( current_user_can( 'hedayati_manage_courses' ) ) {
 			printf(
 				'<a class="hd-manager-primary" href="%s">%s</a>',
-				esc_url( admin_url( 'post-new.php?post_type=course' ) ),
-				esc_html__( 'تعریف دورهٔ جدید', 'hedayati-core' )
+				esc_url( self::url( [ 'view' => 'courses' ] ) ),
+				esc_html__( 'مدیریت دوره‌ها', 'hedayati-core' )
 			);
 		}
 		echo '</header>';
@@ -543,18 +543,18 @@ class Hedayati_Staff_Portal {
 			],
 			'hedayati_verify_students' => [
 				admin_url( 'admin.php?page=hedayati-students' ),
-				__( 'احراز هویت دانشجویان', 'hedayati-core' ),
-				__( 'بررسی درخواست‌ها و مدیریت وضعیت تأیید هویت', 'hedayati-core' ),
+				__( 'احراز هویت دانشجویان (موقت — پنل کلاسیک)', 'hedayati-core' ),
+				__( 'بررسی درخواست‌ها و مدیریت وضعیت تأیید هویت — نسخهٔ درون‌پنلی در فاز بعد', 'hedayati-core' ),
 				'shield',
 			],
 			'hedayati_manage_teachers' => [
-				admin_url( 'edit.php?post_type=teacher' ),
+				self::url( [ 'view' => 'teachers' ] ),
 				__( 'اساتید', 'hedayati-core' ),
 				__( 'پروفایل استادها و وضعیت انتشار عمومی اطلاعات', 'hedayati-core' ),
 				'teacher',
 			],
 			'hedayati_manage_settings' => [
-				admin_url( 'options-general.php?page=hedayati-settings' ),
+				self::url( [ 'view' => 'settings' ] ),
 				__( 'تنظیمات مجتمع', 'hedayati-core' ),
 				__( 'شماره‌های تماس و نشانی‌های نمایش‌داده‌شده در سایت', 'hedayati-core' ),
 				'settings',
@@ -606,7 +606,7 @@ class Hedayati_Staff_Portal {
 				'<aside class="hd-manager-audit"><div><strong>%1$s</strong><p>%2$s</p></div><a href="%3$s">%4$s</a></aside>',
 				esc_html__( 'گزارش فعالیت‌های مدیریتی', 'hedayati-core' ),
 				esc_html__( 'رویدادهای حساس سامانه بدون نمایش اطلاعات خصوصی ثبت می‌شوند.', 'hedayati-core' ),
-				esc_url( admin_url( 'admin.php?page=hedayati-academic-audit' ) ),
+				esc_url( self::url( [ 'view' => 'audit' ] ) ),
 				esc_html__( 'مشاهدهٔ گزارش', 'hedayati-core' )
 			);
 		}
@@ -783,11 +783,17 @@ class Hedayati_Staff_Portal {
 			)
 		);
 		echo '</div>';
-		printf(
-			'<a class="hd-manager-primary" href="%s">%s</a>',
-			esc_url( admin_url( 'post-new.php?post_type=course' ) ),
-			esc_html__( 'دورهٔ جدید', 'hedayati-core' )
-		);
+		// D53 / Phase C: an in-panel course create/edit form is not built yet.
+		// Only the actual administrator gets the classic-editor shortcut; a
+		// non-admin manager sees an honest "coming next" note instead of being
+		// pushed into wp-admin.
+		if ( current_user_can( 'manage_options' ) ) {
+			printf(
+				'<a class="hd-manager-primary" href="%s">%s</a>',
+				esc_url( admin_url( 'post-new.php?post_type=course' ) ),
+				esc_html__( 'دورهٔ جدید (ویرایشگر وردپرس)', 'hedayati-core' )
+			);
+		}
 		echo '</header>';
 
 		echo '<form class="hd-manager-toolbar" method="get" action="' . esc_url( self::url() ) . '">';
@@ -848,11 +854,20 @@ class Hedayati_Staff_Portal {
 			echo '<span role="cell">';
 			self::toggle_button( 'course_feature', $course_id, $featured ? __( 'ویژه', 'hedayati-core' ) : __( 'عادی', 'hedayati-core' ), $featured );
 			echo '</span>';
-			printf(
-				'<span role="cell"><a class="hd-manager-row-edit" href="%s">%s</a></span>',
-				esc_url( get_edit_post_link( $course_id ) ?: admin_url( 'edit.php?post_type=course' ) ),
-				esc_html__( 'ویرایش در ویرایشگر', 'hedayati-core' )
-			);
+			// D53 / Phase C: classic-editor link only for the real administrator.
+			$edit_link = current_user_can( 'manage_options' ) ? get_edit_post_link( $course_id ) : '';
+			if ( $edit_link ) {
+				printf(
+					'<span role="cell"><a class="hd-manager-row-edit" href="%s">%s</a></span>',
+					esc_url( $edit_link ),
+					esc_html__( 'ویرایش در ویرایشگر', 'hedayati-core' )
+				);
+			} else {
+				printf(
+					'<span role="cell" class="hd-portal-note">%s</span>',
+					esc_html__( 'ویرایش کامل به‌زودی در پنل', 'hedayati-core' )
+				);
+			}
 			echo '</div>';
 		}
 		echo '</div>';

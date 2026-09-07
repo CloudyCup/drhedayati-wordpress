@@ -3,7 +3,7 @@
  * Plugin Name:       Hedayati Core
  * Plugin URI:        https://mystik.ir
  * Description:       هسته عملکردی مجتمع آموزشی دکتر هدایتی — دوره‌ها، طبقه‌بندی‌ها، احراز هویت، متادیتا و توابع کمکی.
- * Version:           1.9.0
+ * Version:           1.10.0
  * Author:            مجتمع آموزشی دکتر هدایتی
  * Author URI:        https://mystik.ir
  * Text Domain:       hedayati-core
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_CORE_VERSION', '1.9.0' );
+define( 'HEDAYATI_CORE_VERSION', '1.10.0' );
 define( 'HEDAYATI_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HEDAYATI_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -83,6 +83,12 @@ require_once HEDAYATI_CORE_DIR . 'includes/class-support-service.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-certificate-service.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-panel-settings.php';
 
+// Manager Experience (owner decision D53) — wp-admin is administrator-only;
+// non-admin roles get self-contained front-end panel views.
+require_once HEDAYATI_CORE_DIR . 'includes/class-admin-access.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-teacher-panel.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-audit-panel.php';
+
 // ── Hook Registration ─────────────────────────────────────────────────────────
 
 add_action( 'init', [ Hedayati_Post_Types::class, 'register' ] );
@@ -133,6 +139,11 @@ Hedayati_Material_Service::init();
 Hedayati_Support_Service::init();
 Hedayati_Certificate_Service::init();
 Hedayati_Panel_Settings::init();
+
+// Manager Experience (D53)
+Hedayati_Admin_Access::init();
+Hedayati_Teacher_Panel::init();
+Hedayati_Audit_Panel::init();
 
 // ── Shared helpers (callable from theme without knowing internals) ─────────────
 

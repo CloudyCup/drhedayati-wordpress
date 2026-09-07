@@ -1,5 +1,32 @@
 # CURRENT_STATE.md
 
+**2026-09-07 — Manager Experience, first increment on `feature/manager-experience` (D53).**
+Following the first integrated browser review, the authoritative owner decision **D53** landed:
+classic wp-admin is administrator-only; every non-admin Hedayati role uses `/panel/` or
+`/account/`. Delivered this increment (plugin **1.10.0**):
+
+- `Hedayati_Admin_Access` — `admin_init` redirect of interactive wp-admin → `/panel/` /
+  `/account/` for **`student` / `teacher` / `teacher_assistant`** (staged; `reception` /
+  `hedayati_manager` gated on Phase E via the `hedayati_admin_redirect_roles` filter), admin bar
+  hidden for all non-admin routed roles, all transport endpoints (`admin-post.php`,
+  `admin-ajax.php`, `async-upload.php`, REST, cron, WP-CLI) preserved.
+- `/panel/?view=teachers` (`Hedayati_Teacher_Panel`) — full in-panel Teacher CRUD over the
+  canonical `teacher` CPT; fixes the confirmed «اساتید» wp-admin leak.
+- `/panel/?view=audit` (`Hedayati_Audit_Panel`) — read-only, paginated, filterable,
+  metadata-only audit viewer.
+- Panel/manager-home/`page-panel.php` nav links repointed away from wp-admin; the two
+  un-ported screens (`hedayati-academic`, `hedayati-students`) keep a manager-only «موقت» link
+  pending **Phase C/E**.
+
+**Node static 951/0** (9 suites, incl. new `verify-manager-experience.js` 75/0; fixed a
+double-digit-minor version-regex fragility in three older suites). New Docker runtime suite
+`docker/wp-tests/test-manager-experience.php` added — **runs in GitHub Actions on PR #1**
+(retargeted to `base: main`), not executed locally (no PHP/Docker here). **Not browser-reviewed,
+not merged, not deployed.** Phases C (in-panel course editor), E (academic-ops + verification
+front-end port), F (dedicated `/login/`) remain — see `docs/ROADMAP.md`.
+
+---
+
 **2026-09-06 — AI Studio parity modules complete on `feature/manager-experience` (D46–D52), HEAD
 `f6ad232`.** All seven `AI_STUDIO_PANEL_MATRIX.md` §E items are now implemented as real WordPress
 subsystems (migration **2.4.0**, roles **2.4.0**, plugin **1.9.0**, theme **1.3.0**):
@@ -42,7 +69,7 @@ and the student schedule, were browser-reviewed at desktop/mobile widths in Pers
 light/dark modes with no page-level horizontal overflow. See D44 and
 `docs/AI_STUDIO_INTEGRATION.md`. This branch has not been merged, pushed, or deployed.
 
-**Last documentation update:** 2026-09-06 (manager-experience: AI Studio parity modules D46–D52).
+**Last documentation update:** 2026-09-07 (manager-experience: D53 wp-admin access policy + in-panel Teachers/Audit).
 
 **Prior — 2026-09-05 (Phase 3):** **Phase 3 "launch completion" is implemented
 and merged into `main`, followed by the plugin `1.8.1` lockout-expiry hotfix, with GREEN local

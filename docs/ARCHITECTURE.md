@@ -211,6 +211,24 @@ reuse the panel's plumbing without living in that class.
 | `class-notification-service.php` · `Hedayati_Notification_Service` | `hedayati_notifications` (`idx_user_unread`). `notify()` / `notify_capable()`; `mark_read()` returns true only when an owned row was updated; `unread_count()` / `mark_all_read()` owner-scoped. Wired to `hedayati_consultation_created` (→ staff), support + certificate events (from those services). `admin_post_hedayati_notif_{read,read_all}` (nonce + logged-in). `deleted_user` cascade. On-site only — no email/SMS/push. |
 | `class-panel-settings.php` · `Hedayati_Panel_Settings` | `/panel/?view=settings` form → `Hedayati_Settings::update()` (canonical option + `sanitize_all()`); `guard_action( 'hedayati_panel_settings_save', 'hedayati_manage_settings' )`; audited `settings.updated`. `Hedayati_Settings` gained `institute_name` + `address_tehran` and a shared `field_labels()` used by both the wp-admin screen and this form. |
 
+## Manager Experience — wp-admin access policy (D53, `hedayati-core` 1.10.0)
+
+Owner decision **D53**: classic wp-admin is administrator-only; every non-admin Hedayati role
+uses `/panel/` or `/account/`. No capability is revoked and `map_meta_cap` is not filtered —
+this layer is pure routing.
+
+| File · class | Responsibility |
+|---|---|
+| `class-admin-access.php` · `Hedayati_Admin_Access` | `admin_init` (priority 1) redirect of an *interactive* wp-admin page view by a non-admin routed role → `workspace_url_for()` (`/panel/` for teacher/TA/reception/manager, `/account/` for student, `''` = don't touch). `is_interactive_admin_request()` excludes `wp_doing_ajax()`/`wp_doing_cron()`/`WP_CLI`/`REST_REQUEST` and `pagenow` ∈ {`admin-post.php`,`admin-ajax.php`,`async-upload.php`}, then requires `is_admin()`. `wp_safe_redirect` + `exit`, `nocache_headers()` first. `show_admin_bar` forced off for every non-admin routed role. **Staged:** `ENFORCED_ROLES` = student + teacher + teacher_assistant; `enforced_roles()` applies `hedayati_admin_redirect_roles` (Phase E adds reception + manager in one line); `is_enforced_for()` requires *all* of a user's roles to be in that set (a user who is also an admin/manager is never redirected). |
+| `class-teacher-panel.php` · `Hedayati_Teacher_Panel` | `/panel/?view=teachers` — registers a `hedayati_panel_module_views` entry (`hedayati_manage_teachers`). List/search/create/edit/1:1-WP-user-link/trash over the **canonical** `teacher` CPT + `Hedayati_Teacher::META_*` (no second store, no `$wpdb`). `handle_save`/`handle_trash` = `Hedayati_Staff_Portal::guard_action()` (POST+cap+nonce) + per-object `current_user_can('edit_post'|'delete_post')` re-check; link conflict mirrors `Hedayati_Teacher::save()` via `find_by_user_id()`; `wp_trash_post` (safe lifecycle). Audit `teacher.updated` / `teacher.trashed`. Native CPT screens remain for the administrator. |
+| `class-audit-panel.php` · `Hedayati_Audit_Panel` | `/panel/?view=audit` — module-view entry (`hedayati_view_audit_logs`). **Read-only**: only `Hedayati_Audit_Log::query()/count()`, no `admin_post_` handler, no `handle_*`. Filters (object-type / action / actor) validated against `Hedayati_Audit_Log::object_types()/actions()`; paginated (`PER_PAGE = 30`). Metadata-only (actor/action/object/time/note) — **no IP, no user-agent** (D16 unchanged). The wp-admin viewer (`Hedayati_Academic_Admin::render_audit_log`) stays for the administrator. |
+
+`page-panel.php` / `Hedayati_Staff_Portal` manager-home cards repointed: «اساتید» →
+`?view=teachers`, audit → `?view=audit`, settings → `?view=settings`. The two un-ported screens
+(`admin.php?page=hedayati-academic`, `admin.php?page=hedayati-students`) keep a **manager-only**
+link with a «موقت» tag pending Phase E; course create/edit wp-admin links are gated to
+`manage_options` (admin-only interim) pending Phase C.
+
 `Hedayati_Roles::ROLES_VERSION` = `2.4.0`; `get_all_hedayati_capabilities()` gained
 `hedayati_manage_consultations`, `hedayati_manage_certificates`,
 `hedayati_manage_session_materials`, `hedayati_manage_support_tickets`,

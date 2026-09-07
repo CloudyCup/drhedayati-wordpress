@@ -158,7 +158,12 @@ assert('Hedayati_Text::digits_to_persian added (display only)', text.includes('f
 
 const boot = read('hedayati-core.php');
 assert('plugin requires class-jalali.php (before the services that format dates)', boot.indexOf('includes/class-jalali.php') > 0 && boot.indexOf('includes/class-jalali.php') < boot.indexOf('includes/class-academic-admin.php'));
-assert('plugin version >= 1.5.0', /HEDAYATI_CORE_VERSION', '1\.[5-9]\.\d+'/.test(boot));
+assert('plugin version >= 1.5.0', (() => {
+	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.(\d+)'/);
+	if (!m) return false;
+	const [maj, min] = [Number(m[1]), Number(m[2])];
+	return maj > 1 || (maj === 1 && min >= 5);
+})());
 
 console.log('\n7. Shamsi display wired into the Phase 2B admin (additive, Gregorian retained):');
 const admin = read('includes/class-academic-admin.php');
