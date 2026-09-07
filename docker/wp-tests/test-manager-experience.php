@@ -426,7 +426,7 @@ function hdit_run_manager_experience(): void {
 	HDIT::section( 'D53.F — Hedayati_Verification_Panel (Phase E, Phase 2C invariants preserved)' );
 
 	$vp_stu = HDIT_Env::make_user( 'vp_stu', 'student' );
-	HDIT::not_wp_error( 'national ID set for the reviewer test (encrypted at rest by the service)', Hedayati_Verification_Service::set_national_id( $vp_stu, '0451739442', $mgr ) );
+	HDIT::not_wp_error( 'national ID set for the reviewer test (encrypted at rest by the service)', Hedayati_Verification_Service::set_national_id( $vp_stu, '0123456789', $mgr ) );
 	HDIT::not_wp_error( 'verification initiated', Hedayati_Verification_Service::initiate( $vp_stu, $mgr ) );
 
 	// Reception can never decrypt — invariant unchanged, checked at the service AND the panel.
@@ -443,10 +443,10 @@ function hdit_run_manager_experience(): void {
 		$reveal_out = ob_get_clean();
 	}
 	HDIT::ok( 'manager reveal: not 403', 403 !== ( HDIT_AdminPost::$result['status'] ?? 0 ) );
-	HDIT::ok( 'manager reveal: response body contains the decrypted value', str_contains( (string) $reveal_out, '0451739442' ) );
+	HDIT::ok( 'manager reveal: response body contains the decrypted value', str_contains( (string) $reveal_out, '0123456789' ) );
 	HDIT::eq( 'manager reveal: exactly one identity.viewed audit row added', $views_before + 1, Hedayati_Audit_Log::count( [ 'action' => 'identity.viewed', 'object_id' => $vp_stu ] ) );
 	$last_view = Hedayati_Audit_Log::query( [ 'action' => 'identity.viewed', 'object_id' => $vp_stu, 'per_page' => 1 ] );
-	HDIT::ok( 'the identity.viewed note carries no national-ID value', ! empty( $last_view ) && ! str_contains( $last_view[0]['note'], '0451739442' ) );
+	HDIT::ok( 'the identity.viewed note carries no national-ID value', ! empty( $last_view ) && ! str_contains( $last_view[0]['note'], '0123456789' ) );
 
 	// Approve / reject.
 	HDIT_AdminPost::run( $rcpt, [ '_wpnonce' => $nonce_as( $rcpt, 'hedayati_vpanel_approve_' . $vp_stu ), 'user_id' => (string) $vp_stu ], [ 'Hedayati_Verification_Panel', 'handle_approve' ] );
