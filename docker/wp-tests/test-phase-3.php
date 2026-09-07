@@ -243,7 +243,10 @@ function hdit_run_phase_3(): void {
 		str_contains( $courses_view, 'hedayati_staff_course_feature' )
 		&& str_contains( $courses_view, 'hedayati_staff_course_publish' )
 		&& str_contains( $courses_view, 'name="_wpnonce"' ) );
-	HDIT::ok( 'manager courses view sends full editing to the WordPress editor', str_contains( $courses_view, 'ویرایش در ویرایشگر' ) );
+	// D53 / Phase C: a non-admin manager no longer gets the classic-editor link —
+	// per-field course editing moves in-panel in Phase C; the interim note is shown.
+	HDIT::ok( 'manager (non-admin) courses view does NOT expose the wp-admin editor link (D53)', ! str_contains( $courses_view, 'ویرایش در ویرایشگر' ) );
+	HDIT::ok( 'manager courses view shows the in-panel-editing-coming note instead', str_contains( $courses_view, 'ویرایش کامل به‌زودی در پنل' ) );
 
 	$_GET['view'] = 'featured';
 	ob_start();

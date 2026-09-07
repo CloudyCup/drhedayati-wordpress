@@ -32,6 +32,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 function hdit_run_manager_experience(): void {
 	global $wpdb;
 
+	// Every panel mutation handler requires a POST request method (guard_action()
+	// / verify()); WP-CLI leaves $_SERVER['REQUEST_METHOD'] unset.
+	$_SERVER['REQUEST_METHOD'] = 'POST';
+
 	$mgr  = HDIT_Env::make_user( 'mx_mgr', 'hedayati_manager' );
 	$rcpt = HDIT_Env::make_user( 'mx_rcpt', 'reception' );
 	$tchr = HDIT_Env::make_user( 'mx_tchr', 'teacher' );
@@ -101,8 +105,24 @@ function hdit_run_manager_experience(): void {
 	$save_nonce  = wp_create_nonce( 'hedayati_teacher_panel_save' );
 	$trash_nonce = wp_create_nonce( 'hedayati_teacher_panel_trash' );
 
+	$all_teachers = static fn(): array => get_posts( [
+		'post_type'   => 'teacher',
+		'post_status' => [ 'publish', 'draft', 'pending', 'private', 'future', 'trash' ],
+		'numberposts' => -1,
+		'fields'      => 'ids',
+	] );
+	$find_teacher_by_title = static function ( string $title ): ?WP_Post {
+		$hits = get_posts( [
+			'post_type'   => 'teacher',
+			'post_status' => [ 'publish', 'draft', 'pending', 'private', 'future' ],
+			'numberposts' => 1,
+			'title'       => $title,
+		] );
+		return $hits[0] ?? null;
+	};
+
 	// Create (manager, valid) — success path redirects, so assert the record.
-	$before = count( get_posts( [ 'post_type' => 'teacher', 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids' ] ) );
+	$before = count( $all_teachers() );
 	HDIT_AdminPost::run( $mgr, [
 		'_wpnonce'   => $save_nonce,
 		'teacher_id' => 0,
@@ -112,9 +132,8 @@ function hdit_run_manager_experience(): void {
 		'linked_user' => 0,
 		'published'  => '1',
 	], [ 'Hedayati_Teacher_Panel', 'handle_save' ] );
-	$after = get_posts( [ 'post_type' => 'teacher', 'post_status' => 'any', 'numberposts' => -1, 'orderby' => 'ID', 'order' => 'DESC' ] );
-	HDIT::eq( 'manager create adds exactly one teacher CPT post', $before + 1, count( $after ) );
-	$new_teacher = $after[0] ?? null;
+	HDIT::eq( 'manager create adds exactly one teacher CPT post', $before + 1, count( $all_teachers() ) );
+	$new_teacher = $find_teacher_by_title( 'استاد آزمایشی مدیریت' );
 	// Tag every panel-created post with the synthetic marker so HDIT_Env::reset()
 	// purges it (the panel handler uses wp_insert_post directly, not make_*).
 	if ( $new_teacher ) {
@@ -126,9 +145,9 @@ function hdit_run_manager_experience(): void {
 	HDIT::eq( 'published checkbox -> post_status publish', 'publish', $new_teacher ? $new_teacher->post_status : '' );
 
 	// Missing title -> WP_Error notice (redirect), no new post.
-	$count_now = count( get_posts( [ 'post_type' => 'teacher', 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids' ] ) );
+	$count_now = count( $all_teachers() );
 	HDIT_AdminPost::run( $mgr, [ '_wpnonce' => $save_nonce, 'teacher_id' => 0, 'title' => '' ], [ 'Hedayati_Teacher_Panel', 'handle_save' ] );
-	HDIT::eq( 'empty title creates no teacher post', $count_now, count( get_posts( [ 'post_type' => 'teacher', 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids' ] ) ) );
+	HDIT::eq( 'empty title creates no teacher post', $count_now, count( $all_teachers() ) );
 
 	// No nonce -> 403.
 	HDIT_AdminPost::run( $mgr, [ 'teacher_id' => 0, 'title' => 'x' ], [ 'Hedayati_Teacher_Panel', 'handle_save' ] );
