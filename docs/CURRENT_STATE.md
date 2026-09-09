@@ -18,8 +18,10 @@ administrator-only interface; every non-administrator Hedayati role
 
 **Node static 940/0** (9 suites; `verify-manager-experience.js` **164/0**). **Docker CI GREEN** —
 `Acceptance (Docker WordPress)` on PR #1, run `34161338173`, HEAD `399b94d`:
-**686 / 0 PASS, cleanup verified**. Versions: plugin **1.14.0**, theme **1.3.0** (assets only),
-DB/roles unchanged. New pages on activation: `/login/`. **Not browser-reviewed, not merged, not
+**686 / 0 PASS, cleanup verified**. Versions: plugin **1.14.0**, theme **1.3.1** (bumped from 1.3.0 for asset
+cache-busting — `account.css` changed materially at the same version string; new `auth.css` +
+`page-login.php`), DB **2.4.0** / roles **2.4.0** unchanged (D53 added no schema and no
+capability). New page on activation: `/login/`. **Not browser-reviewed, not merged, not
 deployed.** Remaining follow-up: an in-panel staff account/password view (so `profile.php` can be
 redirected too) — `docs/ROADMAP.md`.
 
