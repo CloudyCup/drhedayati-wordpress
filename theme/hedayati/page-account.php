@@ -28,17 +28,26 @@ if ( ! in_array( $hd_current_view, Hedayati_Student_Portal::VIEWS, true ) ) {
 }
 
 $hd_nav_items = [
-	'dashboard'    => __( 'داشبورد', 'hedayati' ),
-	'profile'      => __( 'پروفایل', 'hedayati' ),
-	'verification' => __( 'احراز هویت', 'hedayati' ),
-	'enrollments'  => __( 'دوره‌های من', 'hedayati' ),
-	'documents'    => __( 'مدارک', 'hedayati' ),
+	'dashboard'     => __( 'داشبورد دانشجو', 'hedayati' ),
+	'enrollments'   => __( 'دوره‌های من', 'hedayati' ),
+	'schedule'      => __( 'برنامهٔ کلاس‌ها', 'hedayati' ),
+	'certificates'  => __( 'گواهینامه‌های من', 'hedayati' ),
+	'support'       => __( 'پشتیبانی و تیکت', 'hedayati' ),
+	'notifications' => __( 'اعلان‌ها', 'hedayati' ),
+	'verification'  => __( 'احراز هویت', 'hedayati' ),
+	'documents'     => __( 'مدارک من', 'hedayati' ),
+	'profile'       => __( 'پروفایل کاربری', 'hedayati' ),
 ];
-?>
-<main id="site-main" class="hd-portal-main section" role="main" tabindex="-1">
-	<div class="container hd-portal-shell">
 
-		<nav class="hd-portal-sidebar" aria-label="<?php esc_attr_e( 'منوی حساب کاربری', 'hedayati' ); ?>">
+$hd_unread = class_exists( 'Hedayati_Notification_Service' )
+	? Hedayati_Notification_Service::unread_count( get_current_user_id() )
+	: 0;
+?>
+<main id="site-main" class="hd-portal-main section hd-student-main" role="main" tabindex="-1">
+	<div class="container hd-portal-shell hd-student-shell">
+
+		<nav class="hd-portal-sidebar hd-student-sidebar" aria-label="<?php esc_attr_e( 'منوی حساب کاربری', 'hedayati' ); ?>">
+			<div class="hd-manager-brand"><span aria-hidden="true">هـ</span><div><strong><?php esc_html_e( 'پنل دانشجویی', 'hedayati' ); ?></strong><small><?php esc_html_e( 'مجتمع دکتر هدایتی', 'hedayati' ); ?></small></div></div>
 			<ul class="hd-portal-nav">
 				<?php foreach ( $hd_nav_items as $hd_view_key => $hd_view_label ) : ?>
 					<li>
@@ -48,12 +57,17 @@ $hd_nav_items = [
 							<?php echo $hd_view_key === $hd_current_view ? ' aria-current="page"' : ''; ?>
 						>
 							<?php echo esc_html( $hd_view_label ); ?>
+							<?php if ( 'notifications' === $hd_view_key && $hd_unread > 0 ) : ?>
+								<b class="hd-nav-badge"><?php echo esc_html( Hedayati_Text::digits_to_persian( (string) $hd_unread ) ); ?></b>
+							<?php endif; ?>
 						</a>
 					</li>
 				<?php endforeach; ?>
+				<li class="hd-portal-nav-site"><a class="hd-portal-nav-link" href="<?php echo esc_url( home_url( '/contact/' ) ); ?>"><?php esc_html_e( 'پشتیبانی و تماس', 'hedayati' ); ?></a></li>
+				<li><a class="hd-portal-nav-link" href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php esc_html_e( 'مشاهدهٔ وب‌سایت', 'hedayati' ); ?></a></li>
 				<li>
 					<a class="hd-portal-nav-link hd-portal-nav-logout" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>">
-						<?php esc_html_e( 'خروج', 'hedayati' ); ?>
+						<?php esc_html_e( 'خروج از پنل', 'hedayati' ); ?>
 					</a>
 				</li>
 			</ul>

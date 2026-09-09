@@ -72,3 +72,46 @@
 	.hd-account-link { padding: 7px 9px; font-size: 12px; }
 	.hd-public-card { padding: 22px; }
 }
+
+/* ── Consultation request form + certificate verification (D46 / D48) ── */
+.hd-consult-form-wrap,
+.hd-verify { margin-top: 32px; }
+.hd-consult-form-wrap h2,
+.hd-verify h2 { margin-bottom: 14px; }
+
+.hd-consult-form,
+.hd-verify-form { display: flex; flex-direction: column; gap: 12px; max-width: 520px; }
+.hd-consult-field span { display: block; font-weight: 700; font-size: .88rem; margin-bottom: 5px; }
+.hd-consult-field input,
+.hd-consult-field textarea,
+.hd-verify-form input {
+	width: 100%; padding: 10px 12px; border: 1px solid var(--hd-line, #dedbd5);
+	border-radius: 8px; background: var(--hd-surface, #fff); color: var(--hd-ink, #1a1b1f);
+	font: inherit;
+}
+.hd-consult-consent { font-size: .8rem; color: var(--hd-muted, #6e7077); }
+.hd-consult-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.hd-consult-ok { color: #1a7f37; font-weight: 700; }
+.hd-consult-error,
+.hd-verify-invalid { color: var(--hd-red-dark, #a81827); font-weight: 700; }
+
+.hd-verify-form { flex-direction: row; flex-wrap: wrap; align-items: flex-end; }
+.hd-verify-form label { flex: 1 1 220px; }
+.hd-verify-form span { display: block; font-weight: 700; font-size: .88rem; margin-bottom: 5px; }
+.hd-verify-hint { color: var(--hd-muted, #6e7077); margin-top: 10px; }
+.hd-verify-result {
+	margin-top: 18px; padding: 18px; border: 1px solid var(--hd-line, #dedbd5);
+	border-radius: 14px; background: var(--hd-surface, #fff); max-width: 560px;
+}
+.hd-verify-result strong { display: block; font-size: 1.05rem; margin-bottom: 10px; }
+.hd-verify-valid { border-inline-start: 4px solid #1a7f37; }
+.hd-verify-revoked,
+.hd-verify-unknown { border-inline-start: 4px solid var(--hd-red, #c52232); }
+.hd-verify-fields { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+.hd-verify-fields dt { font-weight: 700; color: var(--hd-muted, #6e7077); }
+.hd-verify-fields dd { margin: 0; }
+
+@media print {
+	.site-header, .site-footer, .hd-verify-form, .hd-verify-hint { display: none !important; }
+	.hd-verify-result { border: 1px solid #000; }
+}

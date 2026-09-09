@@ -189,6 +189,58 @@ it makes stays capability-agnostic. No new capability was added; every check reu
 `hedayati_*` capability (`hedayati_view_own_portal`, `hedayati_edit_own_profile`,
 `hedayati_upload_own_documents`).
 
+## AI Studio parity modules (`hedayati-core`, migration 2.4.0 / roles 2.4.0 — D46–D52)
+
+`Hedayati_Staff_Portal` gained a **module-view registry**: `module_views()` returns
+`apply_filters( 'hedayati_panel_module_views', [] )` where each entry is
+`'slug' => [ 'capability', 'render' (callable), 'nav'|'title'|'desc'|'icon' ]`. `guard()` and
+`render()` both re-check `current_user_can( entry['capability'] )` before dispatching; the
+sidebar (`page-panel.php`) and the manager dashboard iterate the same registry. Public helpers
+`Hedayati_Staff_Portal::guard_action( $nonce_action, $capability )` (POST + cap + nonce or die
+403) and `::redirect_notice( $result, $args )` (PRG + one-shot transient) let a module handler
+reuse the panel's plumbing without living in that class.
+
+| File · class | Responsibility |
+|---|---|
+| `class-consultation-service.php` · `Hedayati_Consultation_Service` | Public `/consult/` form (`admin_post[_nopriv]_hedayati_consultation_submit`; nonce + honeypot + per-IP transient rate limit; `Hedayati_Phone::normalize` → E.164). `hedayati_consultations` CRUD; statuses `new`/`contacted`/`closed`; one `staff_note`. Registers the `consultations` module view + `hedayati_staff_consult_{status,note}` handlers (`hedayati_manage_consultations`). Audit notes carry no phone/message body. Fires `hedayati_consultation_created`. |
+| `class-progress-service.php` · `Hedayati_Progress_Service` | Pure computation, no storage. `run_progress()` = non-cancelled held/past sessions ÷ total; `attendance_summary()` = present+late+excused ÷ recorded marks for that enrollment; `percent()` returns `null` (not 0) when there is no basis. |
+| `class-certificate-service.php` · `Hedayati_Certificate_Service` | `hedayati_certificates` (`UNIQUE(enrollment_id)` + `UNIQUE(code)`). `issue()`/`revoke()` both re-check `hedayati_manage_certificates`. `code` = `DH-<jalali year>-<10× base32 from random_bytes>`. `render_public_verification()` (on `/verify/`, IP rate-limited) emits only name/course/date/institute/code. Registers the `certificates` module view + `hedayati_staff_cert_{issue,revoke}`. Historical — no `hedayati_run_deleted` cleanup. |
+| `class-material-storage.php` · `Hedayati_Material_Storage` | Thin delegation to `Hedayati_Document_Storage` (own key namespace) so material *storage* reuses the hardened private-dir primitive while the material *access policy* shares no code with identity documents. |
+| `class-material-service.php` · `Hedayati_Material_Service` | `hedayati_session_materials` (run + optional session; `link`/`note`/`file`). `can_manage_run()` = `hedayati_manage_session_materials` + (manager OR staff-on-run); `can_view_run()` also allows an **active** enrollment. `admin_post_hedayati_material_download` re-checks the viewer then streams; the download URL is `wp_nonce_url(...'hedayati_material_download_'.$id)`. `hedayati_run_deleted` → delete rows + bytes. Registers the `materials` module view + run-view section + student enrolments section. |
+| `class-support-service.php` · `Hedayati_Support_Service` | `hedayati_support_tickets` + `_messages`. `get_for_viewer()` gates every read (`user_id === viewer` OR `hedayati_manage_support_tickets`). Student caps `hedayati_use_support_tickets`; statuses `open`/`waiting_student`/`waiting_staff`/`closed`. Handlers `hedayati_support_{open,reply,status}` (reply verifies staff-vs-student context; closed blocks student replies). Notifies the other party; audit = kind/transition only. Registers the `support` module view + `render_student_view()`. `deleted_user` cascade. |
+| `class-notification-service.php` · `Hedayati_Notification_Service` | `hedayati_notifications` (`idx_user_unread`). `notify()` / `notify_capable()`; `mark_read()` returns true only when an owned row was updated; `unread_count()` / `mark_all_read()` owner-scoped. Wired to `hedayati_consultation_created` (→ staff), support + certificate events (from those services). `admin_post_hedayati_notif_{read,read_all}` (nonce + logged-in). `deleted_user` cascade. On-site only — no email/SMS/push. |
+| `class-panel-settings.php` · `Hedayati_Panel_Settings` | `/panel/?view=settings` form → `Hedayati_Settings::update()` (canonical option + `sanitize_all()`); `guard_action( 'hedayati_panel_settings_save', 'hedayati_manage_settings' )`; audited `settings.updated`. `Hedayati_Settings` gained `institute_name` + `address_tehran` and a shared `field_labels()` used by both the wp-admin screen and this form. |
+
+## Manager Experience — wp-admin is administrator-only (D53, `hedayati-core` 1.14.0)
+
+Owner decision **D53**: classic wp-admin is administrator-only; every non-administrator Hedayati
+role uses `/panel/` or `/account/` and every operational workflow has an in-panel view. No
+capability is revoked and `map_meta_cap` is not filtered — the access layer is pure routing;
+the panel views reuse the existing services/CPTs (no second data model).
+
+| File · class | Responsibility |
+|---|---|
+| `class-admin-access.php` · `Hedayati_Admin_Access` | `admin_init` (priority 1) redirect of an *interactive* wp-admin page view by a non-admin routed role → `workspace_url_for()` (`/panel/` for teacher/TA/reception/manager, `/account/` for student, `''` for the administrator). `is_interactive_admin_request()` excludes `wp_doing_ajax()`/`wp_doing_cron()`/`WP_CLI`/`REST_REQUEST` and `pagenow` ∈ {`admin-post.php`,`admin-ajax.php`,`async-upload.php`,`profile.php`}, then requires `is_admin()`. `wp_safe_redirect` + `exit`, `nocache_headers()` first. `show_admin_bar` forced off for every non-admin routed role. **Fully enforced:** `ENFORCED_ROLES` = student + teacher + teacher_assistant + reception + hedayati_manager; `enforced_roles()` applies the `hedayati_admin_redirect_roles` filter; `is_enforced_for()` requires *all* of a user's roles to be in that set and bails for `manage_options`. |
+| `class-teacher-panel.php` · `Hedayati_Teacher_Panel` | `/panel/?view=teachers` (`hedayati_manage_teachers`). List/search/create/edit/1:1-WP-user-link/trash over the **canonical** `teacher` CPT. `guard_action()` + per-object `edit_post`/`delete_post` re-check; link conflict mirrors `Hedayati_Teacher::save()`; `wp_trash_post`. Audit `teacher.updated`/`teacher.trashed`. |
+| `class-audit-panel.php` · `Hedayati_Audit_Panel` | `/panel/?view=audit` (`hedayati_view_audit_logs`). **Read-only** — only `Hedayati_Audit_Log::query()/count()`, no handler. Filters validated against the safe enums; `PER_PAGE = 30`; metadata-only (**no IP/UA**, D16). |
+| `class-course-panel.php` · `Hedayati_Course_Panel` | `/panel/?view=course-new` / `?view=course-edit&course_id=N` (`hedayati_manage_courses`). Full editor over the **canonical** `course` CPT: title/content/excerpt, every `_course_*` meta key + its `Hedayati_Course_Meta` sanitizer, `course-category` (+ inline term create), `menu_order`, publish/draft, the 8-slot homepage-featured cap (server-enforced), featured image from an **existing** image attachment only (`wp_attachment_is_image`, no `$_FILES`, no new cap). Shamsi-or-ISO `next_start_date` via `Hedayati_Jalali`, stored Gregorian. `guard_action()` + per-object `edit_post`. Audit `course.created`/`course.updated`. The `manage_options`-gated Gutenberg link survives as an admin shortcut. |
+| `class-academic-panel.php` · `Hedayati_Academic_Panel` | `/panel/?view=academic` (+ `&run=N`, `&asession=N`) — faithful front-end port of `Hedayati_Academic_Admin`. Course-run list/create/edit/delete, staff assign/remove, session create/edit/delete, enrollment add/status/remove, attendance, per-run public opt-in (toggles `Hedayati_Public_Content::META_PUBLIC_RUN_IDS` on the parent course). **Same Phase 2B services, same per-action capability map** (`hedayati_manage_course_runs` / `hedayati_assign_staff` / `hedayati_record_attendance` / `hedayati_manage_enrollments` / `hedayati_create_enrollments`), `require_run_scope()` on every write, attendance batch fully validated before any write. Reuses `Hedayati_Academic_Admin`'s (now public) label/choice helper methods. The wp-admin screen is untouched as the admin fallback. |
+| `class-verification-panel.php` · `Hedayati_Verification_Panel` | Reviewer half of `Hedayati_Student_Admin`, rendered inside `Hedayati_Staff_Portal::render_student()` (`/panel/?view=students&student_id=N`). Approve/reject a pending verification (`hedayati_verify_students`), the one-shot national-ID reveal (`hedayati_verify_students`, capability re-checked here — D36; no-store headers; audited `identity.viewed`; value rendered once, never persisted / never in a URL), private-document list + download (via the **existing** nonced `Hedayati_Student_Admin` download handler — no public URL, no new stream path), archive/purge (`hedayati_view_private_documents`). Per-object nonces. **All Phase 2C invariants unchanged.** |
+| `class-login.php` · `Hedayati_Login` + `theme/hedayati/page-login.php` + `auth.css` | `/login/` — branded front-end auth over WordPress primitives. `wp_signon()` (full `authenticate` chain reused), `retrieve_password()` for forgot-password (result never inspected, enumeration-safe, `reset:` rate-limit bucket), core `check_password_reset_key()` + `reset_password()` for the reset link (email link only re-pointed at `/login/` via `retrieve_password_message`; key/token untouched; consumed into the `wp-resetpass-*` cookie). `redirect_to` → `wp_validate_redirect()`. Post-login routing = the existing `login_redirect` filters. Bounces a bare `wp-login.php` GET (`login_init`) for non-admins; leaves logout/`rp`/admin-email to core. |
+
+`page-panel.php` / `Hedayati_Staff_Portal` manager-home: teachers / audit / academic / settings
+self-register as module cards (no duplicates); the standalone audit `<aside>` was removed; the
+verification queue is folded into the «پذیرش، پرونده و احراز هویت دانشجو» card. **Zero
+`admin.php?page=` / `edit.php` / `post-new.php` / `options-general.php` links remain in the
+panel or `page-panel.php`.** New page on activation: `/login/` (`hedayati_login_page_id`).
+
+`Hedayati_Roles::ROLES_VERSION` = `2.4.0`; `get_all_hedayati_capabilities()` gained
+`hedayati_manage_consultations`, `hedayati_manage_certificates`,
+`hedayati_manage_session_materials`, `hedayati_manage_support_tickets`,
+`hedayati_use_support_tickets`, `hedayati_view_own_certificates`.
+`Hedayati_DB_Schema::CURRENT_DB_VERSION` = `2.4.0` (`migrate_2_4_0`, additive, six tables).
+New action hook `hedayati_run_deleted` fires from `Hedayati_Course_Run_Service::delete_run()`.
+
 ## Theme: `hedayati` (v1.1.0 on `feature/phase-2d-account-shell`; `main` is still v1.0.0)
 
 Classic PHP theme using the WordPress template hierarchy plus a `theme.json` (v3) for editor tokens.

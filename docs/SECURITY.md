@@ -223,3 +223,107 @@ authorization must never depend on hidden UI.
 - Defense-in-depth upload scanning where the host permits.
 - Tested backup/restore procedure before cutover.
 - LiteSpeed cache: never cache authenticated/account pages; purge after theme/plugin deploys.
+
+## AI Studio parity modules (2026-09-06, D46–D52) — feature branch, green
+
+New security-relevant subsystems on `feature/manager-experience`. All reuse existing
+capability + audit + private-storage infrastructure.
+
+- **Consultations (D46):** public form is unauthenticated by design; nonce + honeypot +
+  per-IP transient rate limit; phone canonicalised to E.164; server-side validation. Staff
+  queue gated on `hedayati_manage_consultations`. Audit notes never contain the phone or
+  message body.
+- **Certificates (D48):** issuance gated on `hedayati_manage_certificates` (manager/admin
+  only), re-checked in the service. Public verification token is `random_bytes`-derived,
+  non-sequential, **never** the national ID. `UNIQUE(enrollment_id)` prevents duplicate
+  issuance. Public `/verify/` page is IP rate-limited and exposes only
+  name/course/date/institute/code — no phone, national ID, address, documents, attendance,
+  or enrollment internals. Revoked/unknown codes return a non-sensitive status.
+- **Materials (D49):** files stored via `Hedayati_Material_Storage` (thin wrapper over the
+  Phase 2C hardened private store, separate key namespace). Download only through a
+  per-material nonced handler that re-checks active enrollment / staff-on-run / manager.
+  The identity-document store, table, and capability are untouched. No enrollment-private
+  file is reachable at a predictable URL.
+- **Support tickets (D51):** ownership enforced on every read and write (`get_for_viewer()`)
+  — a student can never load or reply to another student's ticket (IDOR-safe). Staff queue
+  gated on `hedayati_manage_support_tickets`. Audit records reply kind / status only.
+- **Notifications (D50):** on-site only (no email/SMS/push). `mark_read` / `unread_count`
+  are owner-scoped (`user_id` in every WHERE). Cascade-deleted on `deleted_user`.
+- **In-panel settings (D52):** writes go through the canonical `Hedayati_Settings` option +
+  sanitizer; nonce + `hedayati_manage_settings`. No new administrator capability for the
+  manager. wp-admin fallback unchanged.
+- **Panel routing:** `Hedayati_Staff_Portal::guard()` and `::render()` both re-check the
+  module capability from the `hedayati_panel_module_views` registry; `guard_action()`
+  enforces POST + capability + nonce for every module mutation handler. Navigation hiding is
+  never the only control.
+
+Runtime-verified by `docker/wp-tests/test-ai-studio.php` (unauthorized issue/manage denied,
+IDOR denied, no-PII-in-verification, rate-limit paths, cross-user notification isolation).
+
+## wp-admin access policy (2026-09-08, D53 — COMPLETE) — feature branch
+
+`Hedayati_Admin_Access` (plugin 1.14.0). Classic wp-admin is administrator-only; **every**
+non-administrator Hedayati role is routed to `/panel/` or `/account/`.
+
+- **Redirect** is on `admin_init` priority 1, only for a *human interactive* wp-admin page view
+  (`is_admin()` true, and NOT `wp_doing_ajax()` / `wp_doing_cron()` / `WP_CLI` / `REST_REQUEST`,
+  and `pagenow` not `admin-post.php` / `admin-ajax.php` / `async-upload.php` / `profile.php`).
+  `wp_safe_redirect` (open-redirect-safe) + `exit`, `nocache_headers()` first. **No redirect
+  loop** — the targets are front-end pages, `admin_init` does not fire there.
+- **Never** revokes a capability, filters `map_meta_cap`, or globally disables wp-admin. The
+  administrator keeps everything; the native CPT `show_ui` screens stay for the admin.
+- **Fully enforced:** `ENFORCED_ROLES` = student + teacher + teacher_assistant + reception +
+  hedayati_manager (all-of-a-user's-roles-in-the-set predicate; `hedayati_admin_redirect_roles`
+  filter can re-tune). Admin bar forced off for every non-admin routed role. `profile.php` is
+  the one interactive carve-out so every role keeps its own account/password screen.
+- **In-panel views** — all reuse the existing services/CPTs, re-check the capability inside the
+  renderer AND (for object-scoped screens) a per-object check in every handler:
+  - `?view=teachers` — canonical `teacher` CPT, `guard_action()` (POST+cap+nonce) + per-object
+    `edit_post`/`delete_post`, 1:1 WP-user link rule mirrored, `wp_trash_post` (safe lifecycle).
+  - `?view=audit` — strictly read-only, `Hedayati_Audit_Log::query()/count()` only, no handler,
+    filter inputs validated against the safe enums, metadata-only (**no IP, no user-agent**).
+  - `?view=course-new`/`course-edit` — canonical `course` CPT + `Hedayati_Course_Meta`
+    sanitizers, `hedayati_manage_courses` + per-object `edit_post`, 8-slot featured cap enforced
+    server-side, featured image only from an **existing** image attachment (no upload, no new
+    cap).
+  - `?view=academic` — `guard_action()` per action with the **same** capability map as
+    `Hedayati_Academic_Admin` + `require_run_scope()` on every write; the attendance batch is
+    fully validated (foreign/forged enrollment ids, active status, allowed status) **before any
+    write**.
+  - `?view=students` reviewer actions (`Hedayati_Verification_Panel`) — **Phase 2C invariants
+    unchanged**: national ID encrypted at rest + HMAC dup detection; reception cannot decrypt;
+    only `hedayati_verify_students` reaches `get_national_id_decrypted()`, re-checked at this
+    controller (D36 defence in depth); plaintext rendered once, no-store headers, never
+    persisted, **never in a URL/log/notice**, audited `identity.viewed` (PII-free note);
+    documents streamed only through the existing nonced `Hedayati_Student_Admin` download
+    handler (no public URL); rejection note stays staff-only.
+
+## Front-end login / password reset (2026-09-08, D53 Phase F) — feature branch
+
+`Hedayati_Login` + `theme/hedayati/page-login.php`. **Not a parallel auth system.**
+
+- Login → `wp_signon()` — runs the full `authenticate` filter chain unchanged (`Hedayati_Auth`
+  phone/username adapter, the rate limiter at priority 90, the privacy-safe generic error, and
+  the `wp_login` / `wp_login_failed` bucket bookkeeping). Every nonce-protected form.
+- `redirect_to` is passed through `wp_validate_redirect()` (default same-host) at three points —
+  no open redirect. Post-login routing = the existing `login_redirect` filters.
+- Forgot-password → core `retrieve_password()`, its **result never inspected**, one
+  unconditional redirect to `?checkemail=confirm` for an existing AND an unknown account (no
+  enumeration). Shares the `reset:` rate-limit bucket with the `wp-login.php` path. It does NOT
+  filter `lostpassword_errors` (the regression-guarded contract-violation footgun — see
+  `Hedayati_Auth_UI` docblock — is avoided by never touching that filter).
+- Reset link → core `check_password_reset_key()` + `reset_password()`. The email link is only
+  **re-pointed** at `/login/` via a `str_replace` in `retrieve_password_message`; the key and
+  token lifetime are core's. The key is consumed off the URL into the same `wp-resetpass-*`
+  cookie wp-login.php uses, then the URL is cleaned. New password ≥ 12 chars; a successful reset
+  also clears the forced-first-login marker.
+- A bare `GET wp-login.php` by a logged-out visitor is bounced to `/login/` (logout, `action=rp`,
+  admin-email confirmation and any non-standard action are left to core). `wp-login.php` remains
+  fully functional for the administrator.
+
+Runtime-verified by `docker/wp-tests/test-manager-experience.php` D53.A–G (per-role workspace
+routing, full-enforcement predicate + filter narrowing, teacher/course/academic CRUD + 403 +
+IDOR + attendance-batch 400, national-ID reveal 403-for-reception + audit + PII-free note +
+service-level decrypt denial, reset-email re-pointing + core-key rejection + `resetpass_user()`
+resolution). The `admin_init` redirect firing on a real browser request is a staging acceptance
+item (bare WP-CLI has no interactive admin request).

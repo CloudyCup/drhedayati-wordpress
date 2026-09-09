@@ -1,6 +1,77 @@
 # CURRENT_STATE.md
 
-**Last documentation update:** 2026-09-05 (Phase 3) — **Phase 3 "launch completion" is implemented
+**2026-09-08 — Manager Experience COMPLETE on `feature/manager-experience` (D53, plugin 1.14.0).**
+Owner decision **D53** is fully delivered and **fully enforced**: classic wp-admin is an
+administrator-only interface; every non-administrator Hedayati role
+(`student` → `/account/`, `teacher` / `teacher_assistant` / `reception` / `hedayati_manager` →
+`/panel/`) is redirected out of interactive wp-admin. Zero «موقت» escape links remain.
+
+| Piece | What |
+|---|---|
+| `Hedayati_Admin_Access` | `admin_init` p1 redirect for all 5 non-admin roles; admin bar hidden; transport endpoints + `profile.php` preserved; no cap revoked, no `map_meta_cap` filter; `hedayati_admin_redirect_roles` filter can re-tune the set |
+| `?view=teachers` (`Hedayati_Teacher_Panel`) | full Teacher CRUD over the canonical `teacher` CPT |
+| `?view=audit` (`Hedayati_Audit_Panel`) | read-only, paginated, metadata-only audit viewer |
+| `?view=course-new` / `course-edit` (`Hedayati_Course_Panel`, **Phase C**) | full course editor over the canonical `course` CPT + all `_course_*` meta + category + featured image (existing media) + menu_order + publish + 8-slot featured cap |
+| `?view=academic` (`Hedayati_Academic_Panel`, **Phase E**) | course-runs / staff / sessions / enrollments / attendance / public opt-in — same Phase 2B services + capability map |
+| `?view=students` reviewer actions (`Hedayati_Verification_Panel`, **Phase E**) | approve/reject, one-shot national-ID reveal, private-doc list/download/archive/purge — every Phase 2C invariant preserved |
+| `/login/` (`Hedayati_Login` + `page-login.php` + `auth.css`, **Phase F**) | branded front-end auth over `wp_signon` / `retrieve_password` / core reset tokens; `wp-login.php` bounced for normal visitors, intact for the admin |
+
+**Node static 940/0** (9 suites; `verify-manager-experience.js` **164/0**). **Docker CI GREEN** —
+`Acceptance (Docker WordPress)` on PR #1, run `34161338173`, HEAD `399b94d`:
+**686 / 0 PASS, cleanup verified**. Versions: plugin **1.14.0**, theme **1.3.1** (bumped from 1.3.0 for asset
+cache-busting — `account.css` changed materially at the same version string; new `auth.css` +
+`page-login.php`), DB **2.4.0** / roles **2.4.0** unchanged (D53 added no schema and no
+capability). New page on activation: `/login/`. **Not browser-reviewed, not merged, not
+deployed.** Remaining follow-up: an in-panel staff account/password view (so `profile.php` can be
+redirected too) — `docs/ROADMAP.md`.
+
+---
+
+**2026-09-06 — AI Studio parity modules complete on `feature/manager-experience` (D46–D52), HEAD
+`f6ad232`.** All seven `AI_STUDIO_PANEL_MATRIX.md` §E items are now implemented as real WordPress
+subsystems (migration **2.4.0**, roles **2.4.0**, plugin **1.9.0**, theme **1.3.0**):
+consultation requests (public form + panel queue), objective student progress + attendance,
+certificates + public `/verify/` page, course/session materials, support tickets, internal
+notifications, and an in-panel institute-settings form. `/panel/` is now the primary manager UX
+with a filter-based module registry; `/account/` gained certificates / support / notifications
+views plus progress + materials in the enrolments view. No AI Studio demo/mock data reproduced.
+**Node static 876/0. Docker real-WordPress acceptance 576/0, PASS, cleanup verified** (run
+`34025229061`). Canonical docs reconciled. **Not browser-reviewed yet, not merged, not deployed** —
+one comprehensive visual review then one integrated staging cycle remain (owner plan).
+
+---
+
+**Feature work after the launch candidate (2026-09-06):** `feature/manager-experience` adapts the
+AI Studio visual system to both real WordPress portals. `/panel/` now has a unified manager home
+with real service counts and capability-gated routes to every existing secured workflow. `/account/`
+now has the matching student dashboard and a real read-only upcoming-class schedule derived only
+from the signed-in student's active enrollments and future sessions. All earlier management and
+student actions remain available. Prototype-only consultation, certificate, progress, support,
+notification, and magazine modules are not presented as built.
+
+**2026-09-06 (continued, `feature/manager-experience`):** the recovered Codex WIP was preserved
+(`snapshot/chatgpt-work-recovery-2026-09-06` @ `5706193`) and adopted as the branch baseline.
+Added on top: the AI Studio "مدیریت دوره‌ها" and "دوره‌های ویژه" tabs as **in-panel** views on
+`/panel/` (`?view=courses`, `?view=featured`) — a real `course` CPT table with search, a
+featured-only filter, and nonce + `edit_post`-guarded feature/publish toggles (the 8-slot homepage
+cap is enforced server-side). Full per-field course editing intentionally stays in the Gutenberg
+editor, opened from the row. Manager sidebar + dashboard now route to these in-panel views instead
+of wp-admin. `docs/AI_STUDIO_PANEL_MATRIX.md` is the authoritative option-by-option comparison and
+lists the seven remaining owner decisions (consultation, progress, certificates, materials,
+tickets, notifications, in-panel settings form). Node static suites **769/0**. Docker real-WordPress
+acceptance: `Acceptance (Docker WordPress)` run `34023251353` on `737d970` — **508/0, PASS, cleanup
+verified**. No browser review of the new course/featured views yet. Branch pushed to origin;
+**not merged, not deployed**. See D44/D45.
+
+Static suites (as of the schedule increment): **762/0**. Real
+WordPress runtime acceptance: **499/0, PASS, cleanup verified**. The manager and student dashboards,
+and the student schedule, were browser-reviewed at desktop/mobile widths in Persian RTL and
+light/dark modes with no page-level horizontal overflow. See D44 and
+`docs/AI_STUDIO_INTEGRATION.md`. This branch has not been merged, pushed, or deployed.
+
+**Last documentation update:** 2026-09-08 (manager-experience: D53 COMPLETE — Phases B–F, wp-admin fully administrator-only).
+
+**Prior — 2026-09-05 (Phase 3):** **Phase 3 "launch completion" is implemented
 and merged into `main`, followed by the plugin `1.8.1` lockout-expiry hotfix, with GREEN local
 WordPress acceptance (492/0) and GREEN Node static suites (752/0). STAGING VALIDATION IN PROGRESS;
 NOT deployed to production.** Phase 3 absorbs the prior Codex/ChatGPT

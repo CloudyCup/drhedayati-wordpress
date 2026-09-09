@@ -29,7 +29,7 @@ class Hedayati_Roles {
 	/**
 	 * Version tracker for roles/capabilities synchronization.
 	 */
-	public const ROLES_VERSION = '2.3.0';
+	public const ROLES_VERSION = '2.4.0';
 	public const OPTION_ROLES_VERSION = 'hedayati_core_roles_version';
 
 	/**
@@ -71,6 +71,8 @@ class Hedayati_Roles {
 					'hedayati_edit_own_profile'     => true,
 					'hedayati_view_own_enrollments' => true,
 					'hedayati_upload_own_documents' => true,
+					'hedayati_view_own_certificates' => true,
+					'hedayati_use_support_tickets'  => true,
 				],
 			],
 			'teacher_assistant' => [
@@ -89,6 +91,7 @@ class Hedayati_Roles {
 					'hedayati_view_assigned_roster'      => true,
 					'hedayati_manage_assigned_sessions'  => true,
 					'hedayati_record_attendance'         => true,
+					'hedayati_manage_session_materials'  => true,
 				],
 			],
 			'reception' => [
@@ -102,6 +105,8 @@ class Hedayati_Roles {
 					'hedayati_view_student_profiles_basic'   => true,
 					'hedayati_initiate_verification'         => true,
 					'hedayati_upload_student_documents'      => true,
+					'hedayati_manage_consultations'          => true,
+					'hedayati_manage_support_tickets'        => true,
 				],
 			],
 			'hedayati_manager' => [
@@ -124,6 +129,10 @@ class Hedayati_Roles {
 					'hedayati_view_audit_logs'               => true,
 					'hedayati_manage_enrollments'            => true,
 					'hedayati_manage_settings'               => true,
+					'hedayati_manage_consultations'          => true,
+					'hedayati_manage_certificates'           => true,
+					'hedayati_manage_session_materials'      => true,
+					'hedayati_manage_support_tickets'        => true,
 				],
 			],
 		];
@@ -160,6 +169,12 @@ class Hedayati_Roles {
 			'hedayati_manage_enrollments',
 			'hedayati_manage_settings',
 			'hedayati_upload_student_documents',
+			'hedayati_view_own_certificates',
+			'hedayati_use_support_tickets',
+			'hedayati_manage_consultations',
+			'hedayati_manage_certificates',
+			'hedayati_manage_session_materials',
+			'hedayati_manage_support_tickets',
 		];
 	}
 

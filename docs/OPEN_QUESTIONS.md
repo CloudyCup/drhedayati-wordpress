@@ -188,3 +188,58 @@ purged only by an explicit staff action — never a cron job. See D38.
 **Decided:** the metadata-only, append-only log stays exactly as built in Phase 2B — no IP
 address, no user-agent, ever. This is not a deferred decision awaiting a retention policy; the
 owner explicitly chose not to collect this data. See D39.
+
+## AI Studio parity modules — RESOLVED (owner decisions, 2026-09-06) — see D46–D52
+
+Q14–Q20 below were the seven `AI_STUDIO_PANEL_MATRIX.md` §E items. All are resolved by explicit
+owner decision and implemented on `feature/manager-experience` (migration 2.4.0). Node static
+876/0; Docker acceptance 576/0 PASS.
+
+## Q14 — Consultation requests — RESOLVED (D46)
+
+Public form fields = name, Iranian phone, optional topic + message. Stored in
+`hedayati_consultations`, **not** emailed/CRM'd/SMS'd. Nonce + honeypot + per-IP transient rate
+limit. Staff queue `new`/`contacted`/`closed` for `hedayati_manage_consultations` (reception +
+manager). One internal note. Audit carries no phone/message body.
+
+## Q15 — Student progress % — RESOLVED (D47)
+
+Two objective, separate numbers computed live: **run progress** = held ÷ total non-cancelled
+sessions; **attendance rate** = present+late+excused ÷ recorded marks for that student. Never
+combined, never called "completion". Zero-session runs render "—", never 0%. No grade/score/exam
+field introduced.
+
+## Q16 — Certificates & public verification — RESOLVED (D48)
+
+Manager/administrator (`hedayati_manage_certificates`) issues; never auto-granted; one per
+enrollment (`UNIQUE`). Code = `DH-<jalali year>-<10× crypto-random base32>` — not the national
+ID. Revoke supported + audited. Public `/verify/` page (IP rate-limited) shows only validity,
+recipient name, course title, issue date, institute, code. Revoked/unknown → clear non-sensitive
+status. Print-friendly HTML; no PDF dependency.
+
+## Q17 — Course/session materials — RESOLVED (D49)
+
+Per run/session; `link` / `note` / `file`. Files stored via `Hedayati_Material_Storage` (own key
+namespace over the Phase 2C hardened private store), downloaded only through a per-material nonced
+handler that re-checks active enrollment / staff-on-run / manager. Identity-document store,
+table, and capability untouched. Attachments-on-tickets deferred to v2.
+
+## Q18 — Support tickets — RESOLVED (D51)
+
+Student opens/reads/replies to own tickets only (ownership on every read/write). Staff queue
+(`hedayati_manage_support_tickets`), statuses `open`/`waiting_student`/`waiting_staff`/`closed`.
+No email/SMS. No attachments in v1. Audit = reply kind / status transition only.
+
+## Q19 — Notifications — RESOLVED (D50)
+
+On-site only. Rows created for a deliberate event set (consultation received → staff; support
+reply/close → other party; certificate issued/revoked → student). Per-user unread count + mark
+read. No email/SMS/push (Q for an SMS provider stays open for OTP, unrelated). Purged on user
+deletion.
+
+## Q20 — In-panel institute settings — RESOLVED (D52)
+
+Built. `/panel/?view=settings` writes through the canonical `Hedayati_Settings` option +
+sanitizer (nonce + `hedayati_manage_settings`). Added `institute_name` + `address_tehran`.
+wp-admin Settings → هدایتی kept as an administrator fallback on the identical values. Manager
+gains no native administrator capability.

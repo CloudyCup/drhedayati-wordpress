@@ -552,3 +552,197 @@ capacity, staff assignments and internal notes are never exposed.
 privacy-safe default is "nothing public unless a human said so", consistent with D30/D34 (Teacher
 CPT not publicly routed until a deliberate design). A per-run column would have needed a migration;
 a course-level allow-list does not.
+
+## D44 — AI Studio is the portal-experience reference, integrated incrementally (2026-09-06)
+
+**Decided (owner):** retain the real WordPress management capabilities and add the design and useful
+sections from the supplied AI Studio prototype. The first increment includes a unified manager home
+on `/panel/`, a matching student learning dashboard on `/account/`, and a read-only upcoming-class
+schedule. Manager summaries and routes use existing services and capabilities; student sessions are
+derived only from the signed-in user's active enrollments and exclude past sessions and inactive
+runs. Existing controllers continue to enforce every read and mutation.
+
+The React/Vite code remains read-only under `reference-react/` and is never a production runtime.
+Prototype-only consultation requests, certificates, progress, support tickets, and notifications are
+not displayed as working features until each has a real data model and approved business/privacy
+rules. See `docs/AI_STUDIO_INTEGRATION.md`.
+
+**Why:** the prototype supplies a strong interface concept, while its browser-local mock data cannot
+safely operate an institute. Incremental integration gives staff a coherent workspace without
+discarding tested WordPress authorization, persistence, audit, and privacy controls or delaying the
+current launch candidate for several unrelated systems.
+
+## D45 — The AI-Studio-style panel is the primary manager UX; wp-admin becomes a fallback (2026-09-06)
+
+**Decided (owner):** the custom AI-Studio-inspired `/panel/` experience is now the authoritative
+manager/staff UX direction. This **supersedes the earlier D-series position that `hedayati_manager`
+would simply use wp-admin for launch**. wp-admin remains available as an underlying/admin fallback
+(and still hosts mature editors — the Gutenberg course editor, the academic-operations screen, the
+Settings API page, the audit-log viewer), but it is no longer the intended primary manager surface.
+
+**Scope of the first delivered increment:** the manager `/panel/` shell is role-aware
+(`Hedayati_Staff_Portal::is_manager_workspace()`); the manager home shows live non-sensitive KPIs
+and capability-gated operations cards; the AI Studio "مدیریت دوره‌ها" and "دوره‌های ویژه" tabs are
+implemented in-panel (`?view=courses`, `?view=featured`) against the real `course` CPT and
+`_course_is_featured` meta, with nonce + `edit_post` guarded toggle handlers and the 8-slot cap
+enforced server-side. Every capability + object-scope check is server-side; navigation only hides
+what a role cannot use.
+
+**Not built (each needs an institute policy/data-model decision — tracked in
+`docs/AI_STUDIO_PANEL_MATRIX.md` §E):** consultation requests, student progress %, certificates &
+public verification, per-session course materials, support tickets, notifications. The AI Studio
+mock data for these (fake students, capacities, counters, "۲۰+ سال"/"۱۵K+" stats) is **not**
+reproduced anywhere.
+
+**Why:** the prototype's interface concept is strong and the owner wants it; its browser-local mock
+data cannot operate an institute. Porting the safe, real-backend tabs now gives the manager a
+coherent custom workspace without inventing backend behaviour or reviving the React/Express/Prisma
+stack (still prohibited — D-series, AGENTS.md §5).
+
+## D46–D52 — AI Studio parity modules brought fully in scope (owner, 2026-09-06)
+
+The owner directed that the remaining `docs/AI_STUDIO_PANEL_MATRIX.md` §E items are now in
+scope: finish the product, then one comprehensive visual review, then one integrated staging
+cycle. Each is a real WordPress subsystem reusing existing services — no AI Studio mock data is
+reproduced. Implemented on `feature/manager-experience`; migration **2.4.0**, roles **2.4.0**,
+plugin **1.9.0**, theme **1.3.0**. Node static **876/0**; Docker acceptance **576/0, PASS,
+cleanup verified** (run `34025229061` on `f6ad232`).
+
+### D46 — Consultation requests (supersedes the "phone CTA only" position)
+
+Public `/consult/` form (name, Iranian phone, optional topic/message) → `hedayati_consultations`.
+Server-side validation, phone canonicalised to E.164, honeypot + per-IP transient rate limit,
+nonce. Staff queue in `/panel/?view=consultations` for `hedayati_manage_consultations`
+(reception + manager): `new → contacted → closed`, search/filter, one internal note. No
+automatic SMS/email. Audit records the status transition / "internal note edited" only — never
+the phone or message body.
+
+### D47 — Student progress (real data only)
+
+`Hedayati_Progress_Service` computes, live and separately:
+- **run progress** = held/past sessions ÷ total non-cancelled sessions;
+- **attendance rate** = the student's present/late/excused marks ÷ sessions with any recorded
+  mark for that student.
+Zero-session runs return `null` (rendered "—", never 0%). No grade / score / exam / pass-fail /
+completion field is introduced — the data model does not carry those.
+
+### D48 — Certificates + public verification
+
+`hedayati_certificates`, `UNIQUE(enrollment_id)` (duplicate issuance impossible) and
+`UNIQUE(code)`. **Never auto-issued** — a `hedayati_manage_certificates` holder (manager /
+administrator only) issues one bound to a single enrollment. Public identifier =
+`DH-<jalali-year>-<10 × crypto-random base32>` (`random_bytes`), non-sequential, **never** the
+national ID or any PII-derived value. Revoke is supported and audited. Student sees only their
+own certificates in `/account/?view=certificates`; a print-friendly HTML certificate/verification
+view (no new PDF dependency). Public `/verify/?code=` page is IP rate-limited and shows **only**
+validity, recipient name (as recorded), course title, issue date, institute, and code — no
+phone / national ID / address / documents / attendance / enrollment internals. Unknown and
+revoked codes return a clear non-sensitive status.
+
+### D49 — Course/session materials
+
+`hedayati_session_materials`, per run and optionally per session; types `link` / `note` / `file`.
+`hedayati_manage_session_materials` (teacher on the run, or manager) manages; an **active**
+enrolled student, staff-on-run, or manager may view. Files use `Hedayati_Material_Storage` — a
+thin wrapper over the hardened Phase 2C private store (outside the webroot, `.htaccess` deny,
+traversal-safe) in its **own** key namespace, served **only** through a per-material nonced
+`admin-post` handler that re-checks the viewer. The identity-document table, capability and
+access policy are untouched. No enrollment-private file is reachable at a predictable URL.
+
+### D50 — Internal notifications
+
+`hedayati_notifications`, one row per (recipient, event). **On-site only** — no email, SMS, or
+push. Created for a deliberate event set (consultation received → staff; support reply/close →
+other party; certificate issued/revoked → student), never for routine CRUD. Per-user unread
+count + mark-read / mark-all-read (owner-scoped). Purged on `deleted_user`.
+
+### D51 — Support tickets
+
+`hedayati_support_tickets` + `hedayati_support_messages`. A student
+(`hedayati_use_support_tickets`) opens tickets, sees only their own, and replies to their own
+open ticket. Staff (`hedayati_manage_support_tickets` — reception + manager) work a shared queue
+with statuses `open / waiting_student / waiting_staff / closed`. Ownership is enforced on every
+read and write (`get_for_viewer()`); a student can never load or reply to another student's
+ticket. Audit records the reply kind / status transition, never the message body.
+
+### D52 — In-panel institute settings
+
+`/panel/?view=settings` (`hedayati_manage_settings`) is a thin front-end over the **existing**
+Settings API option — same option name, same canonical `Hedayati_Settings::sanitize_all()`
+sanitizer, nonce-guarded. Two legitimate fields added (`institute_name`, `address_tehran`); no
+demo-only settings. The wp-admin Settings → هدایتی screen remains as an administrator fallback
+reading/writing the identical values. The manager gains no native administrator capability.
+
+### D53 — Classic wp-admin is an administrator-only interface
+
+**Authoritative owner decision (2026-09-07).** Only the real WordPress `administrator`
+(`manage_options`) uses classic wp-admin / Gutenberg / the native CPT & taxonomy editors /
+WordPress settings & maintenance tools. Every other Hedayati role uses the professional
+front-end experience and must never be routed into wp-admin for normal work:
+
+| Role | Front-end workspace |
+|---|---|
+| `hedayati_manager`, `reception`, `teacher`, `teacher_assistant` | `/panel/` |
+| `student` | `/account/` |
+
+This **supersedes** earlier decisions where manager operations were allowed to link back into
+wp-admin (D45–D52 manager cards that pointed at `edit.php` / `admin.php?page=…` /
+`options-general.php`).
+
+**Mechanism** — `Hedayati_Admin_Access`: an `admin_init` (priority 1) guard redirects an
+*interactive* wp-admin page view by a non-admin routed role to its workspace, and
+`show_admin_bar` is forced off for those roles. Transport endpoints are never touched:
+`admin-post.php`, `admin-ajax.php`, `async-upload.php`, REST, cron and WP-CLI all pass through,
+so every panel/account mutation keeps working. No capability is revoked and `map_meta_cap` is
+not filtered — routing only.
+
+**Rollout — COMPLETE (plugin 1.14.0, 2026-09-08).** Enforcement is ON for **every**
+non-administrator Hedayati role — `student`, `teacher`, `teacher_assistant`, `reception`,
+`hedayati_manager` (`ENFORCED_ROLES`; the `hedayati_admin_redirect_roles` filter can still
+narrow/widen it per deployment). Zero «موقت» wp-admin escape links remain. **Carve-out:**
+`profile.php` stays reachable for every role so a user can always manage their own
+account/password (an in-panel staff account view is a ROADMAP follow-up).
+
+**In-panel views delivered** (Phases B–F — all reuse existing services/CPTs, **no second data
+store**, `hedayati-core` 1.10.0 → 1.14.0):
+
+- **`?view=teachers`** (`Hedayati_Teacher_Panel`, D53.B) — list/search/create/edit/1:1-WP-user-link/
+  safe-trash over the canonical `teacher` CPT; `hedayati_manage_teachers` + per-object
+  `edit_post`/`delete_post`.
+- **`?view=audit`** (`Hedayati_Audit_Panel`, D53.B) — read-only, paginated, filterable,
+  metadata-only (**no IP, no user-agent** — D16 unchanged); only `Hedayati_Audit_Log::query()/count()`.
+- **`?view=course-new` / `?view=course-edit`** (`Hedayati_Course_Panel`, **Phase C**) — full course
+  editor over the canonical `course` CPT + every `_course_*` meta key & its `Hedayati_Course_Meta`
+  sanitizer + `course-category` + `menu_order` + publish/draft + the 8-slot homepage-featured cap +
+  featured image from an **existing** attachment (no upload path, no new cap). Shamsi-or-ISO dates
+  via `Hedayati_Jalali`, stored Gregorian. `hedayati_manage_courses` + per-object `edit_post`.
+- **`?view=academic`** (`Hedayati_Academic_Panel`, **Phase E**) — faithful front-end port of
+  `Hedayati_Academic_Admin`: course-runs, staff assignment, sessions, enrollments, attendance,
+  per-run public opt-in. Same Phase 2B services, same capability map
+  (`hedayati_manage_course_runs` / `hedayati_assign_staff` / `hedayati_record_attendance` /
+  `hedayati_manage_enrollments` / `hedayati_create_enrollments`), same `require_run_scope`,
+  attendance batch fully validated before any write.
+- **`?view=students` reviewer actions** (`Hedayati_Verification_Panel`, **Phase E**) — approve/
+  reject a pending verification, the one-shot national-ID reveal, private-document list/download/
+  archive/purge. **Every Phase 2C invariant preserved:** national ID encrypted at rest, HMAC dup
+  detection, reception cannot decrypt, only `hedayati_verify_students` reaches
+  `get_national_id_decrypted()` (re-checked at the controller), plaintext rendered once with
+  no-store headers, never persisted / never in a URL, audited `identity.viewed`; documents streamed
+  only through the existing nonced download handler; rejection note stays staff-only.
+
+**`/login/`** (`Hedayati_Login` + `theme/hedayati/page-login.php` + `auth.css`, **Phase F**) — a
+branded front-end auth page that drives WordPress's own primitives, **not** a parallel system and
+**not** a `wp-login.php` re-skin: `wp_signon()` for login (full `authenticate` chain reused),
+`retrieve_password()` for forgot-password (result never inspected, enumeration-safe, same
+rate-limit bucket), core `check_password_reset_key()` + `reset_password()` for the reset link (the
+email link is only re-pointed at `/login/`, the token is untouched), `wp_validate_redirect()` on
+`redirect_to`. A bare `wp-login.php` GET by a normal visitor is bounced to `/login/`; the
+administrator's `wp-login.php` stays fully functional. Post-login routing = the existing
+`login_redirect` filters. Design reuses the site's `--hd-*` tokens (light/dark, RTL, Vazirmatn).
+
+### Panel architecture
+
+`Hedayati_Staff_Portal` gained a filter-based module-view registry
+(`hedayati_panel_module_views`) plus public `guard_action()` / `redirect_notice()` helpers, so
+each module registers one capability-gated entry instead of growing the class. `guard()` and
+`render()` both re-check the module capability; navigation only hides what a role cannot use.

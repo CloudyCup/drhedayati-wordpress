@@ -18,13 +18,13 @@ $featured_query = Hedayati_Query::get_featured_courses( 8 );
 if ( ! $featured_query->have_posts() ) {
 	// No featured courses published yet.
 	// Show an admin-only hint; public visitors see nothing.
-	if ( current_user_can( 'edit_posts' ) ) : ?>
+	if ( current_user_can( 'hedayati_manage_courses' ) ) : ?>
 		<section class="section featured-showcase" aria-label="<?php esc_attr_e( 'دوره‌های ویژه', 'hedayati' ); ?>">
 			<div class="container">
 				<div class="empty-state admin-hint">
 					<p>
 						<?php esc_html_e( '(مدیر) هنوز دوره‌ای به عنوان «ویژه صفحه اصلی» علامت‌گذاری نشده است.', 'hedayati' ); ?>
-						<a href="<?php echo esc_url( admin_url( 'edit.php?post_type=course' ) ); ?>">
+						<a href="<?php echo esc_url( home_url( '/panel/?view=featured' ) ); ?>">
 							<?php esc_html_e( 'مدیریت دوره‌ها', 'hedayati' ); ?>
 						</a>
 					</p>

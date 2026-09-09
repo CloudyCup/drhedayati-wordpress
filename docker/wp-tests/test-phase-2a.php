@@ -25,7 +25,7 @@ function hdit_run_phase_2a(): void {
 		Hedayati_DB_Schema::CURRENT_DB_VERSION,
 		get_option( Hedayati_DB_Schema::OPTION_DB_VERSION )
 	);
-	HDIT::eq( 'DB schema version is 2.3.0', '2.3.0', get_option( Hedayati_DB_Schema::OPTION_DB_VERSION ) );
+	HDIT::ok( 'DB schema version is at least 2.3.0', version_compare( (string) get_option( Hedayati_DB_Schema::OPTION_DB_VERSION ), '2.3.0', '>=' ) );
 	HDIT::eq(
 		'installed roles schema option == ROLES_VERSION',
 		Hedayati_Roles::ROLES_VERSION,
@@ -33,10 +33,11 @@ function hdit_run_phase_2a(): void {
 	);
 	HDIT::eq( 'roles schema version is current', Hedayati_Roles::ROLES_VERSION, get_option( Hedayati_Roles::OPTION_ROLES_VERSION ) );
 	HDIT::eq(
-		'managed-capability list has 24 entries',
-		24,
+		'managed-capability list matches Hedayati_Roles::get_all_hedayati_capabilities()',
+		count( Hedayati_Roles::get_all_hedayati_capabilities() ),
 		count( (array) get_option( Hedayati_Roles::OPTION_MANAGED_CAPS ) )
 	);
+	HDIT::ok( 'managed-capability list has at least 24 entries', count( (array) get_option( Hedayati_Roles::OPTION_MANAGED_CAPS ) ) >= 24 );
 	HDIT::eq( 'no migration lock is held after a completed run', false, (bool) get_option( Hedayati_DB_Schema::LOCK_OPTION ) );
 
 	$before = get_option( Hedayati_DB_Schema::OPTION_DB_VERSION );

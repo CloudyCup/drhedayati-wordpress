@@ -3,7 +3,7 @@
  * Plugin Name:       Hedayati Core
  * Plugin URI:        https://mystik.ir
  * Description:       هسته عملکردی مجتمع آموزشی دکتر هدایتی — دوره‌ها، طبقه‌بندی‌ها، احراز هویت، متادیتا و توابع کمکی.
- * Version:           1.8.1
+ * Version:           1.14.0
  * Author:            مجتمع آموزشی دکتر هدایتی
  * Author URI:        https://mystik.ir
  * Text Domain:       hedayati-core
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_CORE_VERSION', '1.8.1' );
+define( 'HEDAYATI_CORE_VERSION', '1.14.0' );
 define( 'HEDAYATI_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HEDAYATI_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -73,6 +73,26 @@ require_once HEDAYATI_CORE_DIR . 'includes/class-student-portal.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-staff-portal.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-public-content.php';
 
+// AI Studio parity modules (owner decisions D46–D52)
+require_once HEDAYATI_CORE_DIR . 'includes/class-notification-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-consultation-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-progress-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-material-storage.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-material-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-support-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-certificate-service.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-panel-settings.php';
+
+// Manager Experience (owner decision D53) — wp-admin is administrator-only;
+// non-admin roles get self-contained front-end panel views.
+require_once HEDAYATI_CORE_DIR . 'includes/class-admin-access.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-teacher-panel.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-audit-panel.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-course-panel.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-academic-panel.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-verification-panel.php';
+require_once HEDAYATI_CORE_DIR . 'includes/class-login.php';
+
 // ── Hook Registration ─────────────────────────────────────────────────────────
 
 add_action( 'init', [ Hedayati_Post_Types::class, 'register' ] );
@@ -115,6 +135,23 @@ Hedayati_Account_Security::init();
 Hedayati_Student_Portal::init();
 Hedayati_Staff_Portal::init();
 Hedayati_Public_Content::init();
+
+// AI Studio parity modules (D46–D52)
+Hedayati_Notification_Service::init();
+Hedayati_Consultation_Service::init();
+Hedayati_Material_Service::init();
+Hedayati_Support_Service::init();
+Hedayati_Certificate_Service::init();
+Hedayati_Panel_Settings::init();
+
+// Manager Experience (D53)
+Hedayati_Admin_Access::init();
+Hedayati_Teacher_Panel::init();
+Hedayati_Audit_Panel::init();
+Hedayati_Course_Panel::init();
+Hedayati_Academic_Panel::init();
+Hedayati_Verification_Panel::init();
+Hedayati_Login::init();
 
 // ── Shared helpers (callable from theme without knowing internals) ─────────────
 
@@ -184,6 +221,7 @@ register_activation_hook( __FILE__, function (): void {
 	Hedayati_Student_Portal::maybe_create_account_page();
 	Hedayati_Staff_Portal::ensure_page();
 	Hedayati_Public_Content::ensure_pages();
+	Hedayati_Login::maybe_create_page();
 	flush_rewrite_rules();
 } );
 

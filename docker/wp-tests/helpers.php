@@ -176,6 +176,12 @@ final class HDIT_Env {
 			Hedayati_DB_Schema::get_table_user_phones(),
 			Hedayati_DB_Schema::get_table_documents(),
 			Hedayati_DB_Schema::get_table_student_verification(),
+			Hedayati_DB_Schema::get_table_consultations(),
+			Hedayati_DB_Schema::get_table_certificates(),
+			Hedayati_DB_Schema::get_table_session_materials(),
+			Hedayati_DB_Schema::get_table_support_tickets(),
+			Hedayati_DB_Schema::get_table_support_messages(),
+			Hedayati_DB_Schema::get_table_notifications(),
 		];
 	}
 
@@ -303,7 +309,11 @@ final class HDIT_Env {
 			false === $wpdb->query(
 				"DELETE FROM {$wpdb->options}
 				 WHERE option_name LIKE '_transient_hd_rl_%'
-				    OR option_name LIKE '_transient_timeout_hd_rl_%'"
+				    OR option_name LIKE '_transient_timeout_hd_rl_%'
+				    OR option_name LIKE '_transient_hd_consult_rl_%'
+				    OR option_name LIKE '_transient_timeout_hd_consult_rl_%'
+				    OR option_name LIKE '_transient_hd_cert_verify_rl_%'
+				    OR option_name LIKE '_transient_timeout_hd_cert_verify_rl_%'"
 			)
 		) {
 			$ok = false;

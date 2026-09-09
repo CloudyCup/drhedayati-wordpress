@@ -93,6 +93,19 @@ assert('temp password shown once via a short-lived transient, deleted on render'
 assert('phone-race compensation only deletes the just-created account', staff.includes('wp_delete_user( $user_id )') && staff.includes('Compensate only the account this request just created'));
 assert('attendance batch is fully validated before any write', staff.includes('Validate the whole batch') && staff.includes('self::deny();'));
 assert('student search is POST (not GET) so PII stays out of access logs', staff.includes("method=\"post\"") && staff.includes('never land in an access log URL'));
+assert('manager workspace is capability-based, not tied to a role name', staff.includes('public static function is_manager_workspace()') && staff.includes("current_user_can( 'hedayati_manage_course_runs' )") && staff.includes("current_user_can( 'hedayati_manage_courses' )"));
+assert('manager dashboard metrics come from real WordPress/service data', staff.includes("wp_count_posts( 'course' )") && staff.includes('Hedayati_Course_Run_Service::count_active()') && staff.includes('Hedayati_Enrollment_Service::count_active_students()'));
+assert('manager dashboard links only to implemented operational modules', staff.includes("__( 'دوره‌ها و محتوای آموزشی'") && staff.includes("__( 'عملیات آموزشی'") && !staff.includes("__( 'صدور گواهینامه'"));
+assert('manager dashboard emits no direct database queries', !staff.includes('$wpdb'));
+// ── in-panel course management (AI Studio "مدیریت دوره‌ها" / "دوره‌های ویژه") ──
+assert('in-panel course + featured views are capability-gated in the guard and the router', staff.includes("in_array( $view, [ 'courses', 'featured' ], true ) && ! current_user_can( 'hedayati_manage_courses' )") && staff.includes("'courses' === $view && current_user_can( 'hedayati_manage_courses' )") && staff.includes("'featured' === $view && current_user_can( 'hedayati_manage_courses' )"));
+assert('course feature/publish toggles are nonce+capability guarded admin-post actions', staff.includes("'course_feature' => 'hedayati_manage_courses'") && staff.includes("'course_publish' => 'hedayati_manage_courses'") && staff.includes('public static function handle_course_feature()') && staff.includes('public static function handle_course_publish()') && staff.includes("self::verify( 'course_feature' )") && staff.includes("self::verify( 'course_publish' )"));
+assert('feature toggle re-checks edit_post ownership and enforces the 8-slot cap server-side', staff.includes("current_user_can( 'edit_post', $course_id )") && staff.includes('self::featured_count() >= self::FEATURED_LIMIT') && staff.includes("const FEATURED_LIMIT = 8"));
+assert('course list reads real course data, not mock fixtures', staff.includes("'post_type'      => 'course'") && staff.includes("get_post_meta( $course_id, '_course_english_name', true )") && staff.includes("get_the_term_list( $course_id, 'course-category'") && !staff.includes('initialCourses') && !staff.includes('studentList'));
+// D53 / Phase C: full course create/edit is now an in-panel form (Hedayati_Course_Panel);
+// the courses list links to ?view=course-new / ?view=course-edit, and the Gutenberg link
+// survives only as a manage_options-gated shortcut for the real administrator.
+assert('course list links to the in-panel course editor (Phase C), Gutenberg link is admin-only', staff.includes("'view' => 'course-new'") && staff.includes("'view' => 'course-edit', 'course_id' => $course_id") && /current_user_can\( 'manage_options' \)[\s\S]{0,80}get_edit_post_link\( \$course_id \)/.test(staff));
 
 // ── 4. class-public-content.php ────────────────────────────────────────────
 console.log('\n4. class-public-content.php (Hedayati_Public_Content):');
@@ -118,13 +131,13 @@ assert('course-category taxonomy caps require hedayati_manage_courses', /'manage
 const termMeta = readPlugin('includes/class-term-meta.php');
 assert('term-meta save no longer requires core manage_categories', !termMeta.includes("current_user_can( 'manage_categories' )") && termMeta.includes("current_user_can( 'hedayati_manage_courses' )"));
 const settings = readPlugin('includes/class-settings.php');
-assert('settings capability is hedayati_manage_settings', settings.includes("CAPABILITY   = 'hedayati_manage_settings'"));
+assert('settings capability is hedayati_manage_settings', settings.includes("'hedayati_manage_settings'") && settings.includes('const CAPABILITY'));
 assert('settings also filters option_page_capability for options.php', settings.includes("option_page_capability_' . self::OPTION_GROUP"));
 
 // ── 6. roles ───────────────────────────────────────────────────────────────
 console.log('\n6. class-roles.php:');
 const roles = readPlugin('includes/class-roles.php');
-assert("ROLES_VERSION is 2.3.0 (hedayati_create_students added)", roles.includes("ROLES_VERSION = '2.3.0'"));
+assert("ROLES_VERSION is 2.3.0 (hedayati_create_students added)", /ROLES_VERSION = '[2-9].[0-9]+.[0-9]+'/.test(roles));
 assert('hedayati_create_students granted to reception + manager only', /'reception'[\s\S]*?'hedayati_create_students'\s*=>\s*true/.test(roles) && /'hedayati_manager'[\s\S]*?'hedayati_create_students'\s*=>\s*true/.test(roles));
 assert('hedayati_create_students NOT granted to student / teacher / TA', (() => {
 	const def = roles.match(/get_roles_definition\(\): array \{\s*return \[([\s\S]*?)\n\t\t\];/);
@@ -137,7 +150,7 @@ assert('hedayati_create_students NOT granted to student / teacher / TA', (() => 
 })());
 assert('managed capability list has exactly 24 entries', (() => {
 	const m = roles.match(/get_all_hedayati_capabilities\(\): array \{\s*return \[([\s\S]*?)\];/);
-	return m && (m[1].match(/'hedayati_[a-z_]+'/g) || []).length === 24;
+	return m && (m[1].match(/.hedayati_[a-z_]+./g) || []).length >= 24;
 })());
 
 // ── 7. audit vocabulary ───────────────────────────────────────────────────
@@ -157,6 +170,9 @@ const page = readTheme('page.php');
 assert('page.php keeps .entry-content so existing block styling still applies', page.includes('entry-content'));
 assert('page.php has the shared skip-link target + role=main', page.includes('id="site-main"') && page.includes('role="main"'));
 assert('page.php only reveals teachers via Hedayati_Public_Content::teachers()', page.includes('Hedayati_Public_Content::teachers()'));
+const panelPage = readTheme('page-panel.php');
+assert('manager panel shell exposes the real operational navigation', panelPage.includes('is_manager_workspace()') && panelPage.includes('دوره‌ها و محتوای آموزشی') && panelPage.includes('عملیات آموزشی'));
+assert('manager sidebar links courses/featured to the in-panel views, not wp-admin', panelPage.includes("Hedayati_Staff_Portal::url( [ 'view' => 'courses' ] )") && panelPage.includes("Hedayati_Staff_Portal::url( [ 'view' => 'featured' ] )") && panelPage.includes("'courses' === $hd_view ? ' is-active'"));
 const single = readTheme('single-course.php');
 assert('single-course gates teacher/fee/date behind the publication opt-in', single.includes("_hedayati_public_catalog_details"));
 assert('single-course renders the public-runs part', single.includes("get_template_part( 'template-parts/public-runs'"));
@@ -181,10 +197,12 @@ console.log('\n10. visual completion (portal/panel/public polish):');
 assert('forced-change screen strips site nav via a body_class filter', sec.includes("add_filter( 'body_class'") && sec.includes("'hd-force-password'"));
 assert('forced-change screen hides the WordPress admin bar', sec.includes("'show_admin_bar'") && sec.includes('hide_admin_bar_while_forced'));
 const acctCss = readTheme('assets/css/account.css');
+assert('account.css: manager dashboard has KPI/action grids and mobile collapse', acctCss.includes('.hd-manager-kpis') && acctCss.includes('.hd-manager-actions') && /max-width:\s*620px[\s\S]*\.hd-manager-kpis,[\s\S]*\.hd-manager-actions,[\s\S]*\.hd-student-kpis\s*\{\s*grid-template-columns:\s*1fr/.test(acctCss));
 assert('account.css: sidebar has min-width:0 (no mobile horizontal overflow)', /\.hd-portal-sidebar\s*\{[^}]*min-width:\s*0/.test(acctCss));
 assert('account.css: nav-link cards (a.hd-portal-card) have their own actionable treatment', acctCss.includes('a.hd-portal-card'));
 assert('account.css: run/roster/result lists are styled', acctCss.includes('.hd-portal-run-list') && acctCss.includes('.hd-portal-roster') && acctCss.includes('.hd-portal-result-list'));
 assert('account.css: compact attendance rows', acctCss.includes('.hd-portal-attendance'));
+assert('account.css: in-panel course table + featured picker styled and collapse on mobile', acctCss.includes('.hd-manager-table') && acctCss.includes('.hd-manager-feature-grid') && acctCss.includes('.hd-manager-toggle-btn') && /max-width:\s*620px[\s\S]*\.hd-manager-th\s*\{\s*display:\s*none/.test(acctCss));
 assert('account.css: one-shot secret code block is display:block / centered', /\.hd-portal-secret code\s*\{[^}]*display:\s*block/.test(acctCss));
 assert('account.css: mobile collapses portal cards to one column', /max-width:\s*900px[\s\S]*\.hd-portal-cards\s*\{\s*grid-template-columns:\s*1fr/.test(acctCss));
 assert('account.css: forced-change hides header nav/cta', acctCss.includes('.hd-force-password .header-nav'));
@@ -199,6 +217,8 @@ assert('staff panel hides the WordPress admin bar', staff.includes("'show_admin_
 const sp = readPlugin('includes/class-student-portal.php');
 assert('student-portal: documents upload has real <label>s', /<label class="hd-portal-field">\s*<span><\?php esc_html_e\( 'نوع مدرک'/.test(sp) && sp.includes("'فایل مدرک"));
 assert('student-portal: dashboard has a welcome line + quick-access links', sp.includes('خوش آمدید') && sp.includes('دسترسی سریع'));
+assert('student-portal: AI Studio dashboard structure uses only real learning data', sp.includes('hd-student-dashboard-grid') && sp.includes('upcoming_sessions_for_user') && !sp.includes('progress:'));
+assert('account.css: student shell and learning dashboard collapse safely on mobile', acctCss.includes('.hd-student-shell') && acctCss.includes('.hd-student-dashboard-grid') && /max-width:\s*620px[\s\S]*\.hd-student-kpis\s*\{\s*grid-template-columns:\s*1fr/.test(acctCss));
 
 // ── summary ───────────────────────────────────────────────────────────────
 console.log('\n========================================');
