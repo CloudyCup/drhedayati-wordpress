@@ -1,5 +1,42 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
+## D55 — final content-management completion pass (2026-09-16) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
+
+Owner rule: administrator may use wp-admin; `hedayati_manager` should never need it for ordinary
+website/content operations. Four remaining gaps closed, all inside `/panel/`, all reusing existing
+WordPress storage (no new table/option, no roles/capability/DB schema change — plugin `1.15.0` →
+`1.16.0`, theme `1.4.0` → `1.5.0`, DB/roles stay `2.4.0`, 30 managed caps):
+
+1. **Teacher photos** — `Hedayati_Teacher_Panel` (`/panel/?view=teachers`) upload/replace/remove,
+   reusing the canonical Teacher CPT featured image via core `media_handle_upload()`. Same
+   `hedayati_manage_teachers` capability + per-object `edit_post` check already used there.
+2. **In-panel public-page content** — new `Hedayati_Content_Panel` (`/panel/?view=content`) edits
+   title/body of exactly the four approved Pages (about/contact/consult/teachers) via
+   `wp_update_post()` on the existing Page records; slug re-validated against a fixed whitelist on
+   every read/write — not a general Page editor.
+3. **Constrained nav/footer-link editor** — new `Hedayati_Navigation_Panel`
+   (`/panel/?view=navigation`) manages simple custom links in the `primary`/`footer` nav menu
+   locations via core `nav_menu_item` storage. `footer.php`'s hardcoded "quick links" are now a
+   real `wp_nav_menu('footer')` call (location was registered but unused since Phase 1). URLs
+   restricted to relative paths or http/https; every mutation re-verifies the item belongs to one
+   of the two managed menus.
+4. **Homepage content** — `Hedayati_Settings` gains `stat_years`/`stat_graduates`/`stat_courses`
+   (blank = hidden, never invented) and `hero_tagline` (blank = canonical copy), editable at
+   `/panel/?view=settings`. Hero `<h1>`/eyebrow/CTAs stay hardcoded to preserve the approved
+   Concept-C design.
+
+Final wp-admin audit: no ordinary `hedayati_manager` workflow (courses, teachers, teacher photos,
+course runs, students, verification, documents, consultations, certificates, materials, support,
+settings, audit, About/Consultation/Teachers-page copy, homepage content, nav/footer links) needs
+wp-admin. Only the administrator's own native CPT/Gutenberg/Customizer maintenance access remains
+there, by design.
+
+Node static: 1107/0 across all 9 suites (`verify-manager-experience.js` 194 → 231). Docker
+`Acceptance (Docker WordPress)` GREEN. Not browser-reviewed, not merged, not deployed. See
+`docs/DECISIONS.md` D55.
+
+---
+
 ## D54 + product-completion pass (2026-09-16) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
 
 Owner workflow change: the integrated `mystik.ir` staging cycle is postponed on purpose — finish

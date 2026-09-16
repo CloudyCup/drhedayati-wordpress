@@ -382,6 +382,84 @@ const docsTableCss = readTheme('assets/css/account.css');
 assert('.hd-portal-table gets a mobile card-collapse breakpoint (matches the .hd-manager-table pattern)', /@media \(max-width: 560px\)[\s\S]{0,80}\.hd-portal-table/.test(docsTableCss) && docsTableCss.includes('.hd-portal-table td[data-label]'));
 assert('documents table cells carry data-label for the collapsed mobile view', readPlugin('includes/class-student-portal.php').includes('data-label="<?php esc_attr_e( \'نوع\', \'hedayati-core\' ); ?>"'));
 
+// ── 13. D55 — final content-management completion pass ────────────────────
+
+console.log('\n13. D55 — teacher photos, in-panel page content, nav/footer links, homepage settings:');
+
+// 13a. Teacher photo — reuses the canonical Teacher CPT featured image.
+// (teacherPanel / teacherPanelCode already read in section 3 above.)
+assert('teacher photo reuses the canonical featured image (get/set/delete_post_thumbnail) — no second photo field/table', teacherPanel.includes('get_post_thumbnail_id( $teacher_id )') && teacherPanel.includes('set_post_thumbnail( $teacher_id') && teacherPanel.includes('delete_post_thumbnail( $teacher_id )') && !/register_post_meta\(\s*Hedayati_Teacher::POST_TYPE,\s*['"].*photo/i.test(teacherPanel));
+assert('photo upload goes through core media_handle_upload() — the safe WordPress upload pipeline, not a hand-rolled move_uploaded_file', teacherPanel.includes('media_handle_upload(') && !/move_uploaded_file/.test(teacherPanelCode));
+assert('photo upload is restricted to jpg/png/webp via an explicit mimes allow-list', teacherPanel.includes("'jpg|jpeg' => 'image/jpeg'") && teacherPanel.includes("'png'      => 'image/png'") && teacherPanel.includes("'webp'     => 'image/webp'"));
+assert('photo upload/remove reuses hedayati_manage_teachers + the SAME per-object edit_post check already used for save/trash (no new capability)', /handle_photo_remove\(\):\s*void\s*\{\s*Hedayati_Staff_Portal::guard_action\( self::NONCE_PHOTO_REMOVE, self::CAPABILITY \);[\s\S]{0,300}current_user_can\( 'edit_post', \$teacher_id \)/.test(teacherPanelCode));
+assert('photo remove only detaches the featured image (delete_post_thumbnail), never deletes the underlying attachment', /handle_photo_remove[\s\S]{0,600}delete_post_thumbnail\( \$teacher_id \);/.test(teacherPanelCode) && !/handle_photo_remove[\s\S]{0,600}wp_delete_attachment/.test(teacherPanelCode));
+assert('the form is multipart (required for a real file upload)', teacherPanel.includes("enctype=\"multipart/form-data\""));
+assert('administrator Gutenberg fallback is untouched (no change to class-teacher.php\'s thumbnail support)', readPlugin('includes/class-teacher.php').includes("'thumbnail'"));
+
+// 13b. In-panel public-page content editor — only the approved Pages.
+const contentPanel = readPlugin('includes/class-content-panel.php');
+const contentPanelCode = codeOnly(contentPanel);
+{
+	const b = braces(contentPanel);
+	assert(`content-panel braces balanced (${b.ob}/${b.cb})`, b.balanced);
+}
+assert('content-panel registers via the existing hedayati_panel_module_views filter (no bespoke registry)', contentPanel.includes("add_filter( 'hedayati_panel_module_views', [ self::class, 'register_panel_view' ] )"));
+assert('exactly the four approved public pages are manageable — about/contact/consult/teachers, NOT verify/login/account/panel', /ALLOWED_SLUGS = \[ 'about', 'contact', 'consult', 'teachers' \]/.test(contentPanel));
+assert('reuses the EXISTING Page records via get_page_by_path() + wp_update_post() — no new table/option', contentPanel.includes('get_page_by_path( $slug )') && contentPanel.includes('wp_update_post(') && !/\$wpdb->query|register_setting|add_option\(/.test(contentPanelCode));
+assert('save handler re-validates the slug against the whitelist AND re-fetches the page by that slug before any write (never trusts a posted post ID)', /handle_save\(\):\s*void\s*\{\s*Hedayati_Staff_Portal::guard_action\( self::NONCE_SAVE, self::CAPABILITY \);\s*\s*\$slug = [\s\S]{0,120}if \( ! in_array\( \$slug, self::ALLOWED_SLUGS, true \) \) \{\s*wp_die\(/.test(contentPanelCode) && contentPanelCode.includes('$post = get_page_by_path( $slug );'));
+assert('content is sanitized with wp_kses_post() (rich-but-safe), title with sanitize_text_field()', contentPanel.includes('wp_kses_post(') && contentPanel.includes('sanitize_text_field('));
+assert('post_name/post_type are never part of the wp_update_post() call (slug/type can never change)', /wp_update_post\(\s*\[\s*'ID'\s*=>\s*\$post->ID,\s*'post_title'\s*=>\s*\$title,\s*'post_content'\s*=>\s*\$content,\s*\],\s*true\s*\)/.test(contentPanelCode));
+assert('gated on hedayati_manage_settings (no new capability, same trust level as institute settings)', contentPanel.includes("public const CAPABILITY = 'hedayati_manage_settings';"));
+
+// 13c. Constrained navigation/footer-link editor — reuses core nav_menu storage.
+const navPanel = readPlugin('includes/class-navigation-panel.php');
+const navPanelCode = codeOnly(navPanel);
+{
+	const b = braces(navPanel);
+	assert(`navigation-panel braces balanced (${b.ob}/${b.cb})`, b.balanced);
+}
+assert('only the two registered locations (primary, footer) are ever addressable — no "pick any menu" control', /LOCATIONS = \[\s*'primary' => /.test(navPanel) && !/wp_get_nav_menus\(\)/.test(navPanelCode));
+assert('reuses canonical WP menu storage (wp_update_nav_menu_item / wp_delete_post / wp_create_nav_menu) — no duplicated link list/table', navPanel.includes('wp_update_nav_menu_item(') && navPanel.includes('wp_create_nav_menu(') && !/CREATE TABLE|dbDelta/.test(navPanelCode));
+assert('every mutation re-verifies the target item actually belongs to one of the two managed menus before touching it', navPanel.includes('item_is_managed(') && (navPanelCode.match(/self::item_is_managed\( \$item_id \)/g) || []).length >= 3);
+assert('URL sanitizer rejects javascript:/data: and anything that is not a site-relative path or http(s) — explicit protocol allow-list', /function sanitize_url[\s\S]{0,600}preg_match\( '#\^https\?:\/\/#i', \$raw \)[\s\S]{0,200}esc_url_raw\( \$raw, \[ 'http', 'https' \] \)/.test(navPanelCode));
+assert('every managed item is forced to menu-item-type=custom (no reproduction of the full WP menu-item object-type system)', (navPanelCode.match(/'menu-item-type'\s*(?:=>|:)\s*'custom'/g) || []).length >= 3);
+assert('moving an item resupplies title/url/type/status on BOTH sides of the swap (wp_update_nav_menu_item is a full replace, not a patch — a position-only call would blank the title/url)', /handle_move_item[\s\S]*?'menu-item-title'\s*=>\s*\$a->title[\s\S]*?'menu-item-title'\s*=>\s*\$b->title/.test(navPanelCode));
+assert('gated on hedayati_manage_settings (no new capability)', navPanel.includes("public const CAPABILITY = 'hedayati_manage_settings';"));
+
+// footer.php now uses a real, canonical wp_nav_menu('footer') location instead
+// of hardcoded markup, with a fallback that reproduces the original links.
+const footerTplD55 = readTheme('footer.php');
+assert('footer.php renders the footer quick-links via wp_nav_menu(theme_location=footer) — canonical WP menu, not duplicated markup', /wp_nav_menu\(\s*\[\s*'theme_location'\s*=>\s*'footer'/.test(footerTplD55));
+assert('footer.php keeps a same-content fallback (hedayati_footer_menu_fallback) so an unconfigured site is unchanged', footerTplD55.includes("'fallback_cb'    => 'hedayati_footer_menu_fallback'"));
+const menuFallbacks = readTheme('inc/menu-fallbacks.php');
+assert('hedayati_footer_menu_fallback() exists and reproduces the original five footer links', menuFallbacks.includes('function hedayati_footer_menu_fallback()') && menuFallbacks.includes("home_url( '/consult/' )"));
+assert('the footer theme location was already registered (functions.php) — D55 only starts USING it, nothing new to register', readTheme('functions.php').includes("'footer'  => 'منوی فوتر'"));
+
+// 13d. Homepage impact statistics — Hedayati_Settings-backed, blank = hidden.
+const settingsPhp = readPlugin('includes/class-settings.php');
+assert('three stat keys added to Hedayati_Settings, default empty (blank = hidden, never an invented number)', settingsPhp.includes("'stat_years'      => ''") && settingsPhp.includes("'stat_graduates'  => ''") && settingsPhp.includes("'stat_courses'    => ''"));
+assert('stat sanitizer normalizes Persian digits to ASCII and strips everything except digits/+/% (canonical digit storage rule)', settingsPhp.includes('Hedayati_Text::digits_to_ascii(') && settingsPhp.includes("preg_replace( '/[^\\d+%]/', '', $value )"));
+const impactTpl = readTheme('template-parts/impact-section.php');
+assert('impact-section only renders a stat when Hedayati_Settings::get() is non-empty — blank stays hidden, matching docs/DECISIONS.md D55', /if \( '' !== \$hd_value \) \{\s*\$hd_stats\[\] = /.test(impactTpl));
+assert('no stat value is hardcoded/invented in the template — every number comes from Hedayati_Settings::get()', !/stat-number">\s*\d/.test(impactTpl) && impactTpl.includes('Hedayati_Settings::get( $hd_key )'));
+assert('impact-section falls back to the original single-column layout when no stats are set (no empty gap)', impactTpl.includes('if ( ! empty( $hd_stats ) ) :') && readTheme('assets/css/main.css').includes('.impact-grid:has(.stats-grid)'));
+
+// 13e. Hero tagline — settings-backed, blank keeps canonical copy (design preserved).
+const heroTpl = readTheme('template-parts/hero-navigator.php');
+assert('hero supporting paragraph is settings-backed; blank keeps the canonical copy rather than leaving a gap (different rule than the stats, and documented as such)', heroTpl.includes("Hedayati_Settings::get( 'hero_tagline' )") && /'' !== \$hd_hero_tagline\s*\?\s*esc_html\( \$hd_hero_tagline \)\s*:\s*esc_html__\(/.test(heroTpl));
+assert('the h1 headline / eyebrow / CTAs stay canonical theme copy — Concept-C visual design (bold-emphasis spans) is preserved, not blown up into a free-text field', heroTpl.includes('<b><?php esc_html_e(') && !/Hedayati_Settings::get\( 'hero_headline'/.test(heroTpl));
+
+// 13f. Bootstrap wiring + version bumps.
+assert('bootstrap requires + boots the two new D55 modules', boot.includes('includes/class-content-panel.php') && boot.includes('Hedayati_Content_Panel::init()') && boot.includes('includes/class-navigation-panel.php') && boot.includes('Hedayati_Navigation_Panel::init()'));
+assert('plugin version >= 1.16.0 (D55)', (() => {
+	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.\d+'/);
+	return m && (Number(m[1]) > 1 || (Number(m[1]) === 1 && Number(m[2]) >= 16));
+})());
+assert('theme version >= 1.5.0 (D55)', (() => {
+	const m = readTheme('functions.php').match(/HEDAYATI_VERSION', '(\d+)\.(\d+)\.\d+'/);
+	return m && (Number(m[1]) > 1 || (Number(m[1]) === 1 && Number(m[2]) >= 5));
+})());
+
 console.log(`\n========================================`);
 console.log(`MANAGER EXPERIENCE SUMMARY: ${passed} PASSED, ${failed} FAILED`);
 console.log(`========================================`);

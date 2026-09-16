@@ -31,8 +31,16 @@ class Hedayati_Teacher_Panel {
 	public const VIEW      = 'teachers';
 	public const CAPABILITY = 'hedayati_manage_teachers';
 
-	private const NONCE_SAVE  = 'hedayati_teacher_panel_save';
-	private const NONCE_TRASH = 'hedayati_teacher_panel_trash';
+	private const NONCE_SAVE          = 'hedayati_teacher_panel_save';
+	private const NONCE_TRASH         = 'hedayati_teacher_panel_trash';
+	private const NONCE_PHOTO_REMOVE  = 'hedayati_teacher_panel_photo_remove';
+
+	/** Allowed teacher-photo mime types — same intent as the student-document image types. */
+	private const PHOTO_MIMES = [
+		'jpg|jpeg' => 'image/jpeg',
+		'png'      => 'image/png',
+		'webp'     => 'image/webp',
+	];
 
 	/** Teacher post statuses this screen lists/edits (never `trash`/`auto-draft`). */
 	private const STATUSES = [ 'publish', 'draft', 'pending', 'private', 'future' ];
@@ -41,7 +49,8 @@ class Hedayati_Teacher_Panel {
 		add_filter( 'hedayati_panel_module_views', [ self::class, 'register_panel_view' ] );
 		add_action( 'admin_post_' . self::NONCE_SAVE, [ self::class, 'handle_save' ] );
 		add_action( 'admin_post_' . self::NONCE_TRASH, [ self::class, 'handle_trash' ] );
-		add_filter( 'hedayati_audit_actions', static fn( array $a ): array => array_merge( $a, [ 'teacher.updated', 'teacher.trashed' ] ) );
+		add_action( 'admin_post_' . self::NONCE_PHOTO_REMOVE, [ self::class, 'handle_photo_remove' ] );
+		add_filter( 'hedayati_audit_actions', static fn( array $a ): array => array_merge( $a, [ 'teacher.updated', 'teacher.trashed', 'teacher.photo_removed' ] ) );
 	}
 
 	/**
@@ -208,6 +217,7 @@ class Hedayati_Teacher_Panel {
 		$headline   = $is_edit ? (string) get_post_meta( $teacher_id, Hedayati_Teacher::META_HEADLINE, true ) : '';
 		$linked     = $is_edit ? (int) get_post_meta( $teacher_id, Hedayati_Teacher::META_USER_ID, true ) : 0;
 		$published  = $is_edit ? ( 'publish' === $post->post_status ) : false;
+		$thumb_id   = $is_edit ? (int) get_post_thumbnail_id( $teacher_id ) : 0;
 
 		echo '<header class="hd-manager-heading"><div>';
 		echo '<span class="hd-manager-eyebrow">' . esc_html__( 'پروفایل استاد', 'hedayati-core' ) . '</span>';
@@ -216,10 +226,23 @@ class Hedayati_Teacher_Panel {
 		printf( '<a class="hd-portal-nav-link" href="%s">%s</a>', esc_url( self::list_url() ), esc_html__( 'بازگشت به فهرست', 'hedayati-core' ) );
 		echo '</header>';
 
-		echo '<form class="hd-portal-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<form class="hd-portal-form" method="post" enctype="multipart/form-data" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::NONCE_SAVE );
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::NONCE_SAVE ) . '">';
 		echo '<input type="hidden" name="teacher_id" value="' . esc_attr( (string) $teacher_id ) . '">';
+
+		echo '<div class="hd-portal-field">';
+		echo '<span>' . esc_html__( 'تصویر پروفایل', 'hedayati-core' ) . '</span>';
+		if ( $thumb_id > 0 ) {
+			echo wp_get_attachment_image( $thumb_id, [ 120, 120 ], true, [ 'class' => 'hd-teacher-photo-preview' ] );
+		} else {
+			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز تصویری بارگذاری نشده است.', 'hedayati-core' ) . '</p>';
+		}
+		printf(
+			'<input type="file" name="photo" accept=".jpg,.jpeg,.png,.webp">'
+		);
+		echo '<p class="hd-portal-note">' . esc_html__( 'فرمت JPG، PNG یا WEBP. بارگذاری تصویر جدید، تصویر فعلی را جایگزین می‌کند.', 'hedayati-core' ) . '</p>';
+		echo '</div>';
 
 		printf(
 			'<label class="hd-portal-field"><span>%s</span><input type="text" name="title" value="%s" required></label>',
@@ -257,6 +280,19 @@ class Hedayati_Teacher_Panel {
 
 		echo '<button class="hd-portal-btn" type="submit">' . esc_html__( 'ذخیرهٔ پروفایل استاد', 'hedayati-core' ) . '</button>';
 		echo '</form>';
+
+		if ( $thumb_id > 0 ) {
+			printf(
+				'<form class="hd-manager-inline-form" method="post" action="%s" onsubmit="return confirm(%s);">',
+				esc_url( admin_url( 'admin-post.php' ) ),
+				esc_attr( "'" . esc_js( __( 'تصویر پروفایل این استاد حذف شود؟', 'hedayati-core' ) ) . "'" )
+			);
+			wp_nonce_field( self::NONCE_PHOTO_REMOVE );
+			echo '<input type="hidden" name="action" value="' . esc_attr( self::NONCE_PHOTO_REMOVE ) . '">';
+			echo '<input type="hidden" name="teacher_id" value="' . esc_attr( (string) $teacher_id ) . '">';
+			echo '<button type="submit" class="hd-manager-row-delete">' . esc_html__( 'حذف تصویر پروفایل', 'hedayati-core' ) . '</button>';
+			echo '</form>';
+		}
 	}
 
 	// ── Handlers ────────────────────────────────────────────────────────────
@@ -316,6 +352,11 @@ class Hedayati_Teacher_Panel {
 
 		update_post_meta( $teacher_id, Hedayati_Teacher::META_HEADLINE, $headline );
 
+		$photo_error = self::maybe_upload_photo( $teacher_id );
+		if ( is_wp_error( $photo_error ) ) {
+			Hedayati_Staff_Portal::redirect_notice( $photo_error, [ 'view' => self::VIEW, 'teacher_id' => $teacher_id ] );
+		}
+
 		// 1:1 WP-user link — mirrors Hedayati_Teacher::save() exactly.
 		$link_conflict = false;
 		if ( $linked > 0 && get_user_by( 'id', $linked ) ) {
@@ -338,6 +379,66 @@ class Hedayati_Teacher_Panel {
 				[ 'view' => self::VIEW, 'teacher_id' => $teacher_id ]
 			);
 		}
+
+		Hedayati_Staff_Portal::redirect_notice( true, [ 'view' => self::VIEW, 'teacher_id' => $teacher_id ] );
+	}
+
+	/**
+	 * D55 — optional teacher-photo upload, attached to the existing Teacher CPT
+	 * featured image (no second photo field/storage model). Uses WordPress's
+	 * own upload pipeline (`media_handle_upload()` — the same primitive
+	 * wp-admin's uploader calls, includes real content-sniffing via
+	 * `wp_check_filetype_and_ext()`), gated on `hedayati_manage_teachers` +
+	 * the per-object `edit_post` check already enforced by the caller — NOT on
+	 * the core `upload_files` capability, so no role/capability change is
+	 * needed to grant this.
+	 *
+	 * @return null|WP_Error  null when no file was submitted OR the upload
+	 *                        succeeded; a WP_Error only on a real failure.
+	 */
+	private static function maybe_upload_photo( int $teacher_id ): ?WP_Error {
+		if ( empty( $_FILES['photo']['name'] ) ) {
+			return null;
+		}
+
+		if ( ( $_FILES['photo']['error'] ?? UPLOAD_ERR_NO_FILE ) !== UPLOAD_ERR_OK ) {
+			return new WP_Error( 'photo_upload', __( 'بارگذاری تصویر ناموفق بود.', 'hedayati-core' ) );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+
+		$attachment_id = media_handle_upload( 'photo', $teacher_id, [], [
+			'test_form' => false,
+			'mimes'     => self::PHOTO_MIMES,
+		] );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			return new WP_Error( 'photo_upload', __( 'فایل تصویر معتبر نیست (فقط JPG، PNG یا WEBP).', 'hedayati-core' ) );
+		}
+
+		set_post_thumbnail( $teacher_id, (int) $attachment_id );
+
+		return null;
+	}
+
+	public static function handle_photo_remove(): void {
+		Hedayati_Staff_Portal::guard_action( self::NONCE_PHOTO_REMOVE, self::CAPABILITY );
+
+		$teacher_id = isset( $_POST['teacher_id'] ) ? absint( wp_unslash( $_POST['teacher_id'] ) ) : 0;
+		$post       = $teacher_id > 0 ? get_post( $teacher_id ) : null;
+
+		if ( ! $post instanceof WP_Post || Hedayati_Teacher::POST_TYPE !== $post->post_type || ! current_user_can( 'edit_post', $teacher_id ) ) {
+			wp_die( esc_html__( 'دسترسی مجاز نیست.', 'hedayati-core' ), '', [ 'response' => 403 ] );
+		}
+
+		// Detaches the featured image only — the underlying attachment is left
+		// alone (it may be reused elsewhere), matching the course panel's own
+		// existing-media-only philosophy for featured images.
+		delete_post_thumbnail( $teacher_id );
+
+		Hedayati_Audit_Log::record( 'teacher.photo_removed', 'teacher', $teacher_id, 'via panel', get_current_user_id() );
 
 		Hedayati_Staff_Portal::redirect_notice( true, [ 'view' => self::VIEW, 'teacher_id' => $teacher_id ] );
 	}

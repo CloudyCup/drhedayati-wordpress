@@ -782,3 +782,58 @@ full public navigation was reported as distracting chrome on what should read as
 of the Dr. Hedayati website, not WordPress." The manual dark-mode toggle button moved into the auth
 panel itself so removing the header doesn't remove the feature. No authentication/security
 semantics changed — this is template/CSS only. Theme `1.3.1` → `1.4.0`.
+
+---
+
+## D55 — Final content-management completion pass: no wp-admin for ordinary manager work (2026-09-16)
+
+**Decided:** the real WordPress `administrator` may use wp-admin; `hedayati_manager` (and
+reception/teacher/TA) should never need it for ordinary website/content operations. Four gaps
+remained after D53/D54 and are closed here, all inside `/panel/`, all reusing existing canonical
+WordPress storage (no new table, no new option, no duplicated content model):
+
+1. **Teacher photos** — `Hedayati_Teacher_Panel` gains an upload/replace/remove control that reads
+   and writes the canonical Teacher CPT featured image (`get/set/delete_post_thumbnail()`). Upload
+   goes through core `media_handle_upload()` (the same primitive wp-admin's own uploader calls,
+   with real content-sniffing), restricted to jpg/png/webp. Gated on the existing
+   `hedayati_manage_teachers` capability + the same per-object `edit_post` check the module already
+   uses — no new capability, no second photo field/store. Administrator Gutenberg fallback unchanged.
+2. **In-panel public-page content** — `Hedayati_Content_Panel` (`/panel/?view=content`) edits the
+   title/body of exactly the four approved, plugin-provisioned Pages
+   (`about`/`contact`/`consult`/`teachers` — **not** `verify`/`login`/`account`/`panel`) via
+   `wp_update_post()` on the existing Page records `Hedayati_Public_Content::ensure_pages()`
+   creates. Every read and write re-validates the slug against a fixed whitelist before touching
+   anything — this is deliberately not a general Page editor. Gated on `hedayati_manage_settings`
+   (institute-level content, same trust level as institute settings) rather than a core
+   `edit_pages`/`edit_page` capability, which `hedayati_manager` intentionally does not hold.
+3. **Constrained navigation/footer-link editor** — `Hedayati_Navigation_Panel`
+   (`/panel/?view=navigation`) manages simple custom links in exactly the two registered nav menu
+   locations, `primary` (header) and `footer`. The `footer` location existed in `functions.php`
+   since Phase 1 but was never actually rendered — `footer.php`'s hardcoded "quick links" markup is
+   now a real `wp_nav_menu( 'footer' )` call with a same-content fallback, making it canonical and
+   editable for the first time. Storage is 100% the core `nav_menu_item` post type /
+   `wp_update_nav_menu_item()` / `wp_create_nav_menu()` — not a parallel link list. Every mutation
+   re-verifies the target item belongs to one of the two managed menus. URLs are restricted to a
+   site-relative path or an `http`/`https` absolute URL (`javascript:`/`data:`/any other scheme is
+   rejected). This is intentionally **not** a reproduction of wp-admin's full menu system — no
+   nesting, no non-link item types, no "pick any menu"; Appearance → Menus remains available to the
+   administrator for anything beyond that.
+4. **Homepage content** — `Hedayati_Settings` gains three homepage-statistic fields (`stat_years`,
+   `stat_graduates`, `stat_courses`, default empty) and one hero-copy field (`hero_tagline`,
+   default empty), both editable at `/panel/?view=settings`. The stats panel
+   (`template-parts/impact-section.php`) now renders, but **a blank value keeps that statistic
+   hidden** — no invented number is ever published, preserving the Phase 1 rule. `hero_tagline`
+   follows a *different* rule on purpose: blank means "keep the canonical copy", not "leave a gap",
+   since the hero is always visible. The hero's `<h1>` headline, eyebrow and CTAs stay hardcoded
+   canonical theme copy — they are structurally tied to the approved Concept-C bold-emphasis design
+   and are not "content a normal institute manager would realistically edit," so they were
+   deliberately NOT made configurable (owner instruction: don't make every decorative string
+   configurable; preserve the approved visual design).
+
+**Why:** D53 covered operational workflows (courses, students, academic operations); D54 closed the
+last authentication gap. What remained was ordinary *content* upkeep — a manager could still be
+forced into wp-admin just to change a photo, fix a typo on the About page, add a footer link, or
+publish real statistics once the institute has them. None of those are "WordPress maintenance."
+
+**Scope discipline:** no roles/capability schema change, no DB schema change (plugin `1.15.0` →
+`1.16.0`, theme `1.4.0` → `1.5.0`, DB/roles stay `2.4.0`, 30 managed capabilities).

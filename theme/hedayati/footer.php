@@ -61,13 +61,14 @@ $hd_is_auth_shell = class_exists( 'Hedayati_Login' ) && Hedayati_Login::is_login
 		<!-- Quick links -->
 		<div class="footer-col">
 			<h3 class="footer-col-title"><?php esc_html_e( 'دسترسی سریع', 'hedayati' ); ?></h3>
-			<ul class="footer-links">
-				<li><a href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php esc_html_e( 'صفحه اصلی', 'hedayati' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/courses/' ) ); ?>"><?php esc_html_e( 'دوره‌های آموزشی', 'hedayati' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/about/' ) ); ?>"><?php esc_html_e( 'درباره مجتمع', 'hedayati' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/contact/' ) ); ?>"><?php esc_html_e( 'تماس با ما', 'hedayati' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/consult/' ) ); ?>"><?php esc_html_e( 'مشاوره ثبت‌نام', 'hedayati' ); ?></a></li>
-			</ul>
+			<?php
+			wp_nav_menu( [
+				'theme_location' => 'footer',
+				'container'      => false,
+				'items_wrap'     => '<ul class="footer-links">%3$s</ul>',
+				'fallback_cb'    => 'hedayati_footer_menu_fallback',
+			] );
+			?>
 		</div>
 
 		<!-- Departments from taxonomy -->

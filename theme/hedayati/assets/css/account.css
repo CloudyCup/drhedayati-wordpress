@@ -1590,6 +1590,16 @@ a.hd-portal-card:focus-visible::after {
 
 .hd-manager-row-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
+.hd-teacher-photo-preview {
+	display: block;
+	width: 96px;
+	height: 96px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 1px solid var(--hd-line);
+	margin-bottom: 6px;
+}
+
 /* ── Phase E: academic operations ── */
 
 details.hd-course-fieldset { padding: 0; }

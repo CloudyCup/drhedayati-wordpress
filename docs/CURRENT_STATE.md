@@ -1,5 +1,29 @@
 # CURRENT_STATE.md
 
+**2026-09-16 — D55: final content-management completion pass (plugin 1.16.0, theme 1.5.0).**
+Ordinary `hedayati_manager` content/website work no longer needs wp-admin at all:
+- **Teacher photos** — `Hedayati_Teacher_Panel` at `/panel/?view=teachers` can upload/replace/
+  remove a teacher's photo (the canonical Teacher CPT featured image, via core
+  `media_handle_upload()`), gated on the existing `hedayati_manage_teachers` capability.
+- **Public-page content** — new `Hedayati_Content_Panel` (`/panel/?view=content`) edits the title/
+  body of exactly the four approved Pages (`about`/`contact`/`consult`/`teachers`) via
+  `wp_update_post()` on the existing Page records. Not a general Page editor — the slug is
+  whitelisted on every read and write.
+- **Nav/footer links** — new `Hedayati_Navigation_Panel` (`/panel/?view=navigation`) manages simple
+  custom links in the `primary` and `footer` nav menu locations, using core `nav_menu_item` storage
+  (`wp_update_nav_menu_item()`). The `footer` location existed since Phase 1 but was unused —
+  `footer.php`'s hardcoded "quick links" are now a real `wp_nav_menu('footer')` call. URLs are
+  restricted to a relative path or `http`/`https` (no `javascript:`/`data:`).
+- **Homepage content** — three homepage-statistic fields (`stat_years`/`stat_graduates`/
+  `stat_courses`, blank = hidden, never invented) and a `hero_tagline` field (blank = canonical
+  copy) added to `Hedayati_Settings`, editable at `/panel/?view=settings`. The hero `<h1>`/eyebrow/
+  CTAs stay hardcoded to preserve the approved Concept-C design.
+
+No roles/capability/DB schema change (2.4.0 / 2.4.0 / 30 caps unchanged). See `docs/DECISIONS.md`
+D55.
+
+---
+
 **2026-09-16 — D54: last normal-user wp-admin dependency removed (plugin 1.15.0).** The one
 carve-out left from D53 (`profile.php` reachable so any role could change its own password) is
 closed. `Hedayati_Panel_Security` adds `/panel/?view=security` (current/new/confirm password,

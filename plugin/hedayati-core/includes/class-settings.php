@@ -32,13 +32,27 @@ class Hedayati_Settings {
 	 * Default values for every field.
 	 */
 	private const DEFAULTS = [
-		'institute_name' => '',
-		'phone_consult'  => '',
-		'phone_tabriz'   => '',
-		'phone_tehran'   => '',
-		'address_tabriz' => '',
-		'address_tehran' => '',
+		'institute_name'  => '',
+		'phone_consult'   => '',
+		'phone_tabriz'    => '',
+		'phone_tehran'    => '',
+		'address_tabriz'  => '',
+		'address_tehran'  => '',
+		// D55 — homepage impact statistics. Blank on purpose: an empty value
+		// keeps that statistic hidden rather than publishing an invented
+		// number (see docs/DECISIONS.md D55 and template-parts/impact-section.php).
+		'stat_years'      => '',
+		'stat_graduates'  => '',
+		'stat_courses'    => '',
+		// D55 — the hero's supporting paragraph only (Concept-C's headline,
+		// eyebrow and CTAs stay canonical theme copy — see class docblock).
+		// Blank here means "keep the canonical copy", NOT "hide the paragraph".
+		'hero_tagline'    => '',
 	];
+
+	/** Fields shown on the homepage — kept separate so the theme's blank/omit
+	 *  rule for statistics never has to duplicate this key list. */
+	public const STAT_KEYS = [ 'stat_years', 'stat_graduates', 'stat_courses' ];
 
 	/** Canonical field list + labels — the single source of truth for both the
 	 *  wp-admin Settings API screen and the in-panel form (Hedayati_Panel_Settings). */
@@ -50,11 +64,15 @@ class Hedayati_Settings {
 			'phone_tehran'   => __( 'تلفن تهران', 'hedayati-core' ),
 			'address_tabriz' => __( 'آدرس تبریز', 'hedayati-core' ),
 			'address_tehran' => __( 'آدرس تهران', 'hedayati-core' ),
+			'stat_years'     => __( 'آمار صفحه نخست: سال‌های فعالیت (خالی = مخفی)', 'hedayati-core' ),
+			'stat_graduates' => __( 'آمار صفحه نخست: تعداد دانش‌آموختگان (خالی = مخفی)', 'hedayati-core' ),
+			'stat_courses'   => __( 'آمار صفحه نخست: تعداد دوره‌های تخصصی (خالی = مخفی)', 'hedayati-core' ),
+			'hero_tagline'   => __( 'متن معرفی صفحه نخست (خالی = متن پیش‌فرض)', 'hedayati-core' ),
 		];
 	}
 
 	public static function is_textarea( string $key ): bool {
-		return in_array( $key, [ 'address_tabriz', 'address_tehran' ], true );
+		return in_array( $key, [ 'address_tabriz', 'address_tehran', 'hero_tagline' ], true );
 	}
 
 	/** All current values (defaults merged). */
@@ -205,7 +223,28 @@ class Hedayati_Settings {
 			$out['institute_name'] = mb_substr( sanitize_text_field( wp_unslash( (string) $input['institute_name'] ) ), 0, 190 );
 		}
 
+		foreach ( self::STAT_KEYS as $key ) {
+			if ( isset( $input[ $key ] ) ) {
+				$out[ $key ] = self::sanitize_stat( (string) $input[ $key ] );
+			}
+		}
+
+		if ( isset( $input['hero_tagline'] ) ) {
+			$out['hero_tagline'] = mb_substr( sanitize_textarea_field( wp_unslash( (string) $input['hero_tagline'] ) ), 0, 400 );
+		}
+
 		return $out;
+	}
+
+	/**
+	 * A homepage stat is short display text (a number, optionally with a
+	 * trailing "+" or "٪"), never free prose — Persian digits are normalized
+	 * to ASCII (canonical storage rule) and only digits/+/% survive.
+	 */
+	public static function sanitize_stat( string $value ): string {
+		$value = Hedayati_Text::digits_to_ascii( sanitize_text_field( wp_unslash( $value ) ) );
+		$value = preg_replace( '/[^\d+%]/', '', $value );
+		return mb_substr( (string) $value, 0, 12 );
 	}
 
 	/**

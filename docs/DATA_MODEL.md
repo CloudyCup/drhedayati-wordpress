@@ -103,10 +103,18 @@ Single option `hedayati_institute_settings` (array), option group `hedayati_inst
 | `phone_tabriz` | `sanitize_phone` | Footer |
 | `phone_tehran` | `sanitize_phone` | Footer |
 | `address_tabriz` | `sanitize_textarea_field` | Footer (`<address>`, `nl2br`) |
+| `stat_years` / `stat_graduates` / `stat_courses` (D55) | `sanitize_stat` — `Hedayati_Text::digits_to_ascii()` then keep only `\d + %`, max 12 chars | `template-parts/impact-section.php`'s `.stats-grid` — rendered ONLY when non-empty; blank keeps that statistic hidden, never an invented number |
+| `hero_tagline` (D55) | `sanitize_textarea_field`, max 400 chars | `template-parts/hero-navigator.php`'s supporting paragraph — blank means "use the canonical copy", not "hide the paragraph" (different rule than the stats) |
 
 Accessors: `Hedayati_Settings::get($key)` (string, `''` if unset/inactive) and
 `Hedayati_Settings::tel_uri($key)` → `hedayati_phone_to_tel_uri()`: preserve a leading `+`, strip
 all other non-digits, `''` if nothing dialable.
+
+D55 also added two front-end editors over EXISTING WordPress storage, not new data models:
+`Hedayati_Content_Panel` (`/panel/?view=content`) edits `post_title`/`post_content` of exactly the
+four whitelisted Pages (`about`/`contact`/`consult`/`teachers`); `Hedayati_Navigation_Panel`
+(`/panel/?view=navigation`) edits `nav_menu_item` posts belonging only to the `primary`/`footer`
+nav menu locations. Neither introduces a table, option, or duplicate content store.
 
 ---
 
