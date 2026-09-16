@@ -260,22 +260,25 @@ capability + audit + private-storage infrastructure.
 Runtime-verified by `docker/wp-tests/test-ai-studio.php` (unauthorized issue/manage denied,
 IDOR denied, no-PII-in-verification, rate-limit paths, cross-user notification isolation).
 
-## wp-admin access policy (2026-09-08, D53 — COMPLETE) — feature branch
+## wp-admin access policy (2026-09-16, D53+D54 — COMPLETE) — feature branch
 
-`Hedayati_Admin_Access` (plugin 1.14.0). Classic wp-admin is administrator-only; **every**
-non-administrator Hedayati role is routed to `/panel/` or `/account/`.
+`Hedayati_Admin_Access` (plugin 1.15.0). Classic wp-admin is administrator-only; **every**
+non-administrator Hedayati role is routed to `/panel/` or `/account/`, with zero exceptions.
 
 - **Redirect** is on `admin_init` priority 1, only for a *human interactive* wp-admin page view
   (`is_admin()` true, and NOT `wp_doing_ajax()` / `wp_doing_cron()` / `WP_CLI` / `REST_REQUEST`,
-  and `pagenow` not `admin-post.php` / `admin-ajax.php` / `async-upload.php` / `profile.php`).
+  and `pagenow` not `admin-post.php` / `admin-ajax.php` / `async-upload.php`).
   `wp_safe_redirect` (open-redirect-safe) + `exit`, `nocache_headers()` first. **No redirect
   loop** — the targets are front-end pages, `admin_init` does not fire there.
 - **Never** revokes a capability, filters `map_meta_cap`, or globally disables wp-admin. The
   administrator keeps everything; the native CPT `show_ui` screens stay for the admin.
 - **Fully enforced:** `ENFORCED_ROLES` = student + teacher + teacher_assistant + reception +
   hedayati_manager (all-of-a-user's-roles-in-the-set predicate; `hedayati_admin_redirect_roles`
-  filter can re-tune). Admin bar forced off for every non-admin routed role. `profile.php` is
-  the one interactive carve-out so every role keeps its own account/password screen.
+  filter can re-tune). Admin bar forced off for every non-admin routed role. **D54:** `profile.php`
+  is no longer exempted — `Hedayati_Panel_Security` (`/panel/?view=security`) and
+  `Hedayati_Student_Portal` (`/account/?view=profile`) give every role its own front-end
+  current/new/confirm-password form (`wp_check_password()` → shared validation → `wp_set_password()`),
+  so the wp-admin carve-out has no remaining reason to exist.
 - **In-panel views** — all reuse the existing services/CPTs, re-check the capability inside the
   renderer AND (for object-scoped screens) a per-object check in every handler:
   - `?view=teachers` — canonical `teacher` CPT, `guard_action()` (POST+cap+nonce) + per-object

@@ -54,6 +54,7 @@ class Hedayati_Student_Portal {
 			'hedayati_portal_profile_save',
 			'hedayati_portal_phone_save',
 			'hedayati_portal_document_upload',
+			'hedayati_portal_password_save',
 		];
 		foreach ( $mutations as $action ) {
 			add_action( 'admin_post_' . $action, [ self::class, 'handle_' . substr( $action, 16 ) ] );
@@ -417,8 +418,35 @@ class Hedayati_Student_Portal {
 				<input type="text" name="phone" dir="ltr" placeholder="09xxxxxxxxx">
 			</label>
 			<p class="hd-portal-note"><?php esc_html_e( 'تغییر شماره، وضعیت تأیید شماره را بازنشانی می‌کند.', 'hedayati-core' ); ?></p>
-			<button type="submit" class="hd-portal-btn"><?php esc_html_e( 'به‌روزرسانی شماره', 'hedayati-core' ); ?></button>
+				<button type="submit" class="hd-portal-btn"><?php esc_html_e( 'به‌روزرسانی شماره', 'hedayati-core' ); ?></button>
 		</form>
+
+			<h2 class="hd-portal-subtitle"><?php esc_html_e( 'رمز عبور', 'hedayati-core' ); ?></h2>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="hd-portal-form">
+				<?php wp_nonce_field( 'hedayati_portal_password_save' ); ?>
+				<input type="hidden" name="action" value="hedayati_portal_password_save">
+				<label class="hd-portal-field">
+					<span><?php esc_html_e( 'رمز عبور فعلی', 'hedayati-core' ); ?></span>
+					<input type="password" name="current_password" autocomplete="current-password" required dir="ltr">
+				</label>
+				<label class="hd-portal-field">
+					<span>
+						<?php
+						printf(
+							/* translators: %d: minimum character count */
+							esc_html__( 'رمز عبور جدید (حداقل %d نویسه)', 'hedayati-core' ),
+							(int) Hedayati_Account_Security::MIN_LENGTH
+						);
+						?>
+					</span>
+					<input type="password" name="new_password" autocomplete="new-password" required minlength="<?php echo esc_attr( (string) Hedayati_Account_Security::MIN_LENGTH ); ?>" dir="ltr">
+				</label>
+				<label class="hd-portal-field">
+					<span><?php esc_html_e( 'تکرار رمز عبور جدید', 'hedayati-core' ); ?></span>
+					<input type="password" name="confirm_password" autocomplete="new-password" required minlength="<?php echo esc_attr( (string) Hedayati_Account_Security::MIN_LENGTH ); ?>" dir="ltr">
+				</label>
+				<button type="submit" class="hd-portal-btn"><?php esc_html_e( 'به‌روزرسانی رمز عبور', 'hedayati-core' ); ?></button>
+			</form>
 		<?php
 		return (string) ob_get_clean();
 	}
@@ -639,6 +667,44 @@ class Hedayati_Student_Portal {
 		}
 
 		self::redirect( 'profile', esc_html__( 'شماره موبایل به‌روزرسانی شد.', 'hedayati-core' ) );
+	}
+
+	/**
+	 * D54 — self-service password change (mirrors Hedayati_Panel_Security's
+	 * staff equivalent and reuses Hedayati_Account_Security's validation rules).
+	 * Gated on hedayati_edit_own_profile, same as the rest of this controller's
+	 * own-account mutations.
+	 */
+	public static function handle_password_save(): void {
+		$user_id = self::verify_self_service( 'hedayati_portal_password_save', 'hedayati_edit_own_profile' );
+		$user    = get_userdata( $user_id );
+
+		$current = isset( $_POST['current_password'] ) ? (string) wp_unslash( $_POST['current_password'] ) : '';
+		$new     = isset( $_POST['new_password'] ) ? (string) wp_unslash( $_POST['new_password'] ) : '';
+		$confirm = isset( $_POST['confirm_password'] ) ? (string) wp_unslash( $_POST['confirm_password'] ) : '';
+
+		if ( ! $user || ! wp_check_password( $current, $user->user_pass, $user_id ) ) {
+			self::redirect( 'profile', esc_html__( 'رمز عبور فعلی نادرست است.', 'hedayati-core' ), 'error' );
+		}
+
+		$error = Hedayati_Account_Security::validate_new_password( $new, $confirm, $user );
+		if ( '' !== $error ) {
+			self::redirect( 'profile', esc_html( $error ), 'error' );
+		}
+
+		Hedayati_Audit_Log::record( 'account.password_changed', 'user', $user_id, 'via account security', $user_id );
+
+		wp_set_password( $new, $user_id );
+
+		// wp_set_password() invalidates every session for this user, including
+		// the one making this request — re-establish it immediately.
+		wp_set_current_user( $user_id );
+		if ( ! headers_sent() ) {
+			wp_clear_auth_cookie();
+			wp_set_auth_cookie( $user_id, true );
+		}
+
+		self::redirect( 'profile', esc_html__( 'رمز عبور به‌روزرسانی شد.', 'hedayati-core' ) );
 	}
 
 	public static function handle_document_upload(): void {

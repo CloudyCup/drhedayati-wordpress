@@ -50,7 +50,8 @@ assert('admin bar hidden for non-admins via show_admin_bar filter', adminAccess.
 	assert('interactive check excludes wp_doing_cron()', fn.includes('wp_doing_cron()'));
 	assert('interactive check excludes WP_CLI', fn.includes('WP_CLI'));
 	assert('interactive check excludes REST_REQUEST', fn.includes('REST_REQUEST'));
-	assert('interactive check excludes admin-post.php + admin-ajax.php + async-upload.php + profile.php explicitly', fn.includes("'admin-post.php'") && fn.includes("'admin-ajax.php'") && fn.includes("'async-upload.php'") && fn.includes("'profile.php'"));
+	assert('interactive check excludes admin-post.php + admin-ajax.php + async-upload.php explicitly', fn.includes("'admin-post.php'") && fn.includes("'admin-ajax.php'") && fn.includes("'async-upload.php'"));
+	assert('D54: profile.php is NOT exempted — every role has its own front-end password screen now', !fn.includes("'profile.php'"));
 	assert('interactive check ultimately requires is_admin()', /return is_admin\(\);/.test(fn));
 }
 {
@@ -271,7 +272,7 @@ assert('documents are streamed only through the existing nonced Hedayati_Student
 assert('reception (no verify/private-doc caps) is a no-op — the section self-gates', /render_reviewer_section\( int \$user_id \)[\s\S]{0,220}! \$can_review && ! \$can_docs[\s\S]{0,40}return;/.test(vPanel));
 assert('no national ID / crypto reimplementation — only the service is called', !/openssl_|hash_hmac|Hedayati_Crypto::/.test(vPanelCode));
 assert('the wp-admin Hedayati_Student_Admin screen is untouched as an administrator fallback', readPlugin('includes/class-student-admin.php').includes('add_menu_page(') && readPlugin('includes/class-student-admin.php').includes('handle_identity_reveal'));
-assert('admin-access carve-out: profile.php stays reachable so every role keeps its own account/password screen', adminAccess.includes("'profile.php'"));
+assert('D54: admin-access no longer carves out profile.php (in-panel/account security views replace it)', !adminAccess.includes("'profile.php'"));
 
 // ── 10. class-login.php + page-login.php + auth.css (Phase F) ─────────────
 
@@ -316,6 +317,41 @@ assert('auth.css reuses the existing --hd-* tokens (no new palette)', /var\(--hd
 assert('auth.css defines no @media dark block of its own (dark mode stays centralised in main.css)', !/prefers-color-scheme|\[data-theme/.test(authCss));
 assert('auth.css is responsive (mobile breakpoint collapses the split layout)', /@media \(max-width: 720px\)[\s\S]{0,120}grid-template-columns: 1fr/.test(authCss));
 assert('functions.php enqueues auth.css on the login page only', readTheme('functions.php').includes("'hedayati-auth'") && readTheme('functions.php').includes("assets/css/auth.css"));
+
+// ── 11. class-panel-security.php + student password self-service (D54) ────
+
+console.log('\n11. D54 — the last normal-user wp-admin dependency removed:');
+const panelSecurity = readPlugin('includes/class-panel-security.php');
+const panelSecurityCode = codeOnly(panelSecurity);
+assert('declares strict_types', panelSecurity.includes('declare( strict_types=1 );'));
+assert('has ABSPATH guard', panelSecurity.includes("if ( ! defined( 'ABSPATH' ) ) {"));
+{
+	const b = braces(panelSecurity);
+	assert(`braces balanced (${b.ob}/${b.cb})`, b.balanced);
+}
+assert('registers a panel module view via the existing hedayati_panel_module_views filter (no bespoke registry)', panelSecurity.includes("add_filter( 'hedayati_panel_module_views', [ self::class, 'register_panel_view' ] )") && panelSecurity.includes("\$views['security']"));
+assert('gated on the WordPress-native read capability — every panel role already holds it, and Hedayati_Staff_Portal::guard() already requires a real hedayati_* capability first', /CAPABILITY\s*=\s*'read'/.test(panelSecurity));
+assert('save handler verifies via the shared Hedayati_Staff_Portal::guard_action (POST + capability + nonce)', panelSecurityCode.includes('Hedayati_Staff_Portal::guard_action( self::NONCE_ACTION, self::CAPABILITY )'));
+assert('current password is checked with wp_check_password before anything else', /wp_check_password\( \$current, \$user->user_pass, \$user_id \)/.test(panelSecurityCode));
+assert('new password reuses the SAME shared validation as forced-first-login-change (no drift)', panelSecurityCode.includes('Hedayati_Account_Security::validate_new_password( $new, $confirm, $user )'));
+assert('password is set via core wp_set_password — no custom hashing', panelSecurity.includes('wp_set_password( $new, $user_id )') && !/password_hash|Hedayati_Crypto::/.test(panelSecurityCode));
+assert('session is re-established after wp_set_password() invalidates it (matches Hedayati_Account_Security)', /wp_set_current_user\( \$user_id \);[\s\S]{0,120}wp_clear_auth_cookie\(\);[\s\S]{0,40}wp_set_auth_cookie\( \$user_id, true \);/.test(panelSecurityCode));
+assert('password value never echoed back / logged (only a generic success/error notice)', !/current_password['")\]]*\s*\)\s*\.|echo.*new_password|esc_html\(\s*\$new\s*\)|esc_html\(\s*\$current\s*\)/.test(panelSecurityCode));
+assert('audits account.password_changed without the password value', panelSecurityCode.includes("Hedayati_Audit_Log::record( 'account.password_changed', 'user', $user_id, 'via panel security', $user_id )"));
+assert('bootstrap requires + boots Hedayati_Panel_Security', boot.includes('includes/class-panel-security.php') && boot.includes('Hedayati_Panel_Security::init()'));
+assert('plugin version >= 1.15.0 (D54)', (() => {
+	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.\d+'/);
+	return m && (Number(m[1]) > 1 || (Number(m[1]) === 1 && Number(m[2]) >= 15));
+})());
+
+const studentPortalD54 = readPlugin('includes/class-student-portal.php');
+const studentPortalD54Code = codeOnly(studentPortalD54);
+assert('/account/?view=profile gains the same current/new/confirm password form (mutation registered)', studentPortalD54.includes("'hedayati_portal_password_save'"));
+assert('handle_password_save() goes through verify_self_service (nonce + hedayati_edit_own_profile) — never trusts a posted user_id', /handle_password_save\(\):\s*void\s*\{\s*\$user_id = self::verify_self_service\( 'hedayati_portal_password_save', 'hedayati_edit_own_profile' \);/.test(studentPortalD54Code));
+assert('student password change reuses Hedayati_Account_Security::validate_new_password too', studentPortalD54Code.includes('Hedayati_Account_Security::validate_new_password( $new, $confirm, $user )'));
+assert('student password change also re-establishes the session it invalidates', /handle_password_save[\s\S]{0,1400}wp_set_current_user\( \$user_id \);[\s\S]{0,120}wp_clear_auth_cookie\(\);/.test(studentPortalD54Code));
+
+assert('D54: validate_new_password is now public (shared by forced-change, panel security, and account security)', readPlugin('includes/class-account-security.php').includes('public static function validate_new_password('));
 
 console.log(`\n========================================`);
 console.log(`MANAGER EXPERIENCE SUMMARY: ${passed} PASSED, ${failed} FAILED`);

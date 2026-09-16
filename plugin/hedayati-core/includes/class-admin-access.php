@@ -15,14 +15,11 @@
  * straight through, so every panel/account mutation (all of which post to
  * `admin-post.php`) keeps working.
  *
- * ROLLOUT NOTE (D53, staged): the redirect is enforced now for the roles whose
- * front-end coverage is already complete — `student`, `teacher`,
- * `teacher_assistant`. `reception` and `hedayati_manager` still reach wp-admin
- * for the two screens that exist ONLY there (`Hedayati_Academic_Admin`,
- * `Hedayati_Student_Admin`); enforcing their redirect is gated on the Phase E
- * front-end port of those screens (see docs/ROADMAP.md). The
- * `HEDAYATI_ENFORCE_ADMIN_REDIRECT` filter flips them on in one line once E
- * lands, without another release of this file.
+ * STATUS (D53/D54): every non-administrator Hedayati role — `student`,
+ * `teacher`, `teacher_assistant`, `reception`, `hedayati_manager` — is fully
+ * enforced. Every operational screen (including, since D54, changing one's
+ * own password) has a `/panel/` or `/account/` equivalent; there is no
+ * remaining reason for a non-administrator to open wp-admin.
  *
  * The actual WordPress `administrator` (holds `manage_options`) is never
  * affected — wp-admin, Gutenberg, the native CPT editors and WordPress
@@ -93,10 +90,11 @@ class Hedayati_Admin_Access {
 
 		// admin-post.php + admin-ajax.php are how the front-end panels submit
 		// every mutation; async-upload.php backs the media uploader an admin may
-		// still legitimately trigger. profile.php is a user's own-account screen
-		// (there is no panel equivalent yet — see docs/ROADMAP.md), so it stays
-		// reachable for everyone. None of these are a "screen" to redirect.
-		if ( in_array( $pagenow, [ 'admin-post.php', 'admin-ajax.php', 'async-upload.php', 'profile.php' ], true ) ) {
+		// still legitimately trigger. D54 ports profile.php's one legitimate
+		// non-admin use (changing one's own password) to /panel/?view=security
+		// and /account/?view=profile, so it is no longer exempted here — every
+		// non-administrator role now has zero reason to open wp-admin.
+		if ( in_array( $pagenow, [ 'admin-post.php', 'admin-ajax.php', 'async-upload.php' ], true ) ) {
 			return false;
 		}
 

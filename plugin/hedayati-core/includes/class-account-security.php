@@ -215,7 +215,7 @@ class Hedayati_Account_Security {
 		$confirm = isset( $_POST['confirm_password'] ) ? (string) wp_unslash( $_POST['confirm_password'] ) : '';
 		$user    = get_userdata( $user_id );
 
-		$error = self::validate( $new, $confirm, $user );
+		$error = self::validate_new_password( $new, $confirm, $user );
 		if ( '' !== $error ) {
 			// PRG: bounce back to the (interceptor-rendered) forced-change
 			// screen with a one-shot message — no uncatchable exit mid-render.
@@ -260,9 +260,13 @@ class Hedayati_Account_Security {
 	}
 
 	/**
+	 * Shared new-password validation, reused by every self-service password
+	 * screen (forced first-login change, student /account/ security, staff
+	 * /panel/ security) so the rules never drift between them.
+	 *
 	 * @return string  empty string when valid, otherwise a Persian error message
 	 */
-	private static function validate( string $new, string $confirm, ?WP_User $user ): string {
+	public static function validate_new_password( string $new, string $confirm, ?WP_User $user ): string {
 		if ( strlen( $new ) < self::MIN_LENGTH ) {
 			return sprintf(
 				/* translators: %d: minimum character count */

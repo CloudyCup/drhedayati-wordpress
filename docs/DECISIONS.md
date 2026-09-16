@@ -746,3 +746,29 @@ administrator's `wp-login.php` stays fully functional. Post-login routing = the 
 (`hedayati_panel_module_views`) plus public `guard_action()` / `redirect_notice()` helpers, so
 each module registers one capability-gated entry instead of growing the class. `guard()` and
 `render()` both re-check the module capability; navigation only hides what a role cannot use.
+
+---
+
+## D54 — Remove the last normal-user wp-admin dependency: in-panel account/security (2026-09-16)
+
+**Decided:** `profile.php` no longer stays reachable as a carve-out in `Hedayati_Admin_Access`.
+Every `/panel/` role gets a real "Account & security" screen (`Hedayati_Panel_Security`,
+`/panel/?view=security`) and the student `/account/?view=profile` view gains the same
+current/new/confirm-password form. Both call `wp_check_password()` against the current password,
+then `Hedayati_Account_Security::validate_new_password()` (made public — previously private,
+shared only by the forced-first-login-change screen), then `wp_set_password()`, then re-establish
+the session the password change invalidates (`wp_set_current_user()` + `wp_clear_auth_cookie()` +
+`wp_set_auth_cookie()`), mirroring `Hedayati_Account_Security::handle_change()` exactly.
+
+**Why:** D53 made wp-admin administrator-only for every operational workflow except one — a
+non-admin user's own password. That was a real, if narrow, gap in "normal Hedayati users have no
+reason to enter classic WordPress." Reusing the *same* validation rules (minimum length, not equal
+to the username/email) keeps the three password-change surfaces (forced first-login, panel
+security, account security) from drifting apart.
+
+**Scope:** `Hedayati_Panel_Security` is gated on the WordPress-native `read` capability (every
+`/panel/` role already holds it; `Hedayati_Staff_Portal::guard()` already requires a real
+`hedayati_*` capability — `allowed()` — before any module view is reached at all), so this adds no
+new capability, no roles bump, no schema change. Plugin `1.14.0` → `1.15.0`.
+
+**Replaces:** the `profile.php` exemption documented in D53 / `docs/ROADMAP.md`'s P3 follow-up.

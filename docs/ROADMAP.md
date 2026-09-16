@@ -17,13 +17,12 @@ Owner decision **D53**: wp-admin is administrator-only; all non-admin roles use 
 redirect policy), C (in-panel course editor), E (`?view=academic` + `?view=students` reviewer
 actions), F (`/login/` + reset UX). Node 940/0, Docker CI 686/0. See `docs/DECISIONS.md` D53.
 
-Remaining follow-up:
-
-- **(P3) In-panel staff account/password view.** Today `profile.php` is left reachable so every
-  role can change its own password. A `/panel/?view=account` (or `/account/?view=profile` reuse
-  for staff) that wraps `wp_update_user` / a password-change form would let `profile.php` be added
-  to the `Hedayati_Admin_Access` redirect set too. Non-blocking — voluntary password change still
-  works via `profile.php`; forced first-login change is already a front-end flow.
+**D54 — done:** in-panel staff account/password view (`/panel/?view=security`,
+`Hedayati_Panel_Security`) and the student equivalent (`/account/?view=profile`,
+`Hedayati_Student_Portal::handle_password_save()`) both wrap `wp_check_password()` +
+`wp_set_password()` behind the shared `Hedayati_Account_Security::validate_new_password()` rules.
+`profile.php` is no longer exempted in `Hedayati_Admin_Access` — no normal-user wp-admin dependency
+remains. See `docs/DECISIONS.md` D54.
 
 ---
 

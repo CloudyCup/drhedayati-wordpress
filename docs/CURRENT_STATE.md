@@ -1,5 +1,19 @@
 # CURRENT_STATE.md
 
+**2026-09-16 — D54: last normal-user wp-admin dependency removed (plugin 1.15.0).** The one
+carve-out left from D53 (`profile.php` reachable so any role could change its own password) is
+closed. `Hedayati_Panel_Security` adds `/panel/?view=security` (current/new/confirm password,
+gated on the `read` capability every panel role holds — `Hedayati_Staff_Portal::guard()` already
+requires `allowed()` first); `Hedayati_Student_Portal::handle_password_save()` adds the same form
+to `/account/?view=profile`. Both call the same `wp_check_password()` → validate → `wp_set_password()`
+sequence, reusing `Hedayati_Account_Security::validate_new_password()` (now public) so the rules
+never drift from the forced-first-login-change screen. `Hedayati_Admin_Access` no longer exempts
+`profile.php` — the redirect set (`is_interactive_admin_request()`) is now just the four real
+transport endpoints. No schema, roles, or capability change (DB/roles stay 2.4.0, 30 managed caps).
+See `docs/DECISIONS.md` D54, `docs/ROADMAP.md`.
+
+---
+
 **2026-09-08 — Manager Experience COMPLETE on `feature/manager-experience` (D53, plugin 1.14.0).**
 Owner decision **D53** is fully delivered and **fully enforced**: classic wp-admin is an
 administrator-only interface; every non-administrator Hedayati role
