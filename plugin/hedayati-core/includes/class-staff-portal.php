@@ -462,7 +462,7 @@ class Hedayati_Staff_Portal {
 			'hedayati_manage_courses'     => [ self::url( [ 'view' => 'courses' ] ), __( 'مدیریت دوره‌ها', 'hedayati-core' ) ],
 			'hedayati_manage_course_runs' => [ self::url( [ 'view' => 'academic' ] ), __( 'عملیات آموزشی', 'hedayati-core' ) ],
 			'hedayati_manage_teachers'    => [ self::url( [ 'view' => 'teachers' ] ), __( 'مدیریت اساتید', 'hedayati-core' ) ],
-			'hedayati_manage_settings'    => [ self::url( [ 'view' => 'settings' ] ), __( 'اطلاعات تماس مجتمع', 'hedayati-core' ) ],
+			'hedayati_manage_settings'    => [ self::url( [ 'view' => 'settings' ] ), __( 'تنظیمات مجتمع', 'hedayati-core' ) ],
 		];
 
 		echo '<div class="hd-portal-cards">';
