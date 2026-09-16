@@ -163,7 +163,10 @@ assert('still no ip / user-agent column (D39)', !/'ip_address'|'user_agent'/.tes
 // ── 8. theme templates / assets ───────────────────────────────────────────
 console.log('\n8. theme:');
 const fnc = readTheme('functions.php');
-assert('theme version bumped to >= 1.2.0', /HEDAYATI_VERSION', '1\.(2|3|\d{2})\./.test(fnc) || /HEDAYATI_VERSION', '[2-9]\./.test(fnc));
+assert('theme version bumped to >= 1.2.0', (() => {
+	const m = fnc.match(/HEDAYATI_VERSION', '(\d+)\.(\d+)\.\d+'/);
+	return m && (Number(m[1]) > 1 || (Number(m[1]) === 1 && Number(m[2]) >= 2));
+})());
 assert('account assets also load during a forced password change', fnc.includes('Hedayati_Account_Security') && fnc.includes('must_change( get_current_user_id() )'));
 assert('public-pages.css enqueued', fnc.includes("'hedayati-public-pages'"));
 const page = readTheme('page.php');
@@ -212,7 +215,7 @@ assert('public-pages.css: teacher image has a fixed frame', /\.hd-public-card im
 assert('public-pages.css: run-status pill classes exist', pubCss.includes('.hd-run-status--open') && pubCss.includes('.hd-run-status--soon'));
 assert('public-pages.css: card CTAs bottom-align for a tidy row', /margin-block-start:\s*auto/.test(pubCss));
 assert('public-runs.php: uses a section-heading + status pill', runsPart.includes('section-heading') && runsPart.includes('hd-run-status'));
-assert('staff-portal: styled result lists + attendance form class + empty states', staff.includes('hd-portal-result-list') && staff.includes("'hd-portal-attendance'") && staff.includes('هنوز دانشجویی در این کلاس'));
+assert('staff-portal: styled result lists + attendance form class + empty states', staff.includes('hd-portal-result-list') && staff.includes("'hd-portal-attendance'") && staff.includes('هنوز دانشجویی در این دورهٔ اجرایی'));
 assert('staff panel hides the WordPress admin bar', staff.includes("'show_admin_bar'") && staff.includes('hide_admin_bar_on_panel'));
 const sp = readPlugin('includes/class-student-portal.php');
 assert('student-portal: documents upload has real <label>s', /<label class="hd-portal-field">\s*<span><\?php esc_html_e\( 'نوع مدرک'/.test(sp) && sp.includes("'فایل مدرک"));

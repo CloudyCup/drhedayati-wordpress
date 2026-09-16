@@ -1051,6 +1051,48 @@ a.hd-portal-card:focus-visible::after {
 	border-bottom: 1px solid var(--hd-line);
 }
 
+@media (max-width: 560px) {
+	.hd-portal-table,
+	.hd-portal-table thead,
+	.hd-portal-table tbody,
+	.hd-portal-table tr,
+	.hd-portal-table td {
+		display: block;
+		width: 100%;
+	}
+
+	.hd-portal-table thead {
+		display: none;
+	}
+
+	.hd-portal-table tr {
+		border: 1px solid var(--hd-line);
+		border-radius: var(--hd-radius-sm);
+		margin-bottom: 10px;
+		background: var(--hd-surface);
+	}
+
+	.hd-portal-table td {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		border-bottom: 0;
+		border-block-start: 1px solid var(--hd-line);
+	}
+
+	.hd-portal-table td:first-child {
+		border-block-start: 0;
+	}
+
+	.hd-portal-table td[data-label]:not([data-label=""])::before {
+		content: attr(data-label);
+		color: var(--hd-muted);
+		font-size: .78rem;
+		font-weight: 700;
+	}
+}
+
 .hd-portal-notice {
 	padding: 12px 16px;
 	border-radius: var(--hd-radius-sm);

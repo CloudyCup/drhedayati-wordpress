@@ -361,6 +361,27 @@ assert('student password change also re-establishes the session it invalidates',
 
 assert('D54: validate_new_password is now public (shared by forced-change, panel security, and account security)', readPlugin('includes/class-account-security.php').includes('public static function validate_new_password('));
 
+// ── 12. Post-D54 polish pass: terminology + responsive documents table ────
+
+console.log('\n12. Post-D54 polish: Course Run terminology + responsive documents table:');
+assert('academic-panel search/table header no longer mixes «کلاس» with «دورهٔ اجرایی» for the same entity', (() => {
+	const ap = readPlugin('includes/class-academic-panel.php');
+	return ap.includes('عنوان دورهٔ اجرایی') && !ap.includes('عنوان کلاس');
+})());
+assert('staff-portal "my runs" / roster / attendance / enroll copy uses دورهٔ اجرایی consistently', (() => {
+	const sp = readPlugin('includes/class-staff-portal.php');
+	return sp.includes('دوره‌های اجرایی من') && sp.includes('در این دورهٔ اجرایی ثبت‌نام نکرده') && sp.includes('ثبت‌نام در دورهٔ اجرایی');
+})());
+assert('material-service copy uses دورهٔ اجرایی for the run entity (no bare «کلاس معتبری» left)', (() => {
+	const ms = readPlugin('includes/class-material-service.php');
+	return ms.includes('دورهٔ اجرایی معتبری انتخاب نشده است') && !ms.includes('کلاس معتبری انتخاب نشده است');
+})());
+assert('student portal + page-account.php schedule label uses دوره‌های اجرایی', readPlugin('includes/class-student-portal.php').includes('مشاهدهٔ برنامهٔ دوره‌های اجرایی') && readTheme('page-account.php').includes('برنامهٔ دوره‌های اجرایی'));
+
+const docsTableCss = readTheme('assets/css/account.css');
+assert('.hd-portal-table gets a mobile card-collapse breakpoint (matches the .hd-manager-table pattern)', /@media \(max-width: 560px\)[\s\S]{0,80}\.hd-portal-table/.test(docsTableCss) && docsTableCss.includes('.hd-portal-table td[data-label]'));
+assert('documents table cells carry data-label for the collapsed mobile view', readPlugin('includes/class-student-portal.php').includes('data-label="<?php esc_attr_e( \'نوع\', \'hedayati-core\' ); ?>"'));
+
 console.log(`\n========================================`);
 console.log(`MANAGER EXPERIENCE SUMMARY: ${passed} PASSED, ${failed} FAILED`);
 console.log(`========================================`);

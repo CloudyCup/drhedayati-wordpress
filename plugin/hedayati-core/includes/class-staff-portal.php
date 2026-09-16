@@ -618,7 +618,7 @@ class Hedayati_Staff_Portal {
 				'url'   => self::url( [ 'view' => 'featured' ] ),
 			],
 			[
-				'label' => __( 'کلاس‌های فعال', 'hedayati-core' ),
+				'label' => __( 'دوره‌های اجرایی فعال', 'hedayati-core' ),
 				'value' => $active_runs,
 				'hint'  => __( 'برنامه‌ریزی و اجرا', 'hedayati-core' ),
 				'url'   => self::url( [ 'view' => 'academic' ] ),
@@ -885,12 +885,12 @@ class Hedayati_Staff_Portal {
 	}
 
 	private static function render_my_runs(): void {
-		echo '<h2 class="hd-portal-subtitle">' . esc_html__( 'کلاس‌های من', 'hedayati-core' ) . '</h2>';
+		echo '<h2 class="hd-portal-subtitle">' . esc_html__( 'دوره‌های اجرایی من', 'hedayati-core' ) . '</h2>';
 
 		$run_ids = Hedayati_Run_Staff_Service::run_ids_for_user( get_current_user_id() );
 
 		if ( empty( $run_ids ) ) {
-			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز کلاسی به شما اختصاص داده نشده است.', 'hedayati-core' ) . '</p>';
+			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز دورهٔ اجرایی‌ای به شما اختصاص داده نشده است.', 'hedayati-core' ) . '</p>';
 			return;
 		}
 
@@ -934,7 +934,7 @@ class Hedayati_Staff_Portal {
 		}
 
 		if ( empty( $roster ) ) {
-			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز دانشجویی در این کلاس ثبت‌نام نکرده است.', 'hedayati-core' ) . '</p>';
+			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز دانشجویی در این دورهٔ اجرایی ثبت‌نام نکرده است.', 'hedayati-core' ) . '</p>';
 		} else {
 			echo '<ul class="hd-portal-roster">';
 			foreach ( $roster as $name ) {
@@ -1029,7 +1029,7 @@ class Hedayati_Staff_Portal {
 		}
 
 		if ( 0 === $rendered ) {
-			echo '<p class="hd-portal-note">' . esc_html__( 'دانشجوی فعالی برای ثبت حضور در این کلاس وجود ندارد.', 'hedayati-core' ) . '</p></form>';
+			echo '<p class="hd-portal-note">' . esc_html__( 'دانشجوی فعالی برای ثبت حضور در این دورهٔ اجرایی وجود ندارد.', 'hedayati-core' ) . '</p></form>';
 			return;
 		}
 
@@ -1160,8 +1160,8 @@ class Hedayati_Staff_Portal {
 
 	private static function render_enroll_form( int $user_id ): void {
 		self::form_open( 'enroll', [ 'student_id' => $user_id ] );
-		echo '<label class="hd-portal-field"><span>' . esc_html__( 'ثبت‌نام در کلاس', 'hedayati-core' ) . '</span>';
-		echo '<select name="run_id" required><option value="">' . esc_html__( 'انتخاب کلاس', 'hedayati-core' ) . '</option>';
+		echo '<label class="hd-portal-field"><span>' . esc_html__( 'ثبت‌نام در دورهٔ اجرایی', 'hedayati-core' ) . '</span>';
+		echo '<select name="run_id" required><option value="">' . esc_html__( 'انتخاب دورهٔ اجرایی', 'hedayati-core' ) . '</option>';
 
 		foreach ( Hedayati_Course_Run_Service::query( [ 'limit' => 500 ] ) as $run ) {
 			if ( ! in_array( $run['run_status'], [ 'scheduled', 'in_progress' ], true ) ) {

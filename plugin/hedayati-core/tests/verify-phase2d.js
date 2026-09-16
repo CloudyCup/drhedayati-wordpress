@@ -199,7 +199,7 @@ assert('uses the shared #site-main skip-link target, matching singular.php\'s co
 assert('uses the shared .container wrapper class', template.includes('class="container'));
 assert('renders through Hedayati_Student_Portal::render_current_view() (no duplicated business logic in the template)', template.includes('Hedayati_Student_Portal::render_current_view()'));
 assert('view whitelist re-validated in the template too (defense in depth against a stray $_GET value reaching nav "is-active" state)', template.includes('Hedayati_Student_Portal::VIEWS'));
-assert('student navigation includes the real schedule view', template.includes("'schedule'") && template.includes('برنامهٔ کلاس‌ها'));
+assert('student navigation includes the real schedule view', template.includes("'schedule'") && template.includes('برنامهٔ دوره‌های اجرایی'));
 assert('logout link uses wp_logout_url() (a nonced WP core URL), not a raw ?action=logout link', template.includes('wp_logout_url('));
 
 // ── 9. Theme assets: no new framework/bundler/jQuery ────────────────────────

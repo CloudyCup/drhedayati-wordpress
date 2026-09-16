@@ -30,7 +30,7 @@ if ( ! in_array( $hd_current_view, Hedayati_Student_Portal::VIEWS, true ) ) {
 $hd_nav_items = [
 	'dashboard'     => __( 'داشبورد دانشجو', 'hedayati' ),
 	'enrollments'   => __( 'دوره‌های من', 'hedayati' ),
-	'schedule'      => __( 'برنامهٔ کلاس‌ها', 'hedayati' ),
+	'schedule'      => __( 'برنامهٔ دوره‌های اجرایی', 'hedayati' ),
 	'certificates'  => __( 'گواهینامه‌های من', 'hedayati' ),
 	'support'       => __( 'پشتیبانی و تیکت', 'hedayati' ),
 	'notifications' => __( 'اعلان‌ها', 'hedayati' ),

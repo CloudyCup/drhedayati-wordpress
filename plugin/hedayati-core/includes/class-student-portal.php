@@ -251,14 +251,14 @@ class Hedayati_Student_Portal {
 				<span><?php esc_html_e( 'جلسهٔ بعدی شما', 'hedayati-core' ); ?></span>
 				<?php if ( empty( $upcoming ) ) : ?>
 					<h2><?php esc_html_e( 'برنامه‌ای ثبت نشده', 'hedayati-core' ); ?></h2>
-					<p><?php esc_html_e( 'جلسهٔ آینده پس از ثبت برنامهٔ کلاس در اینجا نمایش داده می‌شود.', 'hedayati-core' ); ?></p>
+					<p><?php esc_html_e( 'جلسهٔ آینده پس از ثبت برنامهٔ دورهٔ اجرایی در اینجا نمایش داده می‌شود.', 'hedayati-core' ); ?></p>
 				<?php else : $next = $upcoming[0]; ?>
 					<h2><?php echo esc_html( $next['course_title'] ); ?></h2>
 					<p><?php echo esc_html( $next['topic'] ); ?></p>
 					<strong dir="ltr"><?php echo esc_html( substr( $next['starts_at'], 11, 5 ) ); ?></strong>
 					<p dir="ltr"><?php echo esc_html( Hedayati_Jalali::format( $next['starts_at'], true, false ) ); ?></p>
 				<?php endif; ?>
-				<a href="<?php echo esc_url( self::get_account_url( 'schedule' ) ); ?>"><?php esc_html_e( 'مشاهدهٔ برنامهٔ کلاس‌ها', 'hedayati-core' ); ?></a>
+				<a href="<?php echo esc_url( self::get_account_url( 'schedule' ) ); ?>"><?php esc_html_e( 'مشاهدهٔ برنامهٔ دوره‌های اجرایی', 'hedayati-core' ); ?></a>
 			</aside>
 		</div>
 
@@ -607,8 +607,8 @@ class Hedayati_Student_Portal {
 					);
 					?>
 					<tr>
-						<td><?php echo esc_html( self::doc_type_label( $doc['doc_type'] ) ); ?></td>
-						<td><a class="hd-portal-btn hd-portal-btn-small" href="<?php echo esc_url( $download_url ); ?>"><?php esc_html_e( 'دانلود', 'hedayati-core' ); ?></a></td>
+						<td data-label="<?php esc_attr_e( 'نوع', 'hedayati-core' ); ?>"><?php echo esc_html( self::doc_type_label( $doc['doc_type'] ) ); ?></td>
+						<td data-label=""><a class="hd-portal-btn hd-portal-btn-small" href="<?php echo esc_url( $download_url ); ?>"><?php esc_html_e( 'دانلود', 'hedayati-core' ); ?></a></td>
 					</tr>
 				<?php endforeach; ?>
 			</tbody>

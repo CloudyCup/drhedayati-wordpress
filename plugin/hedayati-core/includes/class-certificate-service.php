@@ -167,7 +167,7 @@ class Hedayati_Certificate_Service {
 
 		$run = Hedayati_Course_Run_Service::get( (int) $enrollment['run_id'] );
 		if ( null === $run ) {
-			return new WP_Error( 'run', __( 'کلاس این ثبت‌نام یافت نشد.', 'hedayati-core' ) );
+			return new WP_Error( 'run', __( 'دورهٔ اجرایی این ثبت‌نام یافت نشد.', 'hedayati-core' ) );
 		}
 
 		$student = get_userdata( (int) $enrollment['user_id'] );

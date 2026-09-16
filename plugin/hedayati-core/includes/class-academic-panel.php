@@ -178,7 +178,7 @@ class Hedayati_Academic_Panel {
 			'<label class="hd-portal-field"><span class="screen-reader-text">%s</span><input type="search" name="q" value="%s" placeholder="%s"></label>',
 			esc_html__( 'جستجو', 'hedayati-core' ),
 			esc_attr( $search ),
-			esc_attr__( 'جستجو در عنوان دوره یا کلاس…', 'hedayati-core' )
+			esc_attr__( 'جستجو در عنوان دوره یا دورهٔ اجرایی…', 'hedayati-core' )
 		);
 		echo '<label class="hd-portal-field"><span class="screen-reader-text">' . esc_html__( 'وضعیت', 'hedayati-core' ) . '</span><select name="rs">';
 		echo '<option value="">' . esc_html__( 'همهٔ وضعیت‌ها', 'hedayati-core' ) . '</option>';
@@ -192,7 +192,7 @@ class Hedayati_Academic_Panel {
 		$rows = 0;
 		echo '<div class="hd-manager-table" role="table">';
 		echo '<div class="hd-manager-tr hd-manager-th" role="row">';
-		foreach ( [ __( 'دوره', 'hedayati-core' ), __( 'عنوان کلاس', 'hedayati-core' ), __( 'وضعیت اجرا', 'hedayati-core' ), __( 'ثبت‌نام', 'hedayati-core' ), __( 'شروع', 'hedayati-core' ), __( 'ظرفیت', 'hedayati-core' ), '' ] as $h ) {
+		foreach ( [ __( 'دوره', 'hedayati-core' ), __( 'عنوان دورهٔ اجرایی', 'hedayati-core' ), __( 'وضعیت اجرا', 'hedayati-core' ), __( 'ثبت‌نام', 'hedayati-core' ), __( 'شروع', 'hedayati-core' ), __( 'ظرفیت', 'hedayati-core' ), '' ] as $h ) {
 			echo '<span role="columnheader">' . esc_html( $h ) . '</span>';
 		}
 		echo '</div>';
@@ -293,8 +293,8 @@ class Hedayati_Academic_Panel {
 		$approved  = array_map( 'intval', (array) get_post_meta( $course_id, Hedayati_Public_Content::META_PUBLIC_RUN_IDS, true ) );
 		$is_public = in_array( (int) $run['id'], $approved, true );
 
-		echo '<details class="hd-course-fieldset"><summary><strong>' . esc_html__( 'نمایش عمومی این کلاس', 'hedayati-core' ) . '</strong></summary>';
-		echo '<p class="hd-portal-note">' . esc_html__( 'در صورت فعال بودن، تاریخ و شهریهٔ این کلاس در صفحهٔ عمومی دوره نمایش داده می‌شود (مشروط به فعال بودن انتشار جزئیات در تنظیمات دوره).', 'hedayati-core' ) . '</p>';
+		echo '<details class="hd-course-fieldset"><summary><strong>' . esc_html__( 'نمایش عمومی این دورهٔ اجرایی', 'hedayati-core' ) . '</strong></summary>';
+		echo '<p class="hd-portal-note">' . esc_html__( 'در صورت فعال بودن، تاریخ و شهریهٔ این دورهٔ اجرایی در صفحهٔ عمومی دوره نمایش داده می‌شود (مشروط به فعال بودن انتشار جزئیات در تنظیمات دوره).', 'hedayati-core' ) . '</p>';
 		echo '<form class="hd-manager-inline-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( 'hedayati_apanel_run_public' );
 		echo '<input type="hidden" name="action" value="hedayati_apanel_run_public">';

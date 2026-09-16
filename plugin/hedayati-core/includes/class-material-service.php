@@ -52,7 +52,7 @@ class Hedayati_Material_Service {
 			'render'     => [ self::class, 'render_panel' ],
 			'nav'        => __( 'منابع و جزوات', 'hedayati-core' ),
 			'title'      => __( 'منابع و جزوات دوره', 'hedayati-core' ),
-			'desc'       => __( 'افزودن لینک، یادداشت و فایل برای کلاس‌ها و جلسات', 'hedayati-core' ),
+			'desc'       => __( 'افزودن لینک، یادداشت و فایل برای دوره‌های اجرایی و جلسات', 'hedayati-core' ),
 			'icon'       => 'folder',
 		];
 		return $views;
@@ -121,10 +121,10 @@ class Hedayati_Material_Service {
 
 		$run_id = absint( $data['run_id'] ?? 0 );
 		if ( null === Hedayati_Course_Run_Service::get( $run_id ) ) {
-			return new WP_Error( 'run', __( 'کلاس معتبری انتخاب نشده است.', 'hedayati-core' ) );
+			return new WP_Error( 'run', __( 'دورهٔ اجرایی معتبری انتخاب نشده است.', 'hedayati-core' ) );
 		}
 		if ( ! self::can_manage_run( $run_id, $actor_id ) ) {
-			return new WP_Error( 'cap', __( 'برای این کلاس اجازهٔ افزودن منبع ندارید.', 'hedayati-core' ) );
+			return new WP_Error( 'cap', __( 'برای این دورهٔ اجرایی اجازهٔ افزودن منبع ندارید.', 'hedayati-core' ) );
 		}
 
 		$type  = in_array( $data['type'] ?? '', self::TYPES, true ) ? (string) $data['type'] : 'link';
@@ -139,7 +139,7 @@ class Hedayati_Material_Service {
 		if ( $session_id > 0 ) {
 			$session = Hedayati_Session_Service::get( $session_id );
 			if ( null === $session || (int) $session['run_id'] !== $run_id ) {
-				return new WP_Error( 'session', __( 'جلسهٔ انتخاب‌شده به این کلاس تعلق ندارد.', 'hedayati-core' ) );
+				return new WP_Error( 'session', __( 'جلسهٔ انتخاب‌شده به این دورهٔ اجرایی تعلق ندارد.', 'hedayati-core' ) );
 			}
 		}
 
@@ -317,7 +317,7 @@ class Hedayati_Material_Service {
 		echo '<header class="hd-manager-heading"><div>';
 		echo '<span class="hd-manager-eyebrow">' . esc_html__( 'آموزش', 'hedayati-core' ) . '</span>';
 		echo '<h1 class="hd-portal-title">' . esc_html__( 'منابع و جزوات دوره', 'hedayati-core' ) . '</h1>';
-		echo '<p class="hd-portal-note">' . esc_html__( 'منابع هر کلاس را از صفحهٔ همان کلاس مدیریت کنید.', 'hedayati-core' ) . '</p>';
+		echo '<p class="hd-portal-note">' . esc_html__( 'منابع هر دورهٔ اجرایی را از صفحهٔ همان دوره مدیریت کنید.', 'hedayati-core' ) . '</p>';
 		echo '</div></header>';
 
 		$user_id = get_current_user_id();
@@ -329,7 +329,7 @@ class Hedayati_Material_Service {
 			) );
 
 		if ( empty( $runs ) ) {
-			echo '<p class="hd-portal-note">' . esc_html__( 'کلاسی برای مدیریت منابع در دسترس نیست.', 'hedayati-core' ) . '</p>';
+			echo '<p class="hd-portal-note">' . esc_html__( 'دورهٔ اجرایی‌ای برای مدیریت منابع در دسترس نیست.', 'hedayati-core' ) . '</p>';
 			return;
 		}
 
@@ -360,7 +360,7 @@ class Hedayati_Material_Service {
 
 		$materials = self::list_for_run( $run_id );
 		if ( empty( $materials ) ) {
-			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز منبعی برای این کلاس ثبت نشده است.', 'hedayati-core' ) . '</p>';
+			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز منبعی برای این دورهٔ اجرایی ثبت نشده است.', 'hedayati-core' ) . '</p>';
 		} else {
 			echo '<ul class="hd-material-list">';
 			foreach ( $materials as $m ) {
@@ -404,7 +404,7 @@ class Hedayati_Material_Service {
 		$sessions = Hedayati_Session_Service::list_for_run( $run_id );
 		if ( ! empty( $sessions ) ) {
 			echo '<label class="hd-portal-field"><span>' . esc_html__( 'اتصال به جلسه (اختیاری)', 'hedayati-core' ) . '</span><select name="session_id">';
-			echo '<option value="0">' . esc_html__( 'کل کلاس', 'hedayati-core' ) . '</option>';
+			echo '<option value="0">' . esc_html__( 'کل دورهٔ اجرایی', 'hedayati-core' ) . '</option>';
 			foreach ( $sessions as $s ) {
 				printf(
 					'<option value="%s">%s</option>',
