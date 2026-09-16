@@ -75,6 +75,13 @@
 	gap: 16px;
 }
 
+.hd-auth-panel-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
 .hd-auth-logo {
 	display: inline-flex;
 	align-items: center;

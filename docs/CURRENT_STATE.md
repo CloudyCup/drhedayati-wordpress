@@ -10,7 +10,13 @@ sequence, reusing `Hedayati_Account_Security::validate_new_password()` (now publ
 never drift from the forced-first-login-change screen. `Hedayati_Admin_Access` no longer exempts
 `profile.php` — the redirect set (`is_interactive_admin_request()`) is now just the four real
 transport endpoints. No schema, roles, or capability change (DB/roles stay 2.4.0, 30 managed caps).
-See `docs/DECISIONS.md` D54, `docs/ROADMAP.md`.
+
+**Login/auth visual polish (same pass):** `/login/` no longer renders the full public site
+header/footer (primary nav, consult CTA, account link, footer link columns) — `Hedayati_Login::is_login_page()`
+is now public, and `header.php` / `footer.php` swap them for the focused `hd-auth-*` shell already
+provided by `page-login.php` (branding, a minimal copyright-only footer). The dark-mode toggle
+button moves into the auth panel itself (`#theme-toggle` in `page-login.php`) so it isn't lost.
+Theme `1.3.1` → `1.4.0`. See `docs/DECISIONS.md` D54, `docs/ROADMAP.md`.
 
 ---
 

@@ -772,3 +772,13 @@ security, account security) from drifting apart.
 new capability, no roles bump, no schema change. Plugin `1.14.0` → `1.15.0`.
 
 **Replaces:** the `profile.php` exemption documented in D53 / `docs/ROADMAP.md`'s P3 follow-up.
+
+**Also decided (same pass) — a minimal auth shell for `/login/`:** the public site header/footer
+(primary nav, consult CTA, header account link, footer link columns) no longer render on `/login/`.
+`Hedayati_Login::is_login_page()` (previously private) is called from `header.php`/`footer.php` to
+swap them for the focused `hd-auth-*` branding `page-login.php` already provides, plus a
+minimal copyright-only footer. **Why:** a login/reset/forced-change screen is a single task; the
+full public navigation was reported as distracting chrome on what should read as "a premium part
+of the Dr. Hedayati website, not WordPress." The manual dark-mode toggle button moved into the auth
+panel itself so removing the header doesn't remove the feature. No authentication/security
+semantics changed — this is template/CSS only. Theme `1.3.1` → `1.4.0`.

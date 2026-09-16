@@ -91,7 +91,8 @@ class Hedayati_Login {
 		return add_query_arg( $args, home_url( '/' . self::PAGE_SLUG . '/' ) );
 	}
 
-	private static function is_login_page(): bool {
+	/** Re-exposed so header.php/footer.php can swap the public site chrome for the focused auth shell. */
+	public static function is_login_page(): bool {
 		$id = self::get_page_id();
 		return $id > 0 ? is_page( $id ) : is_page( self::PAGE_SLUG );
 	}

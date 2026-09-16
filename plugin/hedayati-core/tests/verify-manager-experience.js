@@ -318,6 +318,14 @@ assert('auth.css defines no @media dark block of its own (dark mode stays centra
 assert('auth.css is responsive (mobile breakpoint collapses the split layout)', /@media \(max-width: 720px\)[\s\S]{0,120}grid-template-columns: 1fr/.test(authCss));
 assert('functions.php enqueues auth.css on the login page only', readTheme('functions.php').includes("'hedayati-auth'") && readTheme('functions.php').includes("assets/css/auth.css"));
 
+// D54 follow-up: dedicated focused auth shell instead of the full public nav.
+assert('is_login_page() is public so header.php/footer.php can detect the auth shell', readPlugin('includes/class-login.php').includes('public static function is_login_page()'));
+const headerTpl = readTheme('header.php');
+assert('header.php skips the public site-header (primary nav / consult CTA / account link) on the /login/ page', /Hedayati_Login::is_login_page\(\)[\s\S]{0,200}<\?php if \( ! \$hd_is_auth_shell \) :[\s\S]{0,120}<header class="site-header"/.test(headerTpl));
+const footerTpl = readTheme('footer.php');
+assert('footer.php swaps the full link-heavy footer for a minimal copyright-only one on the /login/ page', /Hedayati_Login::is_login_page\(\)[\s\S]{0,200}<\?php if \( \$hd_is_auth_shell \) :[\s\S]{0,300}hd-auth-footer/.test(footerTpl));
+assert('the auth shell keeps its own dark-mode toggle (#theme-toggle) since the public header providing it is gone', pageLogin.includes('id="theme-toggle"') && pageLogin.includes('hd-auth-theme-toggle'));
+
 // ── 11. class-panel-security.php + student password self-service (D54) ────
 
 console.log('\n11. D54 — the last normal-user wp-admin dependency removed:');

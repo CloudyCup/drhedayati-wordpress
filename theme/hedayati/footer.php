@@ -1,3 +1,22 @@
+<?php
+// Mirrors header.php: the focused /login/ auth shell gets a minimal
+// copyright-only footer instead of the full link-heavy public footer.
+$hd_is_auth_shell = class_exists( 'Hedayati_Login' ) && Hedayati_Login::is_login_page();
+?>
+<?php if ( $hd_is_auth_shell ) : ?>
+
+	<footer class="site-footer hd-auth-footer" id="site-footer" role="contentinfo">
+		<div class="footer-bottom container">
+			<span class="copyright">
+				&copy; <?php echo esc_html( gmdate( 'Y' ) ); ?>
+				<?php bloginfo( 'name' ); ?>
+				&mdash; <?php esc_html_e( 'کلیه حقوق محفوظ است.', 'hedayati' ); ?>
+			</span>
+		</div>
+	</footer><!-- .site-footer -->
+
+<?php else : ?>
+
 <footer class="site-footer" id="site-footer" role="contentinfo">
 	<div class="container footer-grid">
 
@@ -150,6 +169,8 @@
 	</div>
 
 </footer><!-- .site-footer -->
+
+<?php endif; ?>
 
 <?php wp_footer(); ?>
 </body>
