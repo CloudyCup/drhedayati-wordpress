@@ -1,5 +1,51 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
+## D54 + product-completion pass (2026-09-16) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
+
+Owner workflow change: the integrated `mystik.ir` staging cycle is postponed on purpose — finish
+the product first, keep using static + Docker-WordPress GitHub Actions CI. Do not provision
+`HEDAYATI_DATA_ENCRYPTION_KEY` / `HEDAYATI_DATA_HMAC_KEY` / `HEDAYATI_PRIVATE_UPLOADS_DIR` yet;
+sensitive features keep failing closed without them, as before.
+
+`feature/manager-experience` HEAD `51e40ac`. Plugin **1.14.0 → 1.15.0**, theme **1.3.1 → 1.4.0**.
+DB/roles unchanged at **2.4.0**, 30 managed capabilities unchanged. Node static **1064/0** across
+all 9 suites (`verify-manager-experience.js` 184 → 188). Docker `Acceptance (Docker WordPress)`
+GREEN on every push in this pass (runs `35085266196`, `35085852811`, `35086297798`).
+
+1. **D54 — the last normal-user wp-admin dependency removed.** `Hedayati_Panel_Security`
+   (`/panel/?view=security`) and `Hedayati_Student_Portal::handle_password_save()`
+   (`/account/?view=profile`) both give every role a real current/new/confirm-password form —
+   `wp_check_password()` → `Hedayati_Account_Security::validate_new_password()` (made public,
+   shared with the forced-first-login-change screen) → `wp_set_password()` → session
+   re-established. `Hedayati_Admin_Access` no longer exempts `profile.php`; the carve-out list is
+   now just the four real transport endpoints. See `docs/DECISIONS.md` D54.
+2. **Focused `/login/` auth shell.** `Hedayati_Login::is_login_page()` made public;
+   `header.php`/`footer.php` swap the full public nav/footer for the existing `hd-auth-*` branding
+   plus a minimal copyright footer on `/login/` only. The dark-mode toggle moved into the auth
+   panel itself so it isn't lost. Template/CSS only — no auth semantics changed.
+3. **Panel/account UX audit** (source-level, general-purpose sub-agent) — one label
+   inconsistency fixed (`class-staff-portal.php` settings card now says "تنظیمات مجتمع", matching
+   the module's own title). Two minor terminology-drift / responsive-table findings documented,
+   not fixed (low severity, no functional bug — see the completion report delivered to the owner
+   in-conversation; not duplicated here).
+4. **Public-site completeness audit** — clean. No placeholder/demo text, no fake stats, no dead
+   links, no wp-admin leakage into public templates, no `reference-react/` leakage. The
+   `impact-section.php` stats panel is deliberately empty pending real institute numbers (rule 11
+   compliance, not a defect).
+5. **AI Studio final parity check** — no AI Studio feature lacks a WordPress equivalent reachable
+   from `/panel/`/`/account/`; no Hedayati feature is stranded wp-admin-only for a non-admin role;
+   no AI-Studio mock data found in production plugin code.
+6. **Two deferred v2 items, both recommended to STAY v2** (not included before staging):
+   support-ticket attachments (S effort, no new dependency, but inherits the already-unprovisioned
+   `HEDAYATI_PRIVATE_UPLOADS_DIR` prerequisite) and certificate PDF export (S for the existing
+   no-dependency print-friendly `/verify/` HTML view, which already covers the requirement; a real
+   PDF needs a new third-party dependency — AGENTS.md rule 6 requires explicit justification/
+   approval first).
+
+**Not browser-reviewed, not merged, not deployed.** PR #1 remains open against `main`.
+
+---
+
 ## Manager Experience — D53 COMPLETE (2026-09-08) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
 
 Owner decision **D53**: classic wp-admin is **administrator-only**; every non-administrator
