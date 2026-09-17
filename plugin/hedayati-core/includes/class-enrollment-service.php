@@ -96,6 +96,15 @@ class Hedayati_Enrollment_Service {
 		) );
 	}
 
+	/** Count distinct students with at least one active enrollment. */
+	public static function count_active_students(): int {
+		global $wpdb;
+		$table = Hedayati_DB_Schema::get_table_enrollments();
+		return (int) $wpdb->get_var(
+			"SELECT COUNT(DISTINCT user_id) FROM {$table} WHERE status = 'active'"
+		);
+	}
+
 	// ── Enroll ──────────────────────────────────────────────────────────────
 
 	/**

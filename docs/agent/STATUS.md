@@ -1,5 +1,197 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
+## D56 — mystik.ir staging bug: `/login/` redirect loop, FIXED (2026-09-17) — FEATURE BRANCH
+
+The first real deploy of plugin 1.16.0 to `mystik.ir` hit `ERR_TOO_MANY_REDIRECTS` on
+`https://mystik.ir/login/`. Root cause: `Hedayati_Login::is_login_page()` exclusively trusted a
+cached page-ID option instead of also matching by slug (the OR-based resilience `functions.php`
+already used for the same ID), and nothing stopped the computed post-login destination from ever
+resolving back to `/login/` itself if that (or any other condition — a self-referential
+`redirect_to`, a foreign `login_redirect` filter, a cached response) went stale.
+
+**Fix, plugin `1.16.0` → `1.16.1`** (`plugin/hedayati-core/includes/class-login.php` only, no
+theme change): `is_login_page()` is now OR-based; a new `points_to_login_page()` helper backs a
+structural guard in `post_login_destination()` (checked on both the requested `redirect_to` and
+the final filtered destination) and in the `wp-login.php` → `/login/` bounce — the login page can
+never be its own post-login destination, closing the loop from both directions regardless of root
+trigger. No auth semantics weakened (rate limiting, privacy-safe errors, reset-token security,
+forced-password-change, open-redirect protection all unchanged); no roles/DB/capability change.
+
+Regression coverage: `docker/wp-tests/test-manager-experience.php` §D56 (reflection-based, proves
+self-referential redirect_to + hostile login_redirect filter + normal routing all behave
+correctly) and `verify-manager-experience.js` §14 (9 new assertions). Node static **1116/0** across
+all 9 suites. Docker `Acceptance (Docker WordPress)` GREEN on the fix HEAD. See `docs/DECISIONS.md`
+D56.
+
+**Not yet re-deployed to mystik.ir** — the corrected plugin ZIP needs to replace the one uploaded
+for plugin 1.16.0; the theme ZIP is unchanged and does not need replacing.
+
+---
+
+## D55 — final content-management completion pass (2026-09-16) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
+
+Owner rule: administrator may use wp-admin; `hedayati_manager` should never need it for ordinary
+website/content operations. Four remaining gaps closed, all inside `/panel/`, all reusing existing
+WordPress storage (no new table/option, no roles/capability/DB schema change — plugin `1.15.0` →
+`1.16.0`, theme `1.4.0` → `1.5.0`, DB/roles stay `2.4.0`, 30 managed caps):
+
+1. **Teacher photos** — `Hedayati_Teacher_Panel` (`/panel/?view=teachers`) upload/replace/remove,
+   reusing the canonical Teacher CPT featured image via core `media_handle_upload()`. Same
+   `hedayati_manage_teachers` capability + per-object `edit_post` check already used there.
+2. **In-panel public-page content** — new `Hedayati_Content_Panel` (`/panel/?view=content`) edits
+   title/body of exactly the four approved Pages (about/contact/consult/teachers) via
+   `wp_update_post()` on the existing Page records; slug re-validated against a fixed whitelist on
+   every read/write — not a general Page editor.
+3. **Constrained nav/footer-link editor** — new `Hedayati_Navigation_Panel`
+   (`/panel/?view=navigation`) manages simple custom links in the `primary`/`footer` nav menu
+   locations via core `nav_menu_item` storage. `footer.php`'s hardcoded "quick links" are now a
+   real `wp_nav_menu('footer')` call (location was registered but unused since Phase 1). URLs
+   restricted to relative paths or http/https; every mutation re-verifies the item belongs to one
+   of the two managed menus.
+4. **Homepage content** — `Hedayati_Settings` gains `stat_years`/`stat_graduates`/`stat_courses`
+   (blank = hidden, never invented) and `hero_tagline` (blank = canonical copy), editable at
+   `/panel/?view=settings`. Hero `<h1>`/eyebrow/CTAs stay hardcoded to preserve the approved
+   Concept-C design.
+
+Final wp-admin audit: no ordinary `hedayati_manager` workflow (courses, teachers, teacher photos,
+course runs, students, verification, documents, consultations, certificates, materials, support,
+settings, audit, About/Consultation/Teachers-page copy, homepage content, nav/footer links) needs
+wp-admin. Only the administrator's own native CPT/Gutenberg/Customizer maintenance access remains
+there, by design.
+
+Node static: 1107/0 across all 9 suites (`verify-manager-experience.js` 194 → 231). Docker
+`Acceptance (Docker WordPress)` GREEN. Not browser-reviewed, not merged, not deployed. See
+`docs/DECISIONS.md` D55.
+
+---
+
+## D54 + product-completion pass (2026-09-16) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
+
+Owner workflow change: the integrated `mystik.ir` staging cycle is postponed on purpose — finish
+the product first, keep using static + Docker-WordPress GitHub Actions CI. Do not provision
+`HEDAYATI_DATA_ENCRYPTION_KEY` / `HEDAYATI_DATA_HMAC_KEY` / `HEDAYATI_PRIVATE_UPLOADS_DIR` yet;
+sensitive features keep failing closed without them, as before.
+
+`feature/manager-experience` HEAD `51e40ac`. Plugin **1.14.0 → 1.15.0**, theme **1.3.1 → 1.4.0**.
+DB/roles unchanged at **2.4.0**, 30 managed capabilities unchanged. Node static **1064/0** across
+all 9 suites (`verify-manager-experience.js` 184 → 188). Docker `Acceptance (Docker WordPress)`
+GREEN on every push in this pass (runs `35085266196`, `35085852811`, `35086297798`).
+
+1. **D54 — the last normal-user wp-admin dependency removed.** `Hedayati_Panel_Security`
+   (`/panel/?view=security`) and `Hedayati_Student_Portal::handle_password_save()`
+   (`/account/?view=profile`) both give every role a real current/new/confirm-password form —
+   `wp_check_password()` → `Hedayati_Account_Security::validate_new_password()` (made public,
+   shared with the forced-first-login-change screen) → `wp_set_password()` → session
+   re-established. `Hedayati_Admin_Access` no longer exempts `profile.php`; the carve-out list is
+   now just the four real transport endpoints. See `docs/DECISIONS.md` D54.
+2. **Focused `/login/` auth shell.** `Hedayati_Login::is_login_page()` made public;
+   `header.php`/`footer.php` swap the full public nav/footer for the existing `hd-auth-*` branding
+   plus a minimal copyright footer on `/login/` only. The dark-mode toggle moved into the auth
+   panel itself so it isn't lost. Template/CSS only — no auth semantics changed.
+3. **Panel/account UX audit** (source-level, general-purpose sub-agent) — one label
+   inconsistency fixed (`class-staff-portal.php` settings card now says "تنظیمات مجتمع", matching
+   the module's own title). Two minor terminology-drift / responsive-table findings documented,
+   not fixed (low severity, no functional bug — see the completion report delivered to the owner
+   in-conversation; not duplicated here).
+4. **Public-site completeness audit** — clean. No placeholder/demo text, no fake stats, no dead
+   links, no wp-admin leakage into public templates, no `reference-react/` leakage. The
+   `impact-section.php` stats panel is deliberately empty pending real institute numbers (rule 11
+   compliance, not a defect).
+5. **AI Studio final parity check** — no AI Studio feature lacks a WordPress equivalent reachable
+   from `/panel/`/`/account/`; no Hedayati feature is stranded wp-admin-only for a non-admin role;
+   no AI-Studio mock data found in production plugin code.
+6. **Two deferred v2 items, both recommended to STAY v2** (not included before staging):
+   support-ticket attachments (S effort, no new dependency, but inherits the already-unprovisioned
+   `HEDAYATI_PRIVATE_UPLOADS_DIR` prerequisite) and certificate PDF export (S for the existing
+   no-dependency print-friendly `/verify/` HTML view, which already covers the requirement; a real
+   PDF needs a new third-party dependency — AGENTS.md rule 6 requires explicit justification/
+   approval first).
+
+**Not browser-reviewed, not merged, not deployed.** PR #1 remains open against `main`.
+
+---
+
+## Manager Experience — D53 COMPLETE (2026-09-08) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
+
+Owner decision **D53**: classic wp-admin is **administrator-only**; every non-administrator
+Hedayati role uses `/panel/` (manager/reception/teacher/TA) or `/account/` (student), redirected
+out of interactive wp-admin, and **every operational workflow has an in-panel view**. PR **#1
+base = `main`** (retargeted from the stale `feature/phase-2b-academic-operations`).
+
+Delivered on `feature/manager-experience`, HEAD `399b94d`, plugin **1.10.0 → 1.14.0**:
+
+| Piece | What |
+|---|---|
+| `Hedayati_Admin_Access` | `admin_init` p1 redirect of interactive wp-admin → workspace, admin bar off. **Fully enforced** for student + teacher + teacher_assistant + reception + hedayati_manager (`hedayati_admin_redirect_roles` filter can re-tune). Transport endpoints + `profile.php` pass through. No cap revoked, no `map_meta_cap` filter, no global wp-admin disable. |
+| `Hedayati_Teacher_Panel` — `?view=teachers` | Teacher CRUD over the canonical `teacher` CPT. |
+| `Hedayati_Audit_Panel` — `?view=audit` | read-only, paginated, metadata-only. |
+| `Hedayati_Course_Panel` — `?view=course-new` / `course-edit` (**Phase C**) | full course editor over the canonical `course` CPT + all `_course_*` meta + category + featured image (existing media only) + menu_order + publish + 8-slot featured cap. |
+| `Hedayati_Academic_Panel` — `?view=academic` (**Phase E**) | course-runs / staff / sessions / enrollments / attendance / public opt-in; same Phase 2B services + capability map + `require_run_scope`; attendance batch validated before any write. Reuses `Hedayati_Academic_Admin`'s (now public) label helpers. |
+| `Hedayati_Verification_Panel` — `?view=students` reviewer actions (**Phase E**) | approve/reject, one-shot national-ID reveal, private-doc list/download/archive/purge. All Phase 2C invariants preserved (encrypted-at-rest, HMAC dup, reception-cannot-decrypt, reveal audited + never persisted, docs via the existing nonced handler, rejection note staff-only). |
+| `Hedayati_Login` + `page-login.php` + `auth.css` (**Phase F**) | branded `/login/` over `wp_signon` / `retrieve_password` / core reset tokens; `redirect_to` via `wp_validate_redirect`; enumeration-safe; `wp-login.php` bounced for normal visitors, intact for the admin. |
+
+Manager home cleaned up (module cards self-register — no more duplicate teacher/audit cards; the
+standalone audit `<aside>` removed). `page-panel.php` has **zero** wp-admin links.
+
+**Node static 940/0** (9 suites; `verify-manager-experience.js` **164/0**; also fixed a
+double-digit-minor version-regex bug in `verify-phase2c/audit-log/jalali`). **Docker CI GREEN** —
+`Acceptance (Docker WordPress)` on PR #1, run `34161338173`, HEAD `399b94d`: **686 / 0 PASS,
+cleanup verified** (D53.A–G in `docker/wp-tests/test-manager-experience.php`).
+
+**Follow-up (P3, non-blocking):** an in-panel staff account/password view so `profile.php` can be
+redirected too. NOT browser-reviewed, NOT merged, NOT deployed.
+
+## AI Studio parity modules D46–D52 (2026-09-06) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
+
+`feature/manager-experience` HEAD `6a5abf7` (docs pinned; runtime unchanged since `f6ad232`). The owner brought the whole
+`docs/AI_STUDIO_PANEL_MATRIX.md` §E set in scope; all seven are built as real WordPress
+subsystems reusing existing services (no mock data):
+
+| Module | Where | Capability | Backend |
+|---|---|---|---|
+| Consultations (D46) | public `/consult/` form → `/panel/?view=consultations` | `hedayati_manage_consultations` | `hedayati_consultations` |
+| Progress (D47) | `/account/?view=enrollments`, `?view=run` | — (role/ownership scoped) | `Hedayati_Progress_Service` (computes from sessions+attendance) |
+| Certificates (D48) | `/panel/?view=certificates`, `/account/?view=certificates`, public `/verify/` | `hedayati_manage_certificates` (mgr/admin only) | `hedayati_certificates` (UNIQUE enrollment + code) |
+| Materials (D49) | run view `#materials`, `/account/?view=enrollments` | `hedayati_manage_session_materials` (teacher/mgr) | `hedayati_session_materials` + `Hedayati_Material_Storage` |
+| Support tickets (D51) | `/panel/?view=support`, `/account/?view=support` | staff: `hedayati_manage_support_tickets`; student: `hedayati_use_support_tickets` | `hedayati_support_tickets` + `_messages` |
+| Notifications (D50) | `/account/?view=notifications` + sidebar badge | — (owner scoped) | `hedayati_notifications` |
+| In-panel settings (D52) | `/panel/?view=settings` | `hedayati_manage_settings` | canonical `Hedayati_Settings` option |
+
+Versions: plugin **1.9.0**, theme **1.3.0**, DB **2.4.0** (migration `2_4_0`, additive), ROLES
+**2.4.0** (+6 caps). Node static **876/0**. Docker `Acceptance (Docker WordPress)` run
+`34025229061`: **576/0 PASS, cleanup verified**. `Hedayati_Staff_Portal` now has a
+`hedayati_panel_module_views` registry + `guard_action()` / `redirect_notice()` helpers;
+`guard()` + `render()` both re-check module capability. NOT browser-reviewed, NOT merged, NOT
+deployed — one comprehensive visual review then one integrated staging cycle remain.
+
+## AI Studio manager panel — course/featured tabs (2026-09-06) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
+
+Recovery: the disappeared Codex WIP was preserved on `snapshot/chatgpt-work-recovery-2026-09-06`
+(`5706193`) and adopted as the `feature/manager-experience` baseline (`59ce4ee`). Nothing discarded.
+
+Owner decision **D45** (supersedes "manager uses wp-admin for launch"): the AI-Studio-style
+`/panel/` is the primary manager UX; wp-admin is a fallback. First increment on top of the recovered
+WIP: in-panel `?view=courses` + `?view=featured` (real `course` CPT + `_course_is_featured`,
+nonce + `edit_post` guarded toggles, server-side 8-slot cap), manager nav/dashboard routed to them.
+`docs/AI_STUDIO_PANEL_MATRIX.md` is the full option-by-option matrix + the 7 open owner decisions.
+Node static **769/0**. `Acceptance (Docker WordPress)` run `34023251353` on `737d970`
+(workflow_dispatch, branch pushed): **508/0, PASS, cleanup verified** — includes 11 new assertions
+for the course table, guarded toggles, reception 403, and the featured on/off round-trip. New views
+not browser-reviewed yet. Branch pushed to origin; NOT merged, NOT deployed.
+
+## AI Studio portal experience (2026-09-06) — FEATURE BRANCH, GREEN, NOT MERGED
+
+`feature/manager-experience` adapts the owner-supplied AI Studio concept into the real WordPress
+`/panel/` and `/account/`: capability-based manager shell, live non-sensitive manager KPIs, designed
+routes to implemented operations, a matching student learning dashboard, and an owner-scoped
+upcoming-class schedule derived from active enrollments and future Course Run sessions. Existing
+secured manager and student actions remain available. No schema, role, capability, or public-site
+behavior changed. Prototype-only modules are documented separately and remain unbuilt. Node static
+suites **762/0**. Runtime/browser acceptance is green: local real WordPress **499/0, PASS, cleanup
+verified**; manager/student dashboards and the student schedule were visually reviewed in Persian
+RTL at desktop/mobile widths and in light/dark modes, with no page-level mobile overflow. Not pushed,
+merged, or deployed. See D44 and `docs/AI_STUDIO_INTEGRATION.md`.
+
 Updated 2026-09-05 (Phase 3 section appended below, above Phase 2D). Canonical owner
 handoff, with independent local review recorded separately in TEST_RESULTS.md. Read this first on
 future work; update these concise files as work progresses. Code establishes what exists; the

@@ -103,10 +103,18 @@ Single option `hedayati_institute_settings` (array), option group `hedayati_inst
 | `phone_tabriz` | `sanitize_phone` | Footer |
 | `phone_tehran` | `sanitize_phone` | Footer |
 | `address_tabriz` | `sanitize_textarea_field` | Footer (`<address>`, `nl2br`) |
+| `stat_years` / `stat_graduates` / `stat_courses` (D55) | `sanitize_stat` — `Hedayati_Text::digits_to_ascii()` then keep only `\d + %`, max 12 chars | `template-parts/impact-section.php`'s `.stats-grid` — rendered ONLY when non-empty; blank keeps that statistic hidden, never an invented number |
+| `hero_tagline` (D55) | `sanitize_textarea_field`, max 400 chars | `template-parts/hero-navigator.php`'s supporting paragraph — blank means "use the canonical copy", not "hide the paragraph" (different rule than the stats) |
 
 Accessors: `Hedayati_Settings::get($key)` (string, `''` if unset/inactive) and
 `Hedayati_Settings::tel_uri($key)` → `hedayati_phone_to_tel_uri()`: preserve a leading `+`, strip
 all other non-digits, `''` if nothing dialable.
+
+D55 also added two front-end editors over EXISTING WordPress storage, not new data models:
+`Hedayati_Content_Panel` (`/panel/?view=content`) edits `post_title`/`post_content` of exactly the
+four whitelisted Pages (`about`/`contact`/`consult`/`teachers`); `Hedayati_Navigation_Panel`
+(`/panel/?view=navigation`) edits `nav_menu_item` posts belonging only to the `primary`/`footer`
+nav menu locations. Neither introduces a table, option, or duplicate content store.
 
 ---
 
@@ -477,3 +485,63 @@ creating staff member once and deleted on first render.
 
 Audit vocabulary gained object type `account` and actions `account.created`,
 `account.password_changed` (metadata only — no password, no PII; D33/D39 unchanged).
+
+## Custom tables — migration 2.4.0 (AI Studio parity modules D46–D52) ✅
+
+All dynamic-prefixed (`$wpdb->prefix . 'hedayati_…'`), additive, no DB-level FKs (service-layer
+integrity + a new `hedayati_run_deleted` cleanup hook). Business-state columns are validated
+varchars, never MySQL ENUM (D13). `CURRENT_DB_VERSION` = `2.4.0`.
+
+### `{prefix}hedayati_consultations` (D46)
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigint PK AI | |
+| `name` | varchar(190) | |
+| `phone_e164` | varchar(20) | canonical E.164, KEY |
+| `topic` | varchar(190) | optional |
+| `message` | text | ≤ 2000 chars |
+| `status` | varchar(20) | `new` / `contacted` / `closed`, KEY |
+| `staff_note` | varchar(500) | one internal note |
+| `handled_by` | bigint NULL | last staff actor |
+| `source` | varchar(30) | `public_form` |
+| `created_at`,`updated_at` | datetime | |
+
+### `{prefix}hedayati_certificates` (D48)
+
+`UNIQUE(enrollment_id)` → one certificate per enrollment (duplicate issuance impossible).
+`UNIQUE(code)`. `code` = `DH-<jalali year>-<10× crypto-random base32>`. `status` `valid` /
+`revoked`. Snapshots `title` + `recipient_name` at issue. `issued_by` / `revoked_by` / `revoked_at`
+/ `revoke_reason`. Certificates are historical — a deleted run does **not** delete them.
+
+### `{prefix}hedayati_session_materials` (D49)
+
+`run_id` (KEY), `session_id` NULL (KEY), `material_type` `link` / `note` / `file`, `title`,
+`description`, `url` (link only), `storage_key` + `original_mime` + `size_bytes` (file only —
+private store, D14 pattern, separate namespace from identity documents), `visibility` `enrolled`,
+`created_by`.
+
+### `{prefix}hedayati_support_tickets` + `{prefix}hedayati_support_messages` (D51)
+
+Ticket: `user_id` (KEY), `subject`, `category`, `status` `open` / `waiting_student` /
+`waiting_staff` / `closed` (KEY), `run_id` NULL, `last_reply_at` (KEY) + `last_reply_kind`.
+Message: `ticket_id` (KEY), `author_id`, `author_kind` `student` / `staff`, `body` (≤ 5000).
+Both cascade-deleted on `deleted_user`.
+
+### `{prefix}hedayati_notifications` (D50)
+
+`user_id` + `read_at` composite KEY (`idx_user_unread`), `type`, `subject`, `body` (≤ 500),
+`url`, `object_type` + `object_id`, `created_at` (KEY). On-site only. Cascade-deleted on
+`deleted_user`.
+
+Audit vocabulary gained object types `consultation`, `certificate`, `session_material`,
+`support_ticket`, `settings` and actions `consultation.created` / `.status_changed` /
+`.note_updated`, `certificate.issued` / `.revoked`, `material.created` / `.deleted`,
+`support.opened` / `.replied` / `.status_changed`, `settings.updated` — all metadata-only, no
+message bodies / phones / PII.
+
+## In-panel settings — new fields (D52)
+
+`Hedayati_Settings` DEFAULTS gained `institute_name` and `address_tehran` (existing option
+`hedayati_institute_settings`, same `sanitize_all()` sanitizer). `/panel/?view=settings`
+(`Hedayati_Panel_Settings`) and wp-admin Settings → هدایتی both read/write the identical option.

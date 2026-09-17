@@ -1,5 +1,64 @@
 # Test results
 
+## Manager Experience — D53 COMPLETE (2026-09-08) — STATIC + DOCKER CI GREEN, NOT MERGED
+
+Branch `feature/manager-experience`, HEAD `399b94d`, plugin **1.14.0**. PR #1 base `main`.
+
+| Check | Result |
+|---|---|
+| Node static suites | **940 / 0** across 9 suites. `verify-manager-experience.js` = **164 / 0** (sections 1–10: admin-access full-enforcement + `profile.php` carve-out + filter narrowing; teacher panel; audit panel; zero-wp-admin-leak in staff-portal + `page-panel.php`; administrator exception; course panel Phase C; academic panel Phase E; verification panel Phase E — reveal/approve/doc security; `/login/` Phase F — `wp_signon`/`retrieve_password`/core-reset-token reuse, enumeration safety, `redirect_to` validation, no wp-login branding). |
+| `php -l` on changed PHP | not run (no PHP in the agent env). Brace balance verified by the Node suite for all 6 new classes. |
+| Local real WordPress/PHP acceptance | **GitHub Actions `Acceptance (Docker WordPress)` GREEN** — run `34161338173` (HEAD `399b94d`): **686 passed / 0 failed, RESULT: PASS, cleanup verified**. New sections D53.A–G in `docker/wp-tests/test-manager-experience.php` (~110 assertions): per-role routing, full-enforcement predicate + filter narrowing, teacher CRUD + 403 + 1:1-link conflict + trash, audit read-only + metadata-only, course create/edit + meta + Shamsi date + category + featured cap + 403s, academic run/staff/session/enrollment/attendance CRUD + capacity + IDOR + attendance-batch-400 + role matrix + run-delete cascade, national-ID reveal (403-for-reception, audit +1, PII-free note, service-level decrypt denial) + approve/reject + reviewer-section self-gating, `/login/` page exists + PRG notice + reset-email re-pointing + core-key rejection + `resetpass_user()` cookie resolution. Progression of clean runs: `34154472653` (623/0) → `34157860037` (642/0) → `34159561729` (664/0) → `34160689489` (678/0) → `34161338173` (686/0). |
+| Real browser review | NOT DONE — see the "browser pages to test next" list in the handoff report. |
+| Staging / production | NOT CONTACTED. |
+
+---
+
+## Manager Experience — D53 first increment (2026-09-07) — STATIC GREEN, DOCKER CI PENDING
+
+Branch `feature/manager-experience`, plugin **1.10.0**. PR #1 base changed to `main`.
+
+| Check | Result |
+|---|---|
+| Node static suites | **951 / 0** across 9 suites. New `verify-manager-experience.js` = **75 / 0** (admin-access routing + staged enforcement + Phase-E filter, teacher-panel guards/CRUD/link-rule/trash, audit-panel read-only + metadata-only, no-wp-admin-leak, administrator exception). Fixed a latent double-digit-minor version-regex bug in `verify-phase2c.js` / `verify-audit-log.js` / `verify-jalali.js` (they rejected `1.10.0`). |
+| `php -l` on changed PHP | **not run** — no PHP in the agent environment. Brace balance verified by the Node suite for all 3 new classes. |
+| Local real WordPress/PHP acceptance | **not run here** (no Docker/WSL2), but **GitHub Actions `Acceptance (Docker WordPress)` on PR #1 is GREEN**: run `34154472653` (HEAD `e7b47b9`), **623 passed / 0 failed, RESULT: PASS, cleanup verified**. New suite `docker/wp-tests/test-manager-experience.php` (35 assertions: per-role routing + staged-enforcement predicate + Phase-E filter flip; teacher CRUD + 403s + 1:1-link conflict + safe trash; audit read-only + metadata-only). Fixed one D53-affected phase-3 assertion (manager courses view no longer exposes the wp-admin editor link). |
+| Real browser review | NOT DONE — see the "browser pages to test next" list in the handoff report. |
+| Staging / production | NOT CONTACTED. |
+
+## AI Studio manager panel — course/featured in-panel tabs (2026-09-06) — STATIC + DOCKER CI GREEN
+
+Branch `feature/manager-experience` (`59ce4ee` baseline = recovered Codex WIP):
+
+| Check | Result |
+|---|---|
+| Node static suites | **769 / 0** (`76 + 208 + 132 + 84 + 118 + 98 + 53`) — `verify-phase3.js` gained 8 assertions for the in-panel course table, nonce/capability-guarded toggles, the server-side 8-slot cap, and "editing stays in the WP editor" |
+| Local real WordPress/PHP acceptance | **CI GREEN** — `Acceptance (Docker WordPress)` run `34023251353` on `737d970` (workflow_dispatch, `feature/manager-experience`): **508 / 0, PASS, cleanup verified**. Includes 11 new assertions for the in-panel course table, nonce/capability-guarded feature+publish toggles, reception denial (no table + 403 from the handler), and the featured-flag on/off round-trip. |
+| Real browser review | NOT DONE for `?view=courses` / `?view=featured` |
+| Staging / production | NOT CONTACTED |
+
+## AI Studio parity modules — consultations/progress/certificates/materials/tickets/notifications/settings (2026-09-06, D46–D52) — STATIC + DOCKER CI GREEN
+
+Branch `feature/manager-experience`, HEAD `6a5abf7` (docs pinned; runtime unchanged since `f6ad232`):
+
+| Check | Result |
+|---|---|
+| Node static suites | **876 / 0** — adds `verify-ai-studio-modules.js` (107 assertions: file hygiene, migration 2.4.0, the 6-cap role matrix, and per-module security invariants) |
+| Docker real-WordPress acceptance | `Acceptance (Docker WordPress)` run `34025229061` on `f6ad232`: **576 / 0, PASS, cleanup verified**. `docker/wp-tests/test-ai-studio.php` adds ~70 assertions — unauthorized issue/manage denied, IDOR denied on tickets, no PII in `/verify/`, rate-limit + honeypot paths, cross-user notification isolation, progress math incl. zero-session, role-aware module navigation. |
+| Real browser review | NOT DONE (one comprehensive review planned after all modules) |
+| Staging / production | NOT CONTACTED |
+
+## AI Studio manager and student experience (2026-09-06) — GREEN LOCALLY
+
+Branch `feature/manager-experience`:
+
+| Check | Result |
+|---|---|
+| Node static suites | **762 / 0** (`76 + 208 + 132 + 84 + 111 + 98 + 53`) |
+| Local real WordPress/PHP 8.3 acceptance | **499 / 0, PASS, cleanup verified** |
+| Real browser review | `/panel/` manager home plus `/account/` student dashboard and upcoming schedule at desktop/mobile widths, Persian RTL, light/dark; no page-level mobile overflow (`scrollWidth === clientWidth`) |
+| Staging / production | NOT CONTACTED |
+
 ## Phase 3 — launch completion (2026-09-05) — GREEN
 
 Branch `feature/phase-3-launch-completion`. Baseline = the preserved Codex/ChatGPT WIP (commit
@@ -11,10 +70,10 @@ Branch `feature/phase-3-launch-completion`. Baseline = the preserved Codex/ChatG
 | `verify-phase2b.js` | 208 / 0 |
 | `verify-phase2c.js` | 132 / 0 |
 | `verify-phase2d.js` | 82 / 0 |
-| `verify-phase3.js` (new) | 103 / 0 (85 + 16 visual-completion assertions + 2 admin-toolbar regression assertions) |
+| `verify-phase3.js` (new) | 103 / 0 (historical Phase 3 result before manager-experience assertions) |
 | `verify-audit-log.js` | 98 / 0 |
 | `verify-jalali.js` | 53 / 0 |
-| **Node static total** | **750 / 0**, every process exit 0 |
+| **Node static total** | **752 / 0** after the 1.8.1 lockout hotfix, every process exit 0 |
 | `Acceptance (Docker WordPress)` GitHub Actions | run `33974539901` on the WIP baseline `7500348`: **450 / 0, PASS, cleanup verified** (first-ever real-WordPress runtime evidence for Phase 2D + launch WIP). |
 | `Acceptance (Docker WordPress)` GitHub Actions | run `33975445108` on `046bd31` (feat commit): **489 / 0, PASS** (+39 = `docker/wp-tests/test-phase-3.php`); run `33976122273` on `6c9bdac` and the current tip: **491 / 0, PASS, cleanup verified** (+2 = the duplicate-phone / orphan-row guard). |
 | PHP lint | Local PHP 8.3: changed account-security and staff-portal files pass. |

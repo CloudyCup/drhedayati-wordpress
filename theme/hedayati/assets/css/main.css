@@ -1219,11 +1219,18 @@ p {
 
 .impact-grid {
   display: grid;
-  grid-template-columns: 1fr;  /* Phase 1: single column (no stats) */
+  grid-template-columns: 1fr;  /* default: no real stats entered yet */
   gap: 48px;
   align-items: center;
   position: relative;
   z-index: 2;
+}
+
+/* D55: once the institute has entered at least one real stat, switch to the
+   two-column editorial + stats layout instead of the centered single column. */
+.impact-grid:has(.stats-grid) {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+  text-align: start;
 }
 
 /* Centered editorial block while stats are unavailable */
@@ -1231,6 +1238,47 @@ p {
   max-width: 740px;
   margin-inline: auto;
   text-align: center;
+}
+
+.impact-grid:has(.stats-grid) .impact-copy {
+  max-width: none;
+  margin-inline: 0;
+  text-align: start;
+}
+
+.impact-grid:has(.stats-grid) .impact-points {
+  justify-content: flex-start;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.045);
+  border-radius: 14px;
+  text-align: center;
+}
+
+.stat-number {
+  font-size: clamp(28px, 3.4vw, 40px);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.15;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #cbd5e1;
 }
 
 .impact-grid h2 {
@@ -2199,8 +2247,24 @@ body.admin-bar .course-sticky-card {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .impact-grid {
+  .impact-grid,
+  .impact-grid:has(.stats-grid) {
     grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .impact-grid:has(.stats-grid) .impact-copy {
+    max-width: 740px;
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .impact-grid:has(.stats-grid) .impact-points {
+    justify-content: center;
+  }
+
+  .stats-grid {
+    margin-top: 8px;
   }
 
   .cta-band .container {

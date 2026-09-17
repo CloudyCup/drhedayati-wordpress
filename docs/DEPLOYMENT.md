@@ -82,7 +82,7 @@ directly in `wp-config.php` or equivalent server config.
 |---|---|---|---|
 | `HEDAYATI_DATA_ENCRYPTION_KEY` | base64 string decoding to exactly 32 raw bytes | Any environment where national ID will be stored | The feature fails closed — `set_national_id()`/`get_national_id_decrypted()` return an error; no plaintext fallback exists |
 | `HEDAYATI_DATA_HMAC_KEY` | base64 string decoding to exactly 32 raw bytes, **independent** of the encryption key | Same as above | Same fail-closed behavior |
-| `HEDAYATI_PRIVATE_UPLOADS_DIR` | absolute filesystem path, outside the web root, writable by PHP | **Required** on any environment except local/Docker-CI (`wp_get_environment_type() !== 'local'`) | Document upload fails closed — nothing is written to disk |
+| `HEDAYATI_PRIVATE_UPLOADS_DIR` | absolute filesystem path, outside the web root, writable by PHP | **Required** on any environment except local/Docker-CI (`wp_get_environment_type() !== 'local'`) | Private-document upload **and** course-material `file` uploads (D49, `Hedayati_Material_Storage` reuses this root in its own key namespace) fail closed — nothing is written to disk. `link` / `note` materials still work without it. |
 
 Generate a key with, e.g., `openssl rand -base64 32` (run on a machine you trust, paste the output
 directly into `wp-config.php`, never into a chat/ticket/log). Never derive either key from
@@ -163,6 +163,30 @@ available) and set `HEDAYATI_PRIVATE_UPLOADS_DIR` to its exact absolute path.
    themselves.
 
 ---
+
+## Current staging candidate (2026-09-10) — `feature/manager-experience`
+
+The integrated Manager Experience (D53, Phases B–F) candidate. **This block supersedes the
+older `1.8.1` / DB `2.3.0` numbers elsewhere in this file for the current deploy.**
+
+| | Value |
+|---|---|
+| Branch / HEAD | `feature/manager-experience` @ `91e30f1` (+ theme-version-bump commit — use the tip) |
+| Plugin `HEDAYATI_CORE_VERSION` / header | **1.14.0** |
+| Theme `style.css` / `HEDAYATI_VERSION` | **1.3.1** (bumped from 1.3.0: `account.css` changed materially + new `auth.css` — asset cache-bust) |
+| `CURRENT_DB_VERSION` | **2.4.0** — D53 added **no** schema. Migration runs only if the server DB is behind 2.4.0 (the additive D46–D52 `migrate_2_4_0`: six new tables, no data transform). |
+| `ROLES_VERSION` | **2.4.0** — D53 added **no** capability. Roles sync runs only if the server is behind 2.4.0 (adds the six D46–D52 caps). |
+| Managed capability count | **30** |
+| Hedayati tables (15) | `hedayati_user_phones`; `hedayati_course_runs` / `_run_staff` / `_sessions` / `_enrollments` / `_attendance` / `_audit_log`; `hedayati_student_verification` / `_documents`; `hedayati_consultations` / `hedayati_certificates` / `hedayati_session_materials` / `hedayati_support_tickets` / `hedayati_support_messages` / `hedayati_notifications` (all `$wpdb->prefix`-prefixed) |
+| New Page created on activation / `admin_init` | `/login/` (option `hedayati_login_page_id`) — plus the existing `account` / `panel` / `about` / `contact` / `consult` / `teachers` / `verify` safety nets |
+| CI | `Acceptance (Docker WordPress)` GREEN on PR #1 — final code run `34161338173` (686/0, cleanup verified) |
+
+**Deploy order:** record the *current* on-server plugin/theme/DB/roles versions **first** (they
+may be older than the last integrated candidate — per `docs/agent/STATUS.md` no per-phase
+mystik.ir deploy happened for D45–D52). If the server DB is at `2.3.0` (or earlier), the
+`admin_init` migration + roles sync carry the additive D46–D52 gap **and** this deploy in one
+step — that is expected and safe (additive only). If the server is already at DB/roles `2.4.0`,
+this deploy is **code-only, no migration**.
 
 ## Deploy workflow (staging)
 

@@ -1,3 +1,22 @@
+<?php
+// Mirrors header.php: the focused /login/ auth shell gets a minimal
+// copyright-only footer instead of the full link-heavy public footer.
+$hd_is_auth_shell = class_exists( 'Hedayati_Login' ) && Hedayati_Login::is_login_page();
+?>
+<?php if ( $hd_is_auth_shell ) : ?>
+
+	<footer class="site-footer hd-auth-footer" id="site-footer" role="contentinfo">
+		<div class="footer-bottom container">
+			<span class="copyright">
+				&copy; <?php echo esc_html( gmdate( 'Y' ) ); ?>
+				<?php bloginfo( 'name' ); ?>
+				&mdash; <?php esc_html_e( 'کلیه حقوق محفوظ است.', 'hedayati' ); ?>
+			</span>
+		</div>
+	</footer><!-- .site-footer -->
+
+<?php else : ?>
+
 <footer class="site-footer" id="site-footer" role="contentinfo">
 	<div class="container footer-grid">
 
@@ -42,13 +61,14 @@
 		<!-- Quick links -->
 		<div class="footer-col">
 			<h3 class="footer-col-title"><?php esc_html_e( 'دسترسی سریع', 'hedayati' ); ?></h3>
-			<ul class="footer-links">
-				<li><a href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php esc_html_e( 'صفحه اصلی', 'hedayati' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/courses/' ) ); ?>"><?php esc_html_e( 'دوره‌های آموزشی', 'hedayati' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/about/' ) ); ?>"><?php esc_html_e( 'درباره مجتمع', 'hedayati' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/contact/' ) ); ?>"><?php esc_html_e( 'تماس با ما', 'hedayati' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/consult/' ) ); ?>"><?php esc_html_e( 'مشاوره ثبت‌نام', 'hedayati' ); ?></a></li>
-			</ul>
+			<?php
+			wp_nav_menu( [
+				'theme_location' => 'footer',
+				'container'      => false,
+				'items_wrap'     => '<ul class="footer-links">%3$s</ul>',
+				'fallback_cb'    => 'hedayati_footer_menu_fallback',
+			] );
+			?>
 		</div>
 
 		<!-- Departments from taxonomy -->
@@ -150,6 +170,8 @@
 	</div>
 
 </footer><!-- .site-footer -->
+
+<?php endif; ?>
 
 <?php wp_footer(); ?>
 </body>

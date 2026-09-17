@@ -1,6 +1,135 @@
 # CURRENT_STATE.md
 
-**Last documentation update:** 2026-09-05 (Phase 3) — **Phase 3 "launch completion" is implemented
+**2026-09-17 — D56: `/login/` redirect-loop fix from the mystik.ir staging candidate (plugin
+1.16.1).** The first real deploy of plugin 1.16.0 hit `ERR_TOO_MANY_REDIRECTS` on
+`https://mystik.ir/login/`. `Hedayati_Login::is_login_page()` is now OR-based (cached page ID OR
+slug, matching the resilience pattern `functions.php` already used for this ID) instead of
+exclusively trusting a cached option that could go stale. `post_login_destination()` now refuses
+to ever hand back the login page's own URL — checked on both the requested `redirect_to` and the
+final `login_redirect`-filtered result via a new `points_to_login_page()` helper — making the loop
+structurally impossible regardless of what upstream produced a self-referential destination. The
+`wp-login.php` → `/login/` bounce no longer forwards a `redirect_to` that already points at
+`/login/`. No auth semantics weakened; no roles/DB change. Theme unchanged at 1.5.0. See
+`docs/DECISIONS.md` D56.
+
+---
+
+**2026-09-16 — D55: final content-management completion pass (plugin 1.16.0, theme 1.5.0).**
+Ordinary `hedayati_manager` content/website work no longer needs wp-admin at all:
+- **Teacher photos** — `Hedayati_Teacher_Panel` at `/panel/?view=teachers` can upload/replace/
+  remove a teacher's photo (the canonical Teacher CPT featured image, via core
+  `media_handle_upload()`), gated on the existing `hedayati_manage_teachers` capability.
+- **Public-page content** — new `Hedayati_Content_Panel` (`/panel/?view=content`) edits the title/
+  body of exactly the four approved Pages (`about`/`contact`/`consult`/`teachers`) via
+  `wp_update_post()` on the existing Page records. Not a general Page editor — the slug is
+  whitelisted on every read and write.
+- **Nav/footer links** — new `Hedayati_Navigation_Panel` (`/panel/?view=navigation`) manages simple
+  custom links in the `primary` and `footer` nav menu locations, using core `nav_menu_item` storage
+  (`wp_update_nav_menu_item()`). The `footer` location existed since Phase 1 but was unused —
+  `footer.php`'s hardcoded "quick links" are now a real `wp_nav_menu('footer')` call. URLs are
+  restricted to a relative path or `http`/`https` (no `javascript:`/`data:`).
+- **Homepage content** — three homepage-statistic fields (`stat_years`/`stat_graduates`/
+  `stat_courses`, blank = hidden, never invented) and a `hero_tagline` field (blank = canonical
+  copy) added to `Hedayati_Settings`, editable at `/panel/?view=settings`. The hero `<h1>`/eyebrow/
+  CTAs stay hardcoded to preserve the approved Concept-C design.
+
+No roles/capability/DB schema change (2.4.0 / 2.4.0 / 30 caps unchanged). See `docs/DECISIONS.md`
+D55.
+
+---
+
+**2026-09-16 — D54: last normal-user wp-admin dependency removed (plugin 1.15.0).** The one
+carve-out left from D53 (`profile.php` reachable so any role could change its own password) is
+closed. `Hedayati_Panel_Security` adds `/panel/?view=security` (current/new/confirm password,
+gated on the `read` capability every panel role holds — `Hedayati_Staff_Portal::guard()` already
+requires `allowed()` first); `Hedayati_Student_Portal::handle_password_save()` adds the same form
+to `/account/?view=profile`. Both call the same `wp_check_password()` → validate → `wp_set_password()`
+sequence, reusing `Hedayati_Account_Security::validate_new_password()` (now public) so the rules
+never drift from the forced-first-login-change screen. `Hedayati_Admin_Access` no longer exempts
+`profile.php` — the redirect set (`is_interactive_admin_request()`) is now just the four real
+transport endpoints. No schema, roles, or capability change (DB/roles stay 2.4.0, 30 managed caps).
+
+**Login/auth visual polish (same pass):** `/login/` no longer renders the full public site
+header/footer (primary nav, consult CTA, account link, footer link columns) — `Hedayati_Login::is_login_page()`
+is now public, and `header.php` / `footer.php` swap them for the focused `hd-auth-*` shell already
+provided by `page-login.php` (branding, a minimal copyright-only footer). The dark-mode toggle
+button moves into the auth panel itself (`#theme-toggle` in `page-login.php`) so it isn't lost.
+Theme `1.3.1` → `1.4.0`. See `docs/DECISIONS.md` D54, `docs/ROADMAP.md`.
+
+---
+
+**2026-09-08 — Manager Experience COMPLETE on `feature/manager-experience` (D53, plugin 1.14.0).**
+Owner decision **D53** is fully delivered and **fully enforced**: classic wp-admin is an
+administrator-only interface; every non-administrator Hedayati role
+(`student` → `/account/`, `teacher` / `teacher_assistant` / `reception` / `hedayati_manager` →
+`/panel/`) is redirected out of interactive wp-admin. Zero «موقت» escape links remain.
+
+| Piece | What |
+|---|---|
+| `Hedayati_Admin_Access` | `admin_init` p1 redirect for all 5 non-admin roles; admin bar hidden; transport endpoints + `profile.php` preserved; no cap revoked, no `map_meta_cap` filter; `hedayati_admin_redirect_roles` filter can re-tune the set |
+| `?view=teachers` (`Hedayati_Teacher_Panel`) | full Teacher CRUD over the canonical `teacher` CPT |
+| `?view=audit` (`Hedayati_Audit_Panel`) | read-only, paginated, metadata-only audit viewer |
+| `?view=course-new` / `course-edit` (`Hedayati_Course_Panel`, **Phase C**) | full course editor over the canonical `course` CPT + all `_course_*` meta + category + featured image (existing media) + menu_order + publish + 8-slot featured cap |
+| `?view=academic` (`Hedayati_Academic_Panel`, **Phase E**) | course-runs / staff / sessions / enrollments / attendance / public opt-in — same Phase 2B services + capability map |
+| `?view=students` reviewer actions (`Hedayati_Verification_Panel`, **Phase E**) | approve/reject, one-shot national-ID reveal, private-doc list/download/archive/purge — every Phase 2C invariant preserved |
+| `/login/` (`Hedayati_Login` + `page-login.php` + `auth.css`, **Phase F**) | branded front-end auth over `wp_signon` / `retrieve_password` / core reset tokens; `wp-login.php` bounced for normal visitors, intact for the admin |
+
+**Node static 940/0** (9 suites; `verify-manager-experience.js` **164/0**). **Docker CI GREEN** —
+`Acceptance (Docker WordPress)` on PR #1, run `34161338173`, HEAD `399b94d`:
+**686 / 0 PASS, cleanup verified**. Versions: plugin **1.14.0**, theme **1.3.1** (bumped from 1.3.0 for asset
+cache-busting — `account.css` changed materially at the same version string; new `auth.css` +
+`page-login.php`), DB **2.4.0** / roles **2.4.0** unchanged (D53 added no schema and no
+capability). New page on activation: `/login/`. **Not browser-reviewed, not merged, not
+deployed.** Remaining follow-up: an in-panel staff account/password view (so `profile.php` can be
+redirected too) — `docs/ROADMAP.md`.
+
+---
+
+**2026-09-06 — AI Studio parity modules complete on `feature/manager-experience` (D46–D52), HEAD
+`f6ad232`.** All seven `AI_STUDIO_PANEL_MATRIX.md` §E items are now implemented as real WordPress
+subsystems (migration **2.4.0**, roles **2.4.0**, plugin **1.9.0**, theme **1.3.0**):
+consultation requests (public form + panel queue), objective student progress + attendance,
+certificates + public `/verify/` page, course/session materials, support tickets, internal
+notifications, and an in-panel institute-settings form. `/panel/` is now the primary manager UX
+with a filter-based module registry; `/account/` gained certificates / support / notifications
+views plus progress + materials in the enrolments view. No AI Studio demo/mock data reproduced.
+**Node static 876/0. Docker real-WordPress acceptance 576/0, PASS, cleanup verified** (run
+`34025229061`). Canonical docs reconciled. **Not browser-reviewed yet, not merged, not deployed** —
+one comprehensive visual review then one integrated staging cycle remain (owner plan).
+
+---
+
+**Feature work after the launch candidate (2026-09-06):** `feature/manager-experience` adapts the
+AI Studio visual system to both real WordPress portals. `/panel/` now has a unified manager home
+with real service counts and capability-gated routes to every existing secured workflow. `/account/`
+now has the matching student dashboard and a real read-only upcoming-class schedule derived only
+from the signed-in student's active enrollments and future sessions. All earlier management and
+student actions remain available. Prototype-only consultation, certificate, progress, support,
+notification, and magazine modules are not presented as built.
+
+**2026-09-06 (continued, `feature/manager-experience`):** the recovered Codex WIP was preserved
+(`snapshot/chatgpt-work-recovery-2026-09-06` @ `5706193`) and adopted as the branch baseline.
+Added on top: the AI Studio "مدیریت دوره‌ها" and "دوره‌های ویژه" tabs as **in-panel** views on
+`/panel/` (`?view=courses`, `?view=featured`) — a real `course` CPT table with search, a
+featured-only filter, and nonce + `edit_post`-guarded feature/publish toggles (the 8-slot homepage
+cap is enforced server-side). Full per-field course editing intentionally stays in the Gutenberg
+editor, opened from the row. Manager sidebar + dashboard now route to these in-panel views instead
+of wp-admin. `docs/AI_STUDIO_PANEL_MATRIX.md` is the authoritative option-by-option comparison and
+lists the seven remaining owner decisions (consultation, progress, certificates, materials,
+tickets, notifications, in-panel settings form). Node static suites **769/0**. Docker real-WordPress
+acceptance: `Acceptance (Docker WordPress)` run `34023251353` on `737d970` — **508/0, PASS, cleanup
+verified**. No browser review of the new course/featured views yet. Branch pushed to origin;
+**not merged, not deployed**. See D44/D45.
+
+Static suites (as of the schedule increment): **762/0**. Real
+WordPress runtime acceptance: **499/0, PASS, cleanup verified**. The manager and student dashboards,
+and the student schedule, were browser-reviewed at desktop/mobile widths in Persian RTL and
+light/dark modes with no page-level horizontal overflow. See D44 and
+`docs/AI_STUDIO_INTEGRATION.md`. This branch has not been merged, pushed, or deployed.
+
+**Last documentation update:** 2026-09-08 (manager-experience: D53 COMPLETE — Phases B–F, wp-admin fully administrator-only).
+
+**Prior — 2026-09-05 (Phase 3):** **Phase 3 "launch completion" is implemented
 and merged into `main`, followed by the plugin `1.8.1` lockout-expiry hotfix, with GREEN local
 WordPress acceptance (492/0) and GREEN Node static suites (752/0). STAGING VALIDATION IN PROGRESS;
 NOT deployed to production.** Phase 3 absorbs the prior Codex/ChatGPT

@@ -52,6 +52,14 @@ get_header();
 			</div>
 		<?php endif; ?>
 
+		<?php if ( 'consult' === $hd_slug && class_exists( 'Hedayati_Consultation_Service' ) ) : ?>
+			<?php Hedayati_Consultation_Service::render_public_form(); ?>
+		<?php endif; ?>
+
+		<?php if ( 'verify' === $hd_slug && class_exists( 'Hedayati_Certificate_Service' ) ) : ?>
+			<?php Hedayati_Certificate_Service::render_public_verification(); ?>
+		<?php endif; ?>
+
 		<?php if ( in_array( $hd_slug, [ 'contact', 'consult' ], true ) && class_exists( 'Hedayati_Settings' ) ) : ?>
 			<?php if ( 'consult' === $hd_slug ) : ?>
 				<p class="hd-page-lead"><?php esc_html_e( 'برای انتخاب دوره، بررسی پیش‌نیازها و اطلاع از زمان ثبت‌نام با مجتمع تماس بگیرید.', 'hedayati' ); ?></p>
