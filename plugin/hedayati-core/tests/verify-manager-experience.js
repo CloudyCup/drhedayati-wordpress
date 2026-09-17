@@ -460,6 +460,26 @@ assert('theme version >= 1.5.0 (D55)', (() => {
 	return m && (Number(m[1]) > 1 || (Number(m[1]) === 1 && Number(m[2]) >= 5));
 })());
 
+// ── 14. D56 — /login/ redirect-loop fix (mystik.ir staging bug) ───────────
+
+console.log('\n14. D56 — /login/ can never redirect back to itself:');
+const loginPhp = readPlugin('includes/class-login.php');
+const loginPhpCode = codeOnly(loginPhp);
+{
+	const b = braces(loginPhp);
+	assert(`class-login.php braces balanced (${b.ob}/${b.cb})`, b.balanced);
+}
+assert('is_login_page() is OR-based (cached ID OR slug) — matches the resilience pattern functions.php already used for this same ID, no longer an exclusive/fragile ID-only check', /function is_login_page\(\): bool \{\s*\$id = self::get_page_id\(\);\s*return \( \$id > 0 && is_page\( \$id \) \) \|\| is_page\( self::PAGE_SLUG \);/.test(loginPhpCode));
+assert('a new points_to_login_page() helper exists, path-only comparison (query string ignored, trailing slash normalized)', loginPhp.includes('private static function points_to_login_page( string $url ): bool') && loginPhpCode.includes('trailingslashit( $path ) === trailingslashit( $login_path )'));
+assert('post_login_destination() checks points_to_login_page() on the incoming requested redirect_to', /post_login_destination[\s\S]{0,200}if \( self::points_to_login_page\( \$requested \) \) \{\s*\$requested = '';/.test(loginPhpCode));
+assert('post_login_destination() ALSO checks points_to_login_page() on the FINAL filtered destination (closes the loop even if a login_redirect filter — ours or a third party\'s — is what produced it)', /post_login_destination[\s\S]{0,900}if \( self::points_to_login_page\( \$dest \) \) \{\s*\$dest = \$admin_fallback;/.test(loginPhpCode));
+assert('the wp-login.php bounce never forwards a redirect_to that already points at /login/ (closes the loop from the other direction)', /maybe_bounce_wp_login[\s\S]{0,700}if \( ! self::points_to_login_page\( \$redirect_to \) \) \{\s*\$target = add_query_arg\( 'redirect_to'/.test(loginPhpCode));
+assert('the fix is structural, not a capability/role change — no new capability, no roles/DB version bump referenced in this file', !/hedayati_manage|CURRENT_DB_VERSION|ROLES_VERSION/.test(loginPhpCode));
+
+const dockerLoginTest = fs.readFileSync(path.join(PLUGIN_ROOT, '..', '..', 'docker', 'wp-tests', 'test-manager-experience.php'), 'utf8');
+assert('a Docker runtime regression test proves post_login_destination() never resolves to /login/ (self-referential redirect_to, hostile login_redirect filter, administrator + student)', dockerLoginTest.includes("D56 — post-login destination can never be /login/ itself") && dockerLoginTest.includes("'points_to_login_page'") && dockerLoginTest.includes("'post_login_destination'") && dockerLoginTest.includes('$evil_filter'));
+assert('the regression test also proves normal (non-adversarial) student routing is unaffected by the fix', dockerLoginTest.includes('normal student post-login routing is untouched by the fix'));
+
 console.log(`\n========================================`);
 console.log(`MANAGER EXPERIENCE SUMMARY: ${passed} PASSED, ${failed} FAILED`);
 console.log(`========================================`);

@@ -91,10 +91,26 @@ class Hedayati_Login {
 		return add_query_arg( $args, home_url( '/' . self::PAGE_SLUG . '/' ) );
 	}
 
-	/** Re-exposed so header.php/footer.php can swap the public site chrome for the focused auth shell. */
+	/**
+	 * Re-exposed so header.php/footer.php can swap the public site chrome for
+	 * the focused auth shell.
+	 *
+	 * D56 fix: matches ONE of (cached page ID, slug) instead of exclusively
+	 * trusting the cached `hedayati_login_page_id` option whenever it happens
+	 * to be set. The old exclusive form went stale — and silently returned
+	 * `false` for a genuine `/login/` view — whenever the stored ID pointed at
+	 * a no-longer-current post (a stale option value, a page recreated after
+	 * being trashed, etc.). `Hedayati_Login::handle()` is this page's ONLY
+	 * gate that stops an authenticated visitor's request from falling through
+	 * to a normal page render; a false negative here is what turns a single
+	 * post-login redirect into a loop (see docs/DECISIONS.md D56). This is the
+	 * same OR-based resilience `functions.php` already uses for this exact ID
+	 * (`( $hd_login_id > 0 && is_page( $hd_login_id ) ) || is_page( 'login' )`)
+	 * — `Hedayati_Login` itself was the one place NOT following that pattern.
+	 */
 	public static function is_login_page(): bool {
 		$id = self::get_page_id();
-		return $id > 0 ? is_page( $id ) : is_page( self::PAGE_SLUG );
+		return ( $id > 0 && is_page( $id ) ) || is_page( self::PAGE_SLUG );
 	}
 
 	// ── wp-login.php → /login/ bounce ───────────────────────────────────────
@@ -119,7 +135,13 @@ class Hedayati_Login {
 			: self::url();
 
 		if ( isset( $_GET['redirect_to'] ) && is_string( $_GET['redirect_to'] ) ) {
-			$target = add_query_arg( 'redirect_to', rawurlencode( wp_unslash( $_GET['redirect_to'] ) ), $target );
+			$redirect_to = wp_unslash( $_GET['redirect_to'] );
+			// D56: never forward a redirect_to that already points at /login/
+			// itself — this bounce (wp-login.php -> /login/) must terminate in
+			// exactly one hop, so it cannot become the OTHER half of a loop.
+			if ( ! self::points_to_login_page( $redirect_to ) ) {
+				$target = add_query_arg( 'redirect_to', rawurlencode( $redirect_to ), $target );
+			}
 		}
 
 		wp_safe_redirect( $target );
@@ -214,20 +236,56 @@ class Hedayati_Login {
 	 * Where a freshly authenticated user lands: the validated `redirect_to` if it
 	 * is a safe local URL, otherwise the role workspace via the existing
 	 * `login_redirect` filter chain.
+	 *
+	 * D56: this is the ONLY place `handle()`'s "already authenticated" branch
+	 * ever redirects to, so it is the structural choke point for a redirect
+	 * loop on /login/ — a request-level bug (a stale is_login_page() result,
+	 * a redirect_to that itself points at /login/, a third-party
+	 * login_redirect filter, a cached response) can only ever loop if THIS
+	 * function is allowed to hand back the login page's own URL. It never is:
+	 * every candidate destination — the requested redirect_to AND the final
+	 * filtered result — is checked against points_to_login_page() and
+	 * replaced with a safe non-login fallback if it matches. This makes the
+	 * loop structurally impossible regardless of what upstream produced it.
 	 */
 	private static function post_login_destination( WP_User $user, string $requested ): string {
 		$requested = wp_validate_redirect( $requested, '' );
-
-		if ( user_can( $user, 'manage_options' ) ) {
-			$fallback = '' !== $requested ? $requested : admin_url();
-		} else {
-			$fallback = '' !== $requested ? $requested : home_url( '/' );
+		if ( self::points_to_login_page( $requested ) ) {
+			$requested = '';
 		}
+
+		$admin_fallback = user_can( $user, 'manage_options' ) ? admin_url() : home_url( '/' );
+		$fallback        = '' !== $requested ? $requested : $admin_fallback;
 
 		/** Same filter wp-login.php fires — Hedayati_Auth_UI / Hedayati_Staff_Portal route by role. */
 		$dest = apply_filters( 'login_redirect', $fallback, $requested, $user );
+		$dest = wp_validate_redirect( $dest, home_url( '/' ) );
 
-		return wp_validate_redirect( $dest, home_url( '/' ) );
+		if ( self::points_to_login_page( $dest ) ) {
+			$dest = $admin_fallback;
+		}
+
+		return $dest;
+	}
+
+	/**
+	 * True if $url — local or not, any scheme/host — resolves to the /login/
+	 * page's own path (query string ignored). Compares paths only, trailing
+	 * slash normalized, so `/login`, `/login/`, and `/login/?x=y` all match.
+	 */
+	private static function points_to_login_page( string $url ): bool {
+		if ( '' === $url ) {
+			return false;
+		}
+
+		$path = (string) wp_parse_url( $url, PHP_URL_PATH );
+		if ( '' === $path ) {
+			return false;
+		}
+
+		$login_path = (string) wp_parse_url( self::url(), PHP_URL_PATH );
+
+		return trailingslashit( $path ) === trailingslashit( $login_path );
 	}
 
 	// ── login ──────────────────────────────────────────────────────────────

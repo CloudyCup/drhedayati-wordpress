@@ -1,5 +1,19 @@
 # CURRENT_STATE.md
 
+**2026-09-17 — D56: `/login/` redirect-loop fix from the mystik.ir staging candidate (plugin
+1.16.1).** The first real deploy of plugin 1.16.0 hit `ERR_TOO_MANY_REDIRECTS` on
+`https://mystik.ir/login/`. `Hedayati_Login::is_login_page()` is now OR-based (cached page ID OR
+slug, matching the resilience pattern `functions.php` already used for this ID) instead of
+exclusively trusting a cached option that could go stale. `post_login_destination()` now refuses
+to ever hand back the login page's own URL — checked on both the requested `redirect_to` and the
+final `login_redirect`-filtered result via a new `points_to_login_page()` helper — making the loop
+structurally impossible regardless of what upstream produced a self-referential destination. The
+`wp-login.php` → `/login/` bounce no longer forwards a `redirect_to` that already points at
+`/login/`. No auth semantics weakened; no roles/DB change. Theme unchanged at 1.5.0. See
+`docs/DECISIONS.md` D56.
+
+---
+
 **2026-09-16 — D55: final content-management completion pass (plugin 1.16.0, theme 1.5.0).**
 Ordinary `hedayati_manager` content/website work no longer needs wp-admin at all:
 - **Teacher photos** — `Hedayati_Teacher_Panel` at `/panel/?view=teachers` can upload/replace/

@@ -837,3 +837,52 @@ publish real statistics once the institute has them. None of those are "WordPres
 
 **Scope discipline:** no roles/capability schema change, no DB schema change (plugin `1.15.0` →
 `1.16.0`, theme `1.4.0` → `1.5.0`, DB/roles stay `2.4.0`, 30 managed capabilities).
+
+---
+
+## D56 — Fix a `/login/` redirect loop found on the mystik.ir staging candidate (2026-09-17)
+
+**Bug:** the first real deploy of D53–D55 to `mystik.ir` (plugin `1.16.0`) hit
+`ERR_TOO_MANY_REDIRECTS` on `https://mystik.ir/login/`. Full source audit of every login/auth
+redirect path (`Hedayati_Login`, `Hedayati_Auth_UI`, `Hedayati_Staff_Portal::login_redirect`,
+`Hedayati_Admin_Access`, every `template_redirect`/`login_init` hook, every `wp_login_url`/
+`login_url` filter, `page-login.php`, the forced-first-login screen, `redirect_to` handling) found
+no unconditional redirect on a genuine anonymous `GET /login/` — the loop requires a request whose
+computed post-login destination resolves back to `/login/` itself. Two contributing weaknesses,
+both real and both fixed:
+
+1. **`Hedayati_Login::is_login_page()` trusted a cached page-ID option (`hedayati_login_page_id`)
+   exclusively** instead of also matching by slug. `theme/hedayati/functions.php` already used the
+   safer OR form for this exact same ID (`( $hd_login_id > 0 && is_page( $hd_login_id ) ) ||
+   is_page( 'login' )`) — `Hedayati_Login` itself was the one place NOT following that pattern. A
+   stale/mismatched ID (e.g. after the option was set from an earlier attempt) makes this return
+   `false` for a genuine `/login/` view, which is the ONLY thing standing between an authenticated
+   visitor's request and `handle()`'s post-login redirect firing correctly.
+2. **Nothing stopped the computed post-login destination from ever being `/login/` itself.** If
+   anything upstream — a stale `is_login_page()` result, a `redirect_to` that already points at
+   `/login/`, a foreign `login_redirect` filter, a cached response — ever produced `/login/` as the
+   destination, `Hedayati_Login::handle()`'s "already authenticated" branch would redirect there,
+   `handle()` would run again, and nothing would break the cycle.
+
+**Fix (`plugin/hedayati-core/includes/class-login.php`, plugin `1.16.0` → `1.16.1`):**
+- `is_login_page()` is now OR-based, matching `functions.php`'s existing pattern.
+- A new `points_to_login_page( string $url ): bool` helper compares the URL's PATH only (query
+  string ignored, trailing slash normalized) against the login page's own path.
+- `post_login_destination()` now checks `points_to_login_page()` on BOTH the incoming requested
+  `redirect_to` AND the final `login_redirect`-filtered destination, substituting a safe non-login
+  fallback (`admin_url()` for an administrator, `home_url('/')` otherwise) whenever either matches.
+  This makes the loop structurally impossible regardless of which upstream condition produced a
+  self-referential destination — the fix does not depend on correctly diagnosing every possible
+  trigger, only on the one invariant that actually matters: **the login page must never be its own
+  post-login destination.**
+- `maybe_bounce_wp_login()` (the `wp-login.php` → `/login/` bounce) no longer forwards a
+  `redirect_to` that already points at `/login/`, closing the loop from the other direction too.
+
+**Regression coverage:** `docker/wp-tests/test-manager-experience.php` §D56 directly invokes
+`points_to_login_page()` and `post_login_destination()` via reflection — proving a self-referential
+`redirect_to` (student and administrator), a hostile `login_redirect` filter that always returns
+`/login/`, and normal non-adversarial student routing (still lands on `/account/`) all behave
+correctly. `plugin/hedayati-core/tests/verify-manager-experience.js` §14 asserts the structural
+fix exists in source. No authentication/security semantics weakened: rate limiting, privacy-safe
+errors, reset-token security, the forced-password-change flow, and open-redirect protection
+(`wp_validate_redirect()`) are all unchanged. No roles/capability/DB schema change.

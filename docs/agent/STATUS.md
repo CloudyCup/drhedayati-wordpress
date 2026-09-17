@@ -1,5 +1,33 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
+## D56 — mystik.ir staging bug: `/login/` redirect loop, FIXED (2026-09-17) — FEATURE BRANCH
+
+The first real deploy of plugin 1.16.0 to `mystik.ir` hit `ERR_TOO_MANY_REDIRECTS` on
+`https://mystik.ir/login/`. Root cause: `Hedayati_Login::is_login_page()` exclusively trusted a
+cached page-ID option instead of also matching by slug (the OR-based resilience `functions.php`
+already used for the same ID), and nothing stopped the computed post-login destination from ever
+resolving back to `/login/` itself if that (or any other condition — a self-referential
+`redirect_to`, a foreign `login_redirect` filter, a cached response) went stale.
+
+**Fix, plugin `1.16.0` → `1.16.1`** (`plugin/hedayati-core/includes/class-login.php` only, no
+theme change): `is_login_page()` is now OR-based; a new `points_to_login_page()` helper backs a
+structural guard in `post_login_destination()` (checked on both the requested `redirect_to` and
+the final filtered destination) and in the `wp-login.php` → `/login/` bounce — the login page can
+never be its own post-login destination, closing the loop from both directions regardless of root
+trigger. No auth semantics weakened (rate limiting, privacy-safe errors, reset-token security,
+forced-password-change, open-redirect protection all unchanged); no roles/DB/capability change.
+
+Regression coverage: `docker/wp-tests/test-manager-experience.php` §D56 (reflection-based, proves
+self-referential redirect_to + hostile login_redirect filter + normal routing all behave
+correctly) and `verify-manager-experience.js` §14 (9 new assertions). Node static **1116/0** across
+all 9 suites. Docker `Acceptance (Docker WordPress)` GREEN on the fix HEAD. See `docs/DECISIONS.md`
+D56.
+
+**Not yet re-deployed to mystik.ir** — the corrected plugin ZIP needs to replace the one uploaded
+for plugin 1.16.0; the theme ZIP is unchanged and does not need replacing.
+
+---
+
 ## D55 — final content-management completion pass (2026-09-16) — FEATURE BRANCH, static + Docker CI GREEN, NOT MERGED
 
 Owner rule: administrator may use wp-admin; `hedayati_manager` should never need it for ordinary

@@ -511,4 +511,59 @@ function hdit_run_manager_experience(): void {
 		unset( $_COOKIE[ 'wp-resetpass-' . COOKIEHASH ] );
 	}
 
+	// ── D56 — /login/ redirect-loop regression (mystik.ir staging bug) ──────
+	// Root cause: Hedayati_Login::is_login_page() trusted a CACHED page-ID
+	// option exclusively instead of ALSO matching by slug (the resilient
+	// OR-based pattern functions.php already used for this same ID). A stale
+	// ID made it return false for a genuine /login/ view, and nothing
+	// downstream stopped a computed post-login destination from ever being
+	// /login/ itself — so any trigger that produced a self-referential
+	// destination (a stale option, a hostile/foreign login_redirect filter, a
+	// redirect_to of /login/ echoed back by the wp-login.php bounce) turned
+	// one redirect into a loop. The fix is structural: post_login_destination()
+	// now refuses to ever return the login page's own URL, regardless of what
+	// produced it — proven directly below, independent of is_login_page()'s
+	// own OR-based fix (also independently regression-proof, per the `/login/`
+	// page-exists check above, which already only passes when the slug match
+	// half of that OR is reachable).
+	HDIT::section( 'D56 — post-login destination can never be /login/ itself (redirect-loop fix)' );
+
+	$points = new ReflectionMethod( 'Hedayati_Login', 'points_to_login_page' );
+	$points->setAccessible( true );
+
+	HDIT::ok( 'points_to_login_page() matches the login page URL itself', $points->invoke( null, Hedayati_Login::url() ) );
+	HDIT::ok( 'points_to_login_page() matches it with a query string appended', $points->invoke( null, Hedayati_Login::url( [ 'redirect_to' => '/panel/' ] ) ) );
+	HDIT::ok( 'points_to_login_page() matches it without a trailing slash', $points->invoke( null, home_url( '/login' ) ) );
+	HDIT::ok( 'points_to_login_page() does NOT match a different real page', ! $points->invoke( null, home_url( '/panel/' ) ) );
+	HDIT::ok( 'points_to_login_page() does NOT match an empty string', ! $points->invoke( null, '' ) );
+
+	$dest = new ReflectionMethod( 'Hedayati_Login', 'post_login_destination' );
+	$dest->setAccessible( true );
+
+	// The exact "already-logged-in visit to /login/" loop scenario: the
+	// requested redirect_to is /login/ itself.
+	$student_user = get_userdata( $stu );
+	$loop_dest    = $dest->invoke( null, $student_user, Hedayati_Login::url() );
+	HDIT::ok( 'a student whose OWN requested redirect_to is /login/ never gets sent back to /login/', ! $points->invoke( null, $loop_dest ) );
+
+	$admin_user       = get_userdata( $adm );
+	$loop_dest_admin = $dest->invoke( null, $admin_user, Hedayati_Login::url( [ 'redirect_to' => '/wp-admin/' ] ) );
+	HDIT::ok( 'an administrator in the same self-referential scenario also never gets sent back to /login/', ! $points->invoke( null, $loop_dest_admin ) );
+
+	// A hostile/foreign login_redirect filter that always points back at
+	// /login/ — proves the SECOND guard (after apply_filters) closes the loop
+	// even when a filter (ours or a third party's), not the requested
+	// redirect_to, is what produced the bad destination.
+	$evil_filter = static fn () => Hedayati_Login::url();
+	add_filter( 'login_redirect', $evil_filter, 999 );
+	$loop_dest_filtered = $dest->invoke( null, $student_user, '' );
+	remove_filter( 'login_redirect', $evil_filter, 999 );
+	HDIT::ok( 'a login_redirect filter that resolves to /login/ is overridden — the login page is never its own post-login destination', ! $points->invoke( null, $loop_dest_filtered ) );
+
+	// Sanity: the normal (non-adversarial) routing this fix must NOT disturb.
+	wp_set_current_user( $stu );
+	$normal_student_dest = $dest->invoke( null, $student_user, '' );
+	HDIT::ok( 'normal student post-login routing is untouched by the fix (still lands on /account/, not /login/)', str_contains( $normal_student_dest, '/account/' ) && ! $points->invoke( null, $normal_student_dest ) );
+	wp_set_current_user( 0 );
+
 }
