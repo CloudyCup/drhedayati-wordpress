@@ -190,12 +190,16 @@ class Hedayati_Student_Portal {
 	}
 
 	private static function render_dashboard_view( int $user_id ): string {
-		$status       = Hedayati_Verification_Service::get_status( $user_id );
-		$enrollments  = Hedayati_Enrollment_Service::list_for_user( $user_id );
-		$documents    = Hedayati_Document_Service::list_for_user( $user_id );
-		$active_count = count( array_filter( $enrollments, static fn( $e ) => 'active' === $e['status'] ) );
-		$active       = array_values( array_filter( $enrollments, static fn( $e ) => 'active' === $e['status'] ) );
-		$upcoming     = self::upcoming_sessions_for_user( $user_id );
+		$status   = Hedayati_Verification_Service::get_status( $user_id );
+		$active   = array_values( array_filter( Hedayati_Enrollment_Service::list_for_user( $user_id ), static fn( $e ) => 'active' === $e['status'] ) );
+		$upcoming = self::upcoming_sessions_for_user( $user_id );
+		$certs    = array_values( array_filter( Hedayati_Certificate_Service::list_for_user( $user_id ), static fn( $c ) => 'valid' === $c['status'] ) );
+
+		// First upcoming session per run — the "next session" of each course row.
+		$next_by_run = [];
+		foreach ( $upcoming as $session ) {
+			$next_by_run[ $session['run_id'] ] ??= $session;
+		}
 
 		$display_name = wp_get_current_user()->display_name;
 
@@ -205,43 +209,76 @@ class Hedayati_Student_Portal {
 			<div><span class="hd-manager-eyebrow"><?php esc_html_e( 'میز کار آموزشی', 'hedayati-core' ); ?></span>
 			<h1 class="hd-portal-title"><?php esc_html_e( 'داشبورد یادگیری', 'hedayati-core' ); ?></h1>
 			<?php if ( '' !== $display_name ) : ?>
-			<p class="hd-portal-note">
+			<p class="hd-portal-note screen-reader-text">
 				<?php
-				/* translators: %s: student display name */
+				/* translators: %s: student display name (also shown visibly in the top bar) */
 				printf( esc_html__( 'خوش آمدید، %s.', 'hedayati-core' ), esc_html( $display_name ) );
 				?>
 			</p>
 			<?php endif; ?></div>
-			<a class="hd-student-catalog" href="<?php echo esc_url( home_url( '/courses/' ) ); ?>"><?php esc_html_e( 'مشاهدهٔ دوره‌ها', 'hedayati-core' ); ?></a>
+			<a class="hd-student-catalog" href="<?php echo esc_url( home_url( '/courses/' ) ); ?>"><?php esc_html_e( 'مشاهدهٔ کاتالوگ دوره‌ها', 'hedayati-core' ); ?></a>
 		</header>
-		<div class="hd-portal-cards hd-student-kpis">
-			<div class="hd-portal-card">
-				<span class="hd-portal-card-label"><?php esc_html_e( 'وضعیت احراز هویت', 'hedayati-core' ); ?></span>
-				<span class="hd-portal-card-value"><?php echo esc_html( self::verification_status_label( $status['status'] ) ); ?></span>
-			</div>
-			<div class="hd-portal-card">
-				<span class="hd-portal-card-label"><?php esc_html_e( 'دوره‌های فعال', 'hedayati-core' ); ?></span>
-				<span class="hd-portal-card-value"><?php echo esc_html( Hedayati_Text::digits_to_persian( (string) $active_count ) ); ?></span>
-			</div>
-			<div class="hd-portal-card">
-				<span class="hd-portal-card-label"><?php esc_html_e( 'مدارک ثبت‌شده', 'hedayati-core' ); ?></span>
-				<span class="hd-portal-card-value"><?php echo esc_html( Hedayati_Text::digits_to_persian( (string) count( $documents ) ) ); ?></span>
-			</div>
-		</div>
+
+		<?php if ( 'verified' !== $status['status'] ) : ?>
+			<a class="hd-student-verify-strip" href="<?php echo esc_url( self::get_account_url( 'verification' ) ); ?>">
+				<span><?php esc_html_e( 'وضعیت احراز هویت', 'hedayati-core' ); ?>: <b><?php echo esc_html( self::verification_status_label( $status['status'] ) ); ?></b></span>
+				<span><?php esc_html_e( 'مشاهده و تکمیل', 'hedayati-core' ); ?> ‹</span>
+			</a>
+		<?php endif; ?>
 
 		<div class="hd-student-dashboard-grid">
 			<section class="hd-student-learning">
-				<div class="hd-student-section-heading"><div><span><?php esc_html_e( 'در حال یادگیری', 'hedayati-core' ); ?></span><h2><?php esc_html_e( 'دوره‌های فعال شما', 'hedayati-core' ); ?></h2></div><a href="<?php echo esc_url( self::get_account_url( 'enrollments' ) ); ?>"><?php esc_html_e( 'مشاهدهٔ همه', 'hedayati-core' ); ?></a></div>
+				<div class="hd-student-section-heading">
+					<div><span class="hd-student-chip"><?php esc_html_e( 'در حال یادگیری', 'hedayati-core' ); ?></span><h2><?php esc_html_e( 'دوره‌های فعال شما', 'hedayati-core' ); ?></h2></div>
+					<a href="<?php echo esc_url( self::get_account_url( 'enrollments' ) ); ?>"><?php esc_html_e( 'مشاهدهٔ همه', 'hedayati-core' ); ?> ‹</a>
+				</div>
 				<?php if ( empty( $active ) ) : ?>
 					<p class="hd-portal-note"><?php esc_html_e( 'در حال حاضر دورهٔ فعالی برای شما ثبت نشده است.', 'hedayati-core' ); ?></p>
 				<?php else : ?>
 					<div class="hd-student-course-list">
-					<?php foreach ( array_slice( $active, 0, 3 ) as $enrollment ) :
+					<?php foreach ( array_slice( $active, 0, 4 ) as $enrollment ) :
 						$run = Hedayati_Course_Run_Service::get( (int) $enrollment['run_id'] );
 						if ( null === $run ) { continue; }
-						$title = get_the_title( $run['course_id'] ) ?: sprintf( '#%d', $run['course_id'] );
+						$title    = get_the_title( $run['course_id'] ) ?: sprintf( '#%d', $run['course_id'] );
+						$progress = Hedayati_Progress_Service::run_progress( (int) $run['id'] );
+						$percent  = Hedayati_Progress_Service::percent( $progress['ratio'] );
+						$next     = $next_by_run[ (int) $run['id'] ] ?? null;
+						if ( null !== $next ) {
+							$subline = $next['topic'];
+						} elseif ( $progress['total'] > 0 ) {
+							/* translators: 1: held sessions, 2: total sessions */
+							$subline = sprintf( __( '%1$s از %2$s جلسه برگزار شده', 'hedayati-core' ), Hedayati_Text::digits_to_persian( (string) $progress['held'] ), Hedayati_Text::digits_to_persian( (string) $progress['total'] ) );
+						} else {
+							$subline = $title;
+						}
 						?>
-						<a href="<?php echo esc_url( self::get_account_url( 'enrollments' ) ); ?>"><span class="hd-student-course-mark"><?php echo esc_html( Hedayati_Text::digits_to_persian( (string) mb_substr( $title, 0, 2 ) ) ); ?></span><span><strong><?php echo esc_html( $run['label'] ?: $title ); ?></strong><small><?php echo esc_html( $title ); ?></small></span><b aria-hidden="true">‹</b></a>
+						<a class="hd-student-course-row" href="<?php echo esc_url( self::get_account_url( 'enrollments' ) ); ?>">
+							<span class="hd-student-course-mark" aria-hidden="true"><?php echo esc_html( mb_substr( $title, 0, 2 ) ); ?></span>
+							<span class="hd-student-course-info">
+								<span class="hd-student-course-top">
+									<strong><?php echo esc_html( $run['label'] ?: $title ); ?></strong>
+									<em><?php
+									if ( null === $percent ) {
+										esc_html_e( 'برنامهٔ جلسات ثبت نشده', 'hedayati-core' );
+									} else {
+										/* translators: %s: percent of held sessions */
+										echo esc_html( sprintf( __( '٪%s پیشرفت', 'hedayati-core' ), Hedayati_Text::digits_to_persian( (string) $percent ) ) );
+									}
+									?></em>
+								</span>
+								<?php if ( null !== $percent ) : ?>
+									<span class="hd-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?php echo esc_attr( (string) $percent ); ?>"><i style="width:<?php echo esc_attr( (string) $percent ); ?>%"></i></span>
+								<?php endif; ?>
+								<small><?php echo esc_html( $subline ); ?></small>
+							</span>
+							<span class="hd-student-course-next">
+								<?php if ( null !== $next ) : ?>
+									<small><?php esc_html_e( 'جلسهٔ بعدی', 'hedayati-core' ); ?></small>
+									<b><?php echo esc_html( Hedayati_Jalali::format( substr( $next['starts_at'], 0, 10 ) ) ); ?></b>
+								<?php endif; ?>
+							</span>
+							<b class="hd-student-course-go" aria-hidden="true">‹</b>
+						</a>
 					<?php endforeach; ?>
 					</div>
 				<?php endif; ?>
@@ -252,22 +289,59 @@ class Hedayati_Student_Portal {
 				<?php if ( empty( $upcoming ) ) : ?>
 					<h2><?php esc_html_e( 'برنامه‌ای ثبت نشده', 'hedayati-core' ); ?></h2>
 					<p><?php esc_html_e( 'جلسهٔ آینده پس از ثبت برنامهٔ دورهٔ اجرایی در اینجا نمایش داده می‌شود.', 'hedayati-core' ); ?></p>
-				<?php else : $next = $upcoming[0]; ?>
+				<?php else :
+					$next     = $upcoming[0];
+					$day      = substr( $next['starts_at'], 0, 10 );
+					$today    = current_time( 'Y-m-d' );
+					$tomorrow = gmdate( 'Y-m-d', strtotime( $today . ' +1 day' ) );
+					if ( $day === $today ) {
+						$when = __( 'امروز', 'hedayati-core' );
+					} elseif ( $day === $tomorrow ) {
+						$when = __( 'فردا', 'hedayati-core' );
+					} else {
+						$when = Hedayati_Jalali::format( $day );
+					}
+					$range = '' !== $next['ends_at'] ? substr( $next['starts_at'], 11, 5 ) . ' تا ' . substr( $next['ends_at'], 11, 5 ) : '';
+					?>
 					<h2><?php echo esc_html( $next['course_title'] ); ?></h2>
-					<p><?php echo esc_html( $next['topic'] ); ?></p>
-					<strong dir="ltr"><?php echo esc_html( substr( $next['starts_at'], 11, 5 ) ); ?></strong>
-					<p dir="ltr"><?php echo esc_html( Hedayati_Jalali::format( $next['starts_at'], true, false ) ); ?></p>
+					<p><?php
+					/* translators: %s: session topic */
+					printf( esc_html__( 'مبحث: %s', 'hedayati-core' ), esc_html( $next['topic'] ) );
+					?></p>
+					<strong class="hd-student-big-time"><?php echo esc_html( Hedayati_Text::digits_to_persian( substr( $next['starts_at'], 11, 5 ) ) ); ?></strong>
+					<p><?php echo esc_html( $when . ( '' !== $range ? ' — ' . Hedayati_Text::digits_to_persian( $range ) : '' ) ); ?></p>
 				<?php endif; ?>
 				<a href="<?php echo esc_url( self::get_account_url( 'schedule' ) ); ?>"><?php esc_html_e( 'مشاهدهٔ برنامهٔ دوره‌های اجرایی', 'hedayati-core' ); ?></a>
 			</aside>
 		</div>
 
-		<h2 class="hd-portal-subtitle"><?php esc_html_e( 'دسترسی سریع', 'hedayati-core' ); ?></h2>
-		<div class="hd-portal-cards">
-			<a class="hd-portal-card" href="<?php echo esc_url( self::get_account_url( 'enrollments' ) ); ?>"><?php esc_html_e( 'دوره‌ها و جلسات من', 'hedayati-core' ); ?></a>
-			<a class="hd-portal-card" href="<?php echo esc_url( self::get_account_url( 'documents' ) ); ?>"><?php esc_html_e( 'بارگذاری و مشاهدهٔ مدارک', 'hedayati-core' ); ?></a>
-			<a class="hd-portal-card" href="<?php echo esc_url( self::get_account_url( 'profile' ) ); ?>"><?php esc_html_e( 'ویرایش پروفایل و شمارهٔ موبایل', 'hedayati-core' ); ?></a>
-		</div>
+		<nav class="hd-student-bottom-grid" aria-label="<?php esc_attr_e( 'دسترسی سریع', 'hedayati-core' ); ?>">
+			<a class="hd-student-feature-card" href="<?php echo esc_url( self::get_account_url( 'certificates' ) ); ?>">
+				<?php echo Hedayati_Icons::svg( 'shield', 28 ); // phpcs:ignore -- static SVG ?>
+				<span>
+					<small><?php esc_html_e( 'گواهینامه‌های رسمی', 'hedayati-core' ); ?></small>
+					<?php if ( empty( $certs ) ) : ?>
+						<strong><?php esc_html_e( 'هنوز گواهینامه‌ای صادر نشده', 'hedayati-core' ); ?></strong>
+						<em><?php esc_html_e( 'پس از پایان دوره، گواهینامه در این بخش قابل مشاهده و استعلام است.', 'hedayati-core' ); ?></em>
+					<?php else : ?>
+						<strong><?php echo esc_html( $certs[0]['title'] ); ?></strong>
+						<em dir="ltr"><?php echo esc_html( $certs[0]['code'] ); ?></em>
+					<?php endif; ?>
+				</span>
+				<?php if ( ! empty( $certs ) ) : ?>
+					<b class="hd-student-verified"><?php echo Hedayati_Icons::svg( 'check', 14 ); // phpcs:ignore -- static SVG ?> <?php esc_html_e( 'تأیید شده', 'hedayati-core' ); ?></b>
+				<?php endif; ?>
+			</a>
+			<a class="hd-student-feature-card" href="<?php echo esc_url( self::get_account_url( 'support' ) ); ?>">
+				<?php echo Hedayati_Icons::svg( 'phone', 28 ); // phpcs:ignore -- static SVG ?>
+				<span>
+					<small><?php esc_html_e( 'پشتیبانی مجتمع', 'hedayati-core' ); ?></small>
+					<strong><?php esc_html_e( 'ارتباط مستقیم با واحد آموزش', 'hedayati-core' ); ?></strong>
+					<em><?php esc_html_e( 'ثبت تیکت و پیگیری پاسخ در همین پنل', 'hedayati-core' ); ?></em>
+				</span>
+				<b class="hd-student-send"><?php esc_html_e( 'ارسال پیام', 'hedayati-core' ); ?></b>
+			</a>
+		</nav>
 		<?php
 		return (string) ob_get_clean();
 	}
@@ -317,6 +391,8 @@ class Hedayati_Student_Portal {
 
 				$items[] = [
 					'starts_at'    => (string) $session['starts_at'],
+					'ends_at'      => (string) ( $session['ends_at'] ?? '' ),
+					'run_id'       => (int) $run['id'],
 					'topic'        => $session['topic'] ?: sprintf( __( 'جلسهٔ %d', 'hedayati-core' ), $session['session_number'] ),
 					'course_title' => $course_title,
 					'run_label'    => $run['label'] ?: $course_title,

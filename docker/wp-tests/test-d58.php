@@ -101,6 +101,8 @@ function hdit_run_d58(): void {
 	ob_start();
 	Hedayati_Staff_Portal::render();
 	$home = (string) ob_get_clean();
+	HDIT::eq( 'manager home shows exactly four KPI tiles', 4, substr_count( $home, 'class="hd-manager-kpi"' ) );
+	HDIT::ok( 'manager home quick actions: between one and four', substr_count( $home, 'class="hd-manager-action"' ) >= 1 && substr_count( $home, 'class="hd-manager-action"' ) <= 4 );
 	HDIT::ok( 'manager home keeps KPIs + operations and adds the overview/status layout', str_contains( $home, 'hd-manager-kpis' ) && str_contains( $home, 'مرکز عملیات' ) && str_contains( $home, 'hd-manager-overview' ) && str_contains( $home, 'hd-manager-status-card' ) );
 
 	$_GET['view'] = 'course-edit';
@@ -163,6 +165,28 @@ function hdit_run_d58(): void {
 		}
 		HDIT::ok( "student view «{$view}» renders", strlen( trim( $html ) ) > 50 );
 	}
+	unset( $_GET['view'] );
+
+	// Dashboard progress rows reflect real sessions (and nothing without a basis).
+	$course = HDIT_Env::make_course( 'D58 progress course' );
+	$run    = Hedayati_Course_Run_Service::create( [ 'course_id' => $course, 'run_status' => 'running' ] );
+	HDIT::not_wp_error( 'synthetic running course run created', $run );
+	$now = current_time( 'timestamp' );
+	foreach ( [ -3, 4 ] as $i => $days ) {
+		Hedayati_Session_Service::create( [
+			'run_id'         => (int) $run,
+			'session_number' => $i + 1,
+			'starts_at'      => wp_date( 'Y-m-d', $now + $days * DAY_IN_SECONDS ) . ' 10:00:00',
+			'topic'          => 'D58 topic ' . $i,
+		] );
+	}
+	HDIT::not_wp_error( 'student enrolled in a run with one held + one upcoming session', Hedayati_Enrollment_Service::enroll( (int) $run, $stu ) );
+	$_GET['view'] = 'dashboard';
+	$dash         = (string) Hedayati_Student_Portal::render_current_view();
+	HDIT::ok( 'student dashboard shows a course progress row', str_contains( $dash, 'hd-student-course-row' ) );
+	HDIT::ok( 'progress is the real held/total ratio (50%)', str_contains( $dash, 'aria-valuenow="50"' ) );
+	HDIT::ok( 'next-class card shows the real upcoming topic', str_contains( $dash, 'D58 topic 1' ) );
+	HDIT::ok( 'no certificate → honest empty state, no "verified" chip', ! str_contains( $dash, 'hd-student-verified' ) );
 	unset( $_GET['view'] );
 	wp_set_current_user( 0 );
 }

@@ -1,5 +1,14 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
+## D59 — AI Studio reference-fidelity pass (2026-09-22) — `feature/panel-redesign`, PR #2
+
+The logo, simpler rail hierarchy, top bar, manager home and student dashboard now follow the AI
+Studio screenshots, using real data only (see DECISIONS D59). Plugin 1.19.0, theme 1.7.0. Local:
+all Node and PHP suites green, runtime acceptance 832/0. No separate owner tweak-list file has
+been received; if one arrives, map it next.
+
+---
+
 ## D58 — AI Studio panel/account redesign (2026-09-22) — FEATURE BRANCH `feature/panel-redesign`
 
 `/panel/` and `/account/` now use a dedicated application shell modelled on the attached AI Studio

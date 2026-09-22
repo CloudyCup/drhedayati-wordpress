@@ -30,12 +30,13 @@ assert('nav_groups() exists and is public', /public static function nav_groups\(
 assert('core courses/featured gated exactly like render(): manager workspace + hedayati_manage_courses', /if \( \$is_manager && current_user_can\( 'hedayati_manage_courses' \) \) \{\s*\$core\['courses'\]/.test(nav));
 assert('core students gated by hedayati_lookup_students', /current_user_can\( 'hedayati_lookup_students' \) \) \{\s*\$core\['students'\]/.test(nav));
 assert('module items gated by their own registered capability', /foreach \( self::module_views\(\) as \$slug => \$module \)[\s\S]*?current_user_can\( \(string\) \$module\['capability'\] \)/.test(nav));
-assert('unmapped future modules still appear (never silently dropped)', /'key' => 'other'/.test(nav));
+assert('unmapped future modules still appear (never silently dropped)', /\$add_group\( 'other', __\( 'سایر'/.test(nav) && /foreach \( \$available as \$slug => \$label \)/.test(nav));
 assert('nav never builds a wp-admin URL', !/admin_url\(/.test(nav));
 const badge = fnBody(sp, 'nav_badge');
 assert('badges only query what the viewer may open', /Hedayati_Consultation_Service::CAPABILITY/.test(badge) && /Hedayati_Support_Service::STAFF_CAP/.test(badge) && /unread_count\( get_current_user_id\(\) \)/.test(badge));
 for (const slug of ['courses', 'featured', 'academic', 'teachers', 'materials', 'certificates', 'students', 'consultations', 'support', 'content', 'navigation', 'settings', 'notifications', 'audit', 'security']) {
-	assert(`module «${slug}» is placed in a nav group`, new RegExp(`NAV_GROUPS = \\[[\\s\\S]*'${slug}'[\\s\\S]*\\];`).test(sp));
+	const lists = (sp.match(/NAV_PRIMARY = \[[^\]]*\]/) || [''])[0] + (sp.match(/NAV_GROUPS = \[[\s\S]*?\n\t\];/) || [''])[0];
+	assert(`module «${slug}» is placed in the primary list or a secondary group`, lists.includes(`'${slug}'`));
 }
 const icons = read('plugin/hedayati-core/includes/class-icons.php');
 assert('Hedayati_Icons: strict_types, ABSPATH guard, balanced', icons.includes('declare( strict_types=1 );') && icons.includes("if ( ! defined( 'ABSPATH' ) )") && balanced(codeOnly(icons)));
@@ -97,6 +98,25 @@ const js = codeOnly(read('theme/hedayati/assets/js/account.js')).trim();
 assert('account.js still a single IIFE, no jQuery', /^\(function \(\) \{[\s\S]*\}\(\)\);\s*$/.test(js) && !/jQuery|\$\(/.test(js));
 assert('drawer: Escape closes, backdrop/close button close, focus returns to the menu button', /'Escape' === event\.key/.test(js) && js.includes("querySelectorAll('[data-hd-app-close]')") && /menuBtn\.focus\(\)/.test(js));
 assert('drawer keeps aria-expanded in sync', /menuBtn\.setAttribute\('aria-expanded', open \? 'true' : 'false'\)/.test(js));
+
+// ── 3b. Reference-fidelity pass (logo, hierarchy, dashboards) ─────────────
+console.log('\n3b. Reference fidelity:');
+assert('primary rail list follows the AI Studio order', /NAV_PRIMARY = \[ 'courses', 'featured', 'consultations', 'students', 'certificates', 'settings' \]/.test(sp));
+assert('secondary groups are collapsible <details> (no JS) and open when they hold the active view', shell.includes('<details class="hd-app-nav-group"') && /\$open = \$open \|\| \$i\['active'\]/.test(nav));
+assert('rail shows the real institute logo: WordPress Custom Logo first, bundled emblem otherwise', /get_theme_mod\( 'custom_logo' \)/.test(shell) && shell.includes('/assets/images/logo-mark-96.png') && shell.includes('/assets/images/logo-mark-192.png'));
+assert('bundled logo files are small (<40KB each)', ['96', '192'].every((n) => fs.statSync(path.join(REPO, `theme/hedayati/assets/images/logo-mark-${n}.png`)).size < 40000));
+const home = fnBody(sp, 'render_manager_home');
+assert('manager home: exactly four headline KPI tiles', /\$kpis\s+= array_slice\( \$metrics, 0, 4 \)/.test(home));
+assert('manager home: quick actions capped at four and capability-filtered', /array_filter\( \$actions, static fn\( \$a \) => current_user_can\( \$a\[0\] \) \)/.test(home) && /, 0, 4 \);/.test(home));
+assert('manager home: featured count against the server-side FEATURED_LIMIT', /self::featured_count\(\)[\s\S]{0,120}self::FEATURED_LIMIT/.test(home));
+const stu = codeOnly(read('plugin/hedayati-core/includes/class-student-portal.php'));
+const dash = fnBody(stu, 'render_dashboard_view');
+assert('student rows: progress from Hedayati_Progress_Service (real held/total sessions)', /Hedayati_Progress_Service::run_progress\(/.test(dash) && /Hedayati_Progress_Service::percent\(/.test(dash));
+assert('student rows: no progress bar or percentage when there is no session basis', /if \( null !== \$percent \) :/.test(dash) && dash.includes('برنامهٔ جلسات ثبت نشده'));
+assert('student next-class card uses real upcoming sessions only (no reminder feature invented)', /\$upcoming\[0\]/.test(dash) && !/یادآور/.test(dash));
+assert('student certificate card shows only VALID certificates of this user', /Hedayati_Certificate_Service::list_for_user\( \$user_id \)[\s\S]{0,120}'valid' === \$c\['status'\]/.test(dash));
+assert('no AI Studio demo data copied (68%/DH-1404/ICDL/sample student strings)', !/68|DH-1404|ICDL|دانشجوی نمونه/.test(dash + home));
+assert('dashboard output escaped', (dash.match(/esc_html\(/g) || []).length >= 10 && /esc_url\( self::get_account_url\(/.test(dash));
 
 // ── 4. Runtime coverage wired ──────────────────────────────────────────────
 console.log('\n4. Runtime coverage:');

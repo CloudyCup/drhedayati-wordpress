@@ -980,3 +980,40 @@ openable and every openable view is reachable and renders; that the inbox is own
 that every student view renders. `plugin/hedayati-core/tests/verify-d58.js` covers the static
 checks. Five older static assertions that pinned the pre-D58 template markup were rebased onto
 the equivalent new invariants. Plugin 1.17.0 → 1.18.0, theme 1.5.1 → 1.6.0, DB/roles unchanged.
+
+## D59 — Close the remaining gaps to the AI Studio reference screenshots (2026-09-22)
+
+The owner compared D58 with the original AI Studio panels (the ZIP plus two screenshots) and
+asked to finish the remaining gaps without starting another redesign. No separate tweak-list file
+was received, so this pass implements the gaps named explicitly by the owner:
+
+- **Real institute logo in the rail.** The WordPress Custom Logo is used when one is set;
+  otherwise the rail shows the institute emblem from the AI Studio assets, shipped as
+  `theme/hedayati/assets/images/logo-mark-{96,192}.png` (8 KB / 27 KB, resized from the 1254px
+  original). The rail brand reads «دکتر هدایتی / مجتمع آموزشی تخصصی», with the reference role chip
+  below it.
+- **Simpler hierarchy.** The rail now shows a flat primary list in the reference order (dashboard,
+  courses, featured, consultations, students, certificates, settings). Every other module sits in
+  collapsible native `<details>` groups, which open automatically when they contain the active
+  view and show the combined badge count. Nothing was removed.
+- **Top bar per the reference:** role label plus workspace (manager), or «خوش آمدید» plus name
+  (student); bell with an unread dot; a quick-actions popover (manager, `<details>`); theme
+  toggle; a role avatar («مدیر» / «دانشجو»).
+- **Manager home:** exactly four headline KPIs (published courses, featured, new consultations,
+  active students); a 2×2 «عملیات سریع مدیریتی» card (capability-filtered); the homepage-status
+  card with the real featured count against `FEATURED_LIMIT`, plus active runs and waiting tickets
+  as links.
+- **Student home:**
+  - Course rows use `Hedayati_Progress_Service::run_progress()`, the real held/total sessions. When
+    no sessions exist there is no bar and the row says so. Each row shows the next session's topic
+    and date.
+  - The dark next-class card shows the real next session: course, topic, large time, and
+  today/tomorrow/date plus time range. No reminder button, because that feature does not exist.
+  - The certificate card shows only this student's valid certificates, with an honest empty state.
+  - The support card opens the ticket view.
+  - An unverified identity shows a compact strip that links to verification.
+- The content column is 1344px wide, matching the reference proportions.
+
+No capability, nonce, IDOR, private-data or wp-admin rule changed. Plugin 1.18.0 → 1.19.0, theme
+1.6.0 → 1.7.0, DB/roles 2.4.0. Tests: `verify-d58.js` §3b and `test-d58.php` (four KPIs, real 50%
+progress from one held and one upcoming session, real next topic, no fake verified chip).

@@ -1,5 +1,9 @@
 # CURRENT_STATE.md
 
+**2026-09-22 — D59: AI Studio reference-fidelity pass (plugin 1.19.0, theme 1.7.0).** The rail now shows the real institute logo, a flat primary list and collapsible secondary groups. The top bar matches the reference. The manager home has four KPIs, a 2×2 quick-actions card and a status card. Student course rows show real session-based progress, and the student home has a next-class card and certificate/support cards. See `docs/DECISIONS.md` D59.
+
+---
+
 **2026-09-22 — D58: AI-Studio application shell for /panel/ and /account/ (plugin 1.18.0, theme
 1.6.0).** The public site header and footer are no longer used on those pages. They now have a
 fixed dark rail with grouped, icon-led, capability-filtered navigation and badges, a compact top

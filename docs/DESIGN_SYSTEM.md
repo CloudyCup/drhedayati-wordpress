@@ -250,6 +250,10 @@ pages, after `account.css`) and `assets/js/account.js` (drawer).
   place the label on the start side and a 26px red figure on the end side. Tables use
   54px rows with 11px header cells. Standalone forms become compact cards with fields laid out
   side by side.
+- **Reference fidelity (D59):** the rail brand is the institute logo (Custom Logo, or the bundled
+  `assets/images/logo-mark-*.png`). The rail has a flat primary list followed by collapsible
+  `<details>` groups. The manager home has four KPIs, a 2×2 quick-actions card and a status card;
+  the student home has progress rows, a dark next-class card and certificate/support cards.
 - **Icons:** `Hedayati_Icons` (plugin) is a single 24×24 / 1.8-stroke / currentColor line set.
   It needs no icon library.
 - **Navigation data** comes from the plugin: `Hedayati_Staff_Portal::nav_groups()` for staff,

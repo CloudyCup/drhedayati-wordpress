@@ -131,23 +131,37 @@ class Hedayati_Staff_Portal {
 	 * can never offer a screen the guard would refuse. A module registered by
 	 * a future class but not listed in GROUPS still appears (under «سایر»).
 	 */
+	/**
+	 * AI Studio hierarchy: a short, flat primary list (the reference manager
+	 * rail, in its order and wording) followed by collapsible secondary groups
+	 * that hold every other module — nothing is dropped, only de-emphasised.
+	 */
+	private const NAV_PRIMARY = [ 'courses', 'featured', 'consultations', 'students', 'certificates', 'settings' ];
+
+	private const NAV_PRIMARY_LABELS = [
+		'courses'      => 'مدیریت دوره‌ها',
+		'featured'     => 'دوره‌های ویژهٔ صفحهٔ نخست',
+		'students'     => 'دانشجویان و ثبت‌نام‌ها',
+		'certificates' => 'صدور و استعلام مدرک',
+	];
+
 	private const NAV_GROUPS = [
-		'education' => [ 'آموزش', [ 'courses', 'featured', 'academic', 'teachers', 'materials', 'certificates' ] ],
-		'students'  => [ 'پذیرش و دانشجویان', [ 'students', 'consultations', 'support' ] ],
-		'website'   => [ 'وب‌سایت و محتوا', [ 'content', 'navigation', 'settings' ] ],
-		'system'    => [ 'حساب و سیستم', [ 'notifications', 'audit', 'security' ] ],
+		'education' => [ 'آموزش و اجرای دوره‌ها', [ 'academic', 'teachers', 'materials' ] ],
+		'support'   => [ 'پشتیبانی و اعلان‌ها', [ 'support', 'notifications' ] ],
+		'website'   => [ 'وب‌سایت', [ 'content', 'navigation' ] ],
+		'system'    => [ 'سیستم و امنیت', [ 'audit', 'security' ] ],
 	];
 
 	private const NAV_ICONS = [
 		'courses'       => 'book',
-		'featured'      => 'star',
+		'featured'      => 'sparkle',
 		'academic'      => 'calendar',
 		'teachers'      => 'teacher',
 		'materials'     => 'folder',
-		'certificates'  => 'award',
+		'certificates'  => 'shield',
 		'students'      => 'users',
-		'consultations' => 'chat',
-		'support'       => 'lifebuoy',
+		'consultations' => 'phone',
+		'support'       => 'help',
 		'content'       => 'layout',
 		'navigation'    => 'link',
 		'settings'      => 'settings',
@@ -157,7 +171,7 @@ class Hedayati_Staff_Portal {
 	];
 
 	/**
-	 * @return array<int, array{key:string,label:string,items:array<int, array{slug:string,label:string,url:string,icon:string,badge:int,active:bool}>}>
+	 * @return array<int, array{key:string,label:string,collapsible:bool,open:bool,items:array<int, array{slug:string,label:string,url:string,icon:string,badge:int,active:bool}>}>
 	 */
 	public static function nav_groups(): array {
 		$active     = self::nav_active_slug();
@@ -191,13 +205,26 @@ class Hedayati_Staff_Portal {
 			];
 		};
 
-		$groups = [
-			[
-				'key'   => 'home',
-				'label' => '',
-				'items' => [ $item( '', $is_manager ? __( 'داشبورد جامع', 'hedayati-core' ) : __( 'پنل آموزش و کلاس‌های من', 'hedayati-core' ) ) ],
-			],
-		];
+		$primary = [ $item( '', $is_manager ? __( 'داشبورد جامع', 'hedayati-core' ) : __( 'پنل آموزش و کلاس‌های من', 'hedayati-core' ) ) ];
+		foreach ( self::NAV_PRIMARY as $slug ) {
+			if ( isset( $available[ $slug ] ) ) {
+				$primary[] = $item( $slug, self::NAV_PRIMARY_LABELS[ $slug ] ?? $available[ $slug ] );
+				unset( $available[ $slug ] );
+			}
+		}
+
+		$groups = [ [ 'key' => 'primary', 'label' => '', 'collapsible' => false, 'open' => true, 'items' => $primary ] ];
+
+		$add_group = static function ( string $key, string $label, array $items ) use ( &$groups ): void {
+			if ( empty( $items ) ) {
+				return;
+			}
+			$open = false;
+			foreach ( $items as $i ) {
+				$open = $open || $i['active'];
+			}
+			$groups[] = [ 'key' => $key, 'label' => $label, 'collapsible' => true, 'open' => $open, 'items' => $items ];
+		};
 
 		foreach ( self::NAV_GROUPS as $key => [ $label, $slugs ] ) {
 			$items = [];
@@ -207,18 +234,15 @@ class Hedayati_Staff_Portal {
 					unset( $available[ $slug ] );
 				}
 			}
-			if ( ! empty( $items ) ) {
-				$groups[] = [ 'key' => $key, 'label' => $label, 'items' => $items ];
-			}
+			$add_group( $key, $label, $items );
 		}
 
-		if ( ! empty( $available ) ) {
-			$items = [];
-			foreach ( $available as $slug => $label ) {
-				$items[] = $item( $slug, $label );
-			}
-			$groups[] = [ 'key' => 'other', 'label' => __( 'سایر', 'hedayati-core' ), 'items' => $items ];
+		// A module registered later but not mapped above is never silently dropped.
+		$items = [];
+		foreach ( $available as $slug => $label ) {
+			$items[] = $item( $slug, $label );
 		}
+		$add_group( 'other', __( 'سایر', 'hedayati-core' ), $items );
 
 		return $groups;
 	}
@@ -249,8 +273,24 @@ class Hedayati_Staff_Portal {
 					? Hedayati_Notification_Service::unread_count( get_current_user_id() ) : 0;
 			case 'featured':
 				return current_user_can( 'hedayati_manage_courses' ) ? self::featured_count() : 0;
+			case 'courses':
+				return current_user_can( 'hedayati_manage_courses' ) ? (int) ( wp_count_posts( 'course' )->publish ?? 0 ) : 0;
 		}
 		return 0;
+	}
+
+	/** One-word role for the top-bar avatar (AI Studio shows «مدیر» / «دانشجو»). */
+	public static function role_avatar( WP_User $user ): string {
+		if ( user_can( $user, 'manage_options' ) || in_array( 'hedayati_manager', (array) $user->roles, true ) ) {
+			return __( 'مدیر', 'hedayati-core' );
+		}
+		$short = [ 'reception' => __( 'پذیرش', 'hedayati-core' ), 'teacher' => __( 'مدرس', 'hedayati-core' ), 'teacher_assistant' => __( 'دستیار', 'hedayati-core' ) ];
+		foreach ( $short as $role => $label ) {
+			if ( in_array( $role, (array) $user->roles, true ) ) {
+				return $label;
+			}
+		}
+		return __( 'کارمند', 'hedayati-core' );
 	}
 
 	/** Human role identity for the app-shell top bar. */
@@ -657,26 +697,24 @@ class Hedayati_Staff_Portal {
 	 */
 	private static function render_manager_home( WP_User $user ): void {
 		$metrics = self::manager_metrics();
+		$kpis    = array_slice( $metrics, 0, 4 );   // AI Studio: exactly four headline tiles
+		$queue   = array_slice( $metrics, 4 );      // the rest live in the status card
 
 		echo '<header class="hd-manager-heading">';
-		echo '<div><span class="hd-manager-eyebrow">' . esc_html__( 'گزارش و دسترسی سریع', 'hedayati-core' ) . '</span>';
-		echo '<h1 class="hd-portal-title">' . esc_html__( 'داشبورد مدیریت', 'hedayati-core' ) . '</h1>';
-		printf(
-			'<p class="hd-portal-note">%s، خوش آمدید. وضعیت امروز مجتمع را ببینید و کار خود را ادامه دهید.</p>',
-			esc_html( $user->display_name )
-		);
-		echo '</div>';
+		echo '<div><span class="hd-manager-eyebrow">' . esc_html__( 'گزارش عملکرد کلی', 'hedayati-core' ) . '</span>';
+		echo '<h1 class="hd-portal-title">' . esc_html__( 'داشبورد مدیریت', 'hedayati-core' ) . '</h1></div>';
 		if ( current_user_can( 'hedayati_manage_courses' ) ) {
 			printf(
-				'<a class="hd-manager-primary" href="%s">%s</a>',
-				esc_url( self::url( [ 'view' => 'courses' ] ) ),
-				esc_html__( 'مدیریت دوره‌ها', 'hedayati-core' )
+				'<a class="hd-manager-primary" href="%s">%s<span>%s</span></a>',
+				esc_url( self::url( [ 'view' => 'course-new' ] ) ),
+				Hedayati_Icons::svg( 'plus', 16 ), // phpcs:ignore -- static SVG
+				esc_html__( 'تعریف دورهٔ جدید', 'hedayati-core' )
 			);
 		}
 		echo '</header>';
 
 		echo '<section class="hd-manager-kpis" aria-label="' . esc_attr__( 'خلاصهٔ وضعیت مجتمع', 'hedayati-core' ) . '">';
-		foreach ( $metrics as $metric ) {
+		foreach ( $kpis as $metric ) {
 			printf(
 				'<a class="hd-manager-kpi" href="%1$s"><span>%2$s</span><strong>%3$s</strong><small>%4$s</small></a>',
 				esc_url( $metric['url'] ),
@@ -687,61 +725,28 @@ class Hedayati_Staff_Portal {
 		}
 		echo '</section>';
 
-		// Non-module operational areas. Teachers / audit / settings / academic
-		// operations register their own card through the module-view loop below,
-		// so they are NOT hardcoded here (avoids duplicate cards).
+		// Quick actions: the four AI Studio shortcuts, each only for a manager who
+		// may open it. Every other module is one click away in the rail.
 		$actions = [
-			'hedayati_manage_courses' => [
-				self::url( [ 'view' => 'courses' ] ),
-				__( 'دوره‌ها و محتوای آموزشی', 'hedayati-core' ),
-				__( 'ایجاد و ویرایش دوره‌ها، انتشار و انتخاب دوره‌های ویژهٔ صفحه نخست', 'hedayati-core' ),
-				'book',
-			],
-			'hedayati_lookup_students' => [
-				self::url( [ 'view' => 'students' ] ),
-				__( 'پذیرش، پرونده و احراز هویت دانشجو', 'hedayati-core' ),
-				__( 'جستجو، ایجاد حساب، ثبت‌نام، بررسی احراز هویت و دریافت امن مدارک', 'hedayati-core' ),
-				'users',
-			],
+			[ 'hedayati_manage_courses', self::url( [ 'view' => 'courses' ] ), __( 'مدیریت و ویرایش دوره‌ها', 'hedayati-core' ), __( 'عنوان، سرفصل، مدرس و وضعیت انتشار', 'hedayati-core' ), 'book' ],
+			[ 'hedayati_manage_courses', self::url( [ 'view' => 'featured' ] ), __( 'انتخاب دوره‌های صفحهٔ اصلی', 'hedayati-core' ), __( 'تنظیم دو ردیف چهارتایی ویژه', 'hedayati-core' ), 'sparkle' ],
+			[ Hedayati_Consultation_Service::CAPABILITY, self::url( [ 'view' => 'consultations' ] ), __( 'پیگیری فرم‌های مشاوره', 'hedayati-core' ), __( 'ثبت وضعیت تماس با متقاضی', 'hedayati-core' ), 'phone' ],
+			[ Hedayati_Certificate_Service::MANAGE_CAP, self::url( [ 'view' => 'certificates' ] ), __( 'سامانهٔ گواهینامه‌ها', 'hedayati-core' ), __( 'صدور، ابطال و استعلام با کد', 'hedayati-core' ), 'shield' ],
+			[ 'hedayati_lookup_students', self::url( [ 'view' => 'students' ] ), __( 'پذیرش و پروندهٔ دانشجو', 'hedayati-core' ), __( 'جستجو، ثبت‌نام، احراز هویت و مدارک', 'hedayati-core' ), 'users' ],
+			[ 'hedayati_manage_course_runs', self::url( [ 'view' => 'academic' ] ), __( 'عملیات آموزشی', 'hedayati-core' ), __( 'دوره‌های اجرایی، جلسات، حضور و غیاب', 'hedayati-core' ), 'calendar' ],
 		];
+		$actions = array_slice( array_values( array_filter( $actions, static fn( $a ) => current_user_can( $a[0] ) ) ), 0, 4 );
 
-		// D58: AI Studio dashboard hierarchy — operations grid beside a compact
-		// homepage-status card (real featured count against the server-side cap).
 		echo '<div class="hd-manager-overview">';
 		echo '<section class="hd-manager-section">';
 		echo '<div class="hd-manager-section-title"><div><span class="hd-manager-eyebrow">' . esc_html__( 'مرکز عملیات', 'hedayati-core' ) . '</span>';
-		echo '<h2>' . esc_html__( 'مدیریت بخش‌های مجتمع', 'hedayati-core' ) . '</h2></div>';
-		echo '<a href="' . esc_url( home_url( '/' ) ) . '">' . esc_html__( 'مشاهدهٔ وب‌سایت', 'hedayati-core' ) . '</a></div>';
-		// AI-Studio-parity modules register their own manager card (D46–D52).
-		foreach ( self::module_views() as $slug => $module ) {
-			if ( empty( $module['title'] ) ) {
-				continue;
-			}
-			$actions[ (string) $module['capability'] . '__' . $slug ] = [
-				'url'  => 'settings' === $slug ? self::url( [ 'view' => 'settings' ] ) : self::url( [ 'view' => $slug ] ),
-				'cap'  => (string) $module['capability'],
-				'name' => (string) $module['title'],
-				'desc' => (string) ( $module['desc'] ?? '' ),
-				'icon' => (string) ( $module['icon'] ?? 'book' ),
-			];
-		}
-
+		echo '<h2>' . esc_html__( 'عملیات سریع مدیریتی', 'hedayati-core' ) . '</h2></div></div>';
 		echo '<div class="hd-manager-actions">';
-		foreach ( $actions as $key => $action ) {
-			$capability = $action['cap'] ?? $key;
-			$url        = $action['url'] ?? $action[0];
-			$name       = $action['name'] ?? $action[1];
-			$desc       = $action['desc'] ?? $action[2];
-			$icon       = $action['icon'] ?? $action[3];
-
-			if ( ! current_user_can( $capability ) ) {
-				continue;
-			}
-
+		foreach ( $actions as [ , $url, $name, $desc, $icon ] ) {
 			printf(
-				'<a class="hd-manager-action" href="%1$s"><span class="hd-manager-action-icon" aria-hidden="true">%2$s</span><span><strong>%3$s</strong><small>%4$s</small></span><b aria-hidden="true">‹</b></a>',
+				'<a class="hd-manager-action" href="%1$s"><span class="hd-manager-action-icon" aria-hidden="true">%2$s</span><span><strong>%3$s</strong><small>%4$s</small></span></a>',
 				esc_url( $url ),
-				self::manager_icon( $icon ),
+				self::manager_icon( $icon ), // phpcs:ignore -- static SVG
 				esc_html( $name ),
 				esc_html( $desc )
 			);
@@ -750,34 +755,31 @@ class Hedayati_Staff_Portal {
 
 		echo '<aside class="hd-manager-status-card" aria-label="' . esc_attr__( 'وضعیت امروز', 'hedayati-core' ) . '">';
 		if ( current_user_can( 'hedayati_manage_courses' ) ) {
-			echo '<span>' . esc_html__( 'وضعیت صفحهٔ نخست', 'hedayati-core' ) . '</span>';
+			echo '<span>' . esc_html__( 'وضعیت صفحهٔ اصلی', 'hedayati-core' ) . '</span>';
 			printf(
 				'<h2>%s</h2>',
 				/* translators: 1: featured course count, 2: maximum */
 				esc_html( sprintf( __( '%1$s از %2$s دوره', 'hedayati-core' ), Hedayati_Text::digits_to_persian( (string) self::featured_count() ), Hedayati_Text::digits_to_persian( (string) self::FEATURED_LIMIT ) ) )
 			);
-			echo '<p>' . esc_html__( 'دوره‌های ویژهٔ تعیین‌شده برای دو ردیف چهارتایی صفحهٔ نخست.', 'hedayati-core' ) . '</p>';
-		}
-		$queue = [];
-		foreach ( $metrics as $metric ) {
-			if ( in_array( $metric['url'], [ self::url( [ 'view' => 'consultations' ] ), self::url( [ 'view' => 'support' ] ) ], true ) ) {
-				$queue[] = $metric;
-			}
+			echo '<p>' . esc_html__( 'تعداد دوره‌های ویژهٔ تعیین‌شده برای نمایش در دو ردیف چهارتایی صفحهٔ نخست.', 'hedayati-core' ) . '</p>';
 		}
 		if ( ! empty( $queue ) ) {
 			echo '<ul class="hd-manager-status-list">';
 			foreach ( $queue as $metric ) {
-				printf( '<li><span>%s</span><b>%s</b></li>', esc_html( $metric['label'] ), esc_html( Hedayati_Text::digits_to_persian( (string) $metric['value'] ) ) );
+				printf(
+					'<li><a href="%1$s"><span>%2$s</span><b>%3$s</b></a></li>',
+					esc_url( $metric['url'] ),
+					esc_html( $metric['label'] ),
+					esc_html( Hedayati_Text::digits_to_persian( (string) $metric['value'] ) )
+				);
 			}
 			echo '</ul>';
 		}
 		if ( current_user_can( 'hedayati_manage_courses' ) ) {
-			echo '<a href="' . esc_url( self::url( [ 'view' => 'featured' ] ) ) . '">' . esc_html__( 'ویرایش چینش ویژه ‹', 'hedayati-core' ) . '</a>';
+			echo '<a class="hd-manager-status-btn" href="' . esc_url( self::url( [ 'view' => 'featured' ] ) ) . '">' . esc_html__( 'ویرایش چینش ویژه', 'hedayati-core' ) . ' <span aria-hidden="true">‹</span></a>';
 		}
 		echo '</aside>';
 		echo '</div>';
-		// «گزارش فعالیت‌ها» (audit) now registers its own card + sidebar entry
-		// through the module-view loop above — no separate aside needed.
 	}
 
 	/** @return array<int, array{label:string,value:int,hint:string,url:string}> */
@@ -802,49 +804,30 @@ class Hedayati_Staff_Portal {
 		$active_runs     = Hedayati_Course_Run_Service::count_active();
 		$active_students = Hedayati_Enrollment_Service::count_active_students();
 
-		$metrics = [
-			[
-				'label' => __( 'دوره‌های منتشرشده', 'hedayati-core' ),
-				'value' => $published,
-				'hint'  => __( 'مدیریت دوره‌ها', 'hedayati-core' ),
-				'url'   => self::url( [ 'view' => 'courses' ] ),
-			],
-			[
-				'label' => __( 'دوره‌های ویژه', 'hedayati-core' ),
-				'value' => (int) $featured_query->found_posts,
-				'hint'  => __( 'نمایش در صفحه نخست', 'hedayati-core' ),
-				'url'   => self::url( [ 'view' => 'featured' ] ),
-			],
-			[
-				'label' => __( 'دوره‌های اجرایی فعال', 'hedayati-core' ),
-				'value' => $active_runs,
-				'hint'  => __( 'برنامه‌ریزی و اجرا', 'hedayati-core' ),
-				'url'   => self::url( [ 'view' => 'academic' ] ),
-			],
-			[
-				'label' => __( 'دانشجویان فعال', 'hedayati-core' ),
-				'value' => $active_students,
-				'hint'  => __( 'پرونده و ثبت‌نام', 'hedayati-core' ),
-				'url'   => self::url( [ 'view' => 'students' ] ),
-			],
+		$metric = static fn( string $label, int $value, string $hint, string $view ): array => [
+			'label' => $label,
+			'value' => $value,
+			'hint'  => $hint,
+			'url'   => self::url( [ 'view' => $view ] ),
 		];
 
+		// Order = AI Studio headline tiles first (the home shows the first four).
+		$metrics   = [];
+		$metrics[] = $metric( __( 'دوره‌های منتشرشده', 'hedayati-core' ), $published, __( 'مدیریت دوره‌ها', 'hedayati-core' ), 'courses' );
+		$metrics[] = $metric(
+			__( 'دوره‌های ویژهٔ صفحهٔ نخست', 'hedayati-core' ),
+			(int) $featured_query->found_posts,
+			/* translators: %s: maximum featured courses */
+			sprintf( __( 'حداکثر %s مورد', 'hedayati-core' ), Hedayati_Text::digits_to_persian( (string) self::FEATURED_LIMIT ) ),
+			'featured'
+		);
 		if ( current_user_can( Hedayati_Consultation_Service::CAPABILITY ) ) {
-			$metrics[] = [
-				'label' => __( 'درخواست مشاورهٔ جدید', 'hedayati-core' ),
-				'value' => Hedayati_Consultation_Service::count_new(),
-				'hint'  => __( 'پیگیری تماس', 'hedayati-core' ),
-				'url'   => self::url( [ 'view' => 'consultations' ] ),
-			];
+			$metrics[] = $metric( __( 'درخواست‌های مشاورهٔ جدید', 'hedayati-core' ), Hedayati_Consultation_Service::count_new(), __( 'نیاز به پیگیری', 'hedayati-core' ), 'consultations' );
 		}
-
+		$metrics[] = $metric( __( 'دانشجویان فعال', 'hedayati-core' ), $active_students, __( 'پرونده و ثبت‌نام', 'hedayati-core' ), 'students' );
+		$metrics[] = $metric( __( 'دوره‌های اجرایی فعال', 'hedayati-core' ), $active_runs, __( 'برنامه‌ریزی و اجرا', 'hedayati-core' ), 'academic' );
 		if ( current_user_can( Hedayati_Support_Service::STAFF_CAP ) ) {
-			$metrics[] = [
-				'label' => __( 'تیکت در انتظار پاسخ', 'hedayati-core' ),
-				'value' => Hedayati_Support_Service::count_waiting_staff(),
-				'hint'  => __( 'پشتیبانی دانشجو', 'hedayati-core' ),
-				'url'   => self::url( [ 'view' => 'support' ] ),
-			];
+			$metrics[] = $metric( __( 'تیکت در انتظار پاسخ', 'hedayati-core' ), Hedayati_Support_Service::count_waiting_staff(), __( 'پشتیبانی دانشجو', 'hedayati-core' ), 'support' );
 		}
 
 		return $metrics;
