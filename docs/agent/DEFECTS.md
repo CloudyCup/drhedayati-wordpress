@@ -1,5 +1,68 @@
 # Defects and acceptance gaps
 
+## Manager Experience — D53 (2026-09-08) — STATUS
+
+- **MX-1 — `Hedayati_Admin_Access` `admin_init` redirect not runtime-proven in a browser.**
+  Still OPEN as a **staging/browser acceptance item** — the guard needs a real interactive
+  wp-admin HTTP request; the WP-CLI Docker harness has none. The decision logic
+  (`workspace_url_for`, `enforced_roles`, the full-enforcement predicate + filter narrowing) is
+  runtime-proven (D53.A). Browser-test: log in as each non-admin role, hit `/wp-admin/…`
+  directly, confirm the bounce to `/panel/` or `/account/`; confirm `admin-post.php` forms
+  (every panel mutation) and `profile.php` still work.
+- **MX-2 — CLOSED (Phase E, 2026-09-08).** Academic operations (`Hedayati_Academic_Panel`) and the
+  verification/private-document reviewer actions (`Hedayati_Verification_Panel`) are ported to
+  `/panel/`. `reception` + `hedayati_manager` are now in `ENFORCED_ROLES`; zero «موقت» links
+  remain. Runtime-verified D53.E / D53.F.
+- **MX-3 — CLOSED (Phase C, 2026-09-08).** `Hedayati_Course_Panel` — full in-panel course
+  create/edit over the canonical `course` CPT. Runtime-verified D53.D. The `manage_options`-gated
+  Gutenberg link is retained only as an administrator shortcut.
+- **MX-4 — CLOSED (Phase F, 2026-09-08).** `/login/` (`Hedayati_Login` + `page-login.php` +
+  `auth.css`) — branded front-end auth over `wp_signon` / core reset tokens. Runtime-verified
+  D53.G.
+- **MX-5 — CLOSED.** Docker CI on PR #1 GREEN through every increment; final run `34161338173`
+  (HEAD `399b94d`) 686/0 PASS, cleanup verified.
+- **MX-6 — NEW, P3 non-blocking.** `profile.php` is deliberately left reachable by non-admins so
+  every role can change its own password. An in-panel staff account/password view would let it be
+  redirected too (`docs/ROADMAP.md`). Voluntary password change works today via `profile.php`;
+  forced first-login change is already a front-end flow, and `/login/` reset flows through core
+  tokens.
+
+## AI Studio parity modules D46–D52 (2026-09-06) — OPEN GATES
+
+Not defects in delivered code (static 876/0, Docker CI 576/0 PASS cleanup-verified), but the
+remaining release gates for `feature/manager-experience`:
+
+- **G-5 — one comprehensive browser/visual review not yet done.** Per the owner plan, functionality
+  is finished first; the single manager/reception/teacher/TA/student review at desktop + mobile,
+  RTL, light + dark is still pending (checklist in the takeover report / next report).
+- **G-6 — integrated `mystik.ir` staging cycle not yet run.** Deliberately deferred to one cycle
+  near the end (per `[[workflow-no-per-phase-staging]]`).
+- **G-7 — support-ticket attachments and certificate PDF export are v2** (documented in
+  `AI_STUDIO_PANEL_MATRIX.md` §E "smaller follow-ups"); the HTML print view + link/note/file
+  materials cover launch needs.
+- **G-8 — materials `file` storage requires a configured private-uploads dir in
+  staging/production** (`HEDAYATI_PRIVATE_UPLOADS_DIR`, same requirement as Phase 2C documents).
+  `link` / `note` materials work without it; `file` uploads fail closed with a clear message
+  until it is set (same behaviour as identity documents — see `docs/DEPLOYMENT.md`).
+
+## Manager panel — AI Studio course/featured tabs (2026-09-06) — OPEN GATES
+
+Not defects in delivered code, but **release gates** for `feature/manager-experience`:
+
+- **G-1 — Docker real-WordPress acceptance not run.** No PHP/Docker in the dev environment. The
+  extended `docker/wp-tests/test-phase-3.php` (in-panel course view, nonce/capability-guarded
+  feature+publish toggles, reception denial, 8-slot cap) must pass `Acceptance (Docker WordPress)`
+  in CI on the next branch push. Until then runtime behaviour of the new views is unverified.
+- **G-2 — No browser review** of `/panel/?view=courses` and `?view=featured` at desktop/mobile
+  widths, Persian RTL, light/dark. The manager dashboard + student portal from the earlier
+  increment were reviewed; these two views were not.
+- **G-3 — Seven owner decisions block full AI Studio parity** (consultation requests, student
+  progress %, certificates + public verification, per-session course materials, support tickets,
+  notifications, in-panel Settings form). Tracked in `docs/AI_STUDIO_PANEL_MATRIX.md` §E.
+- **G-4 — `wp_update_post()` on `post_status` from the front-end** (`handle_course_publish`) runs
+  outside the Gutenberg editor context. Re-check in the Docker run that a manager toggling
+  publish/draft does not trip `map_meta_cap` edge cases for `private`/`future` posts.
+
 ## Phase 3 (2026-09-05) — HD-007, HD-008, HD-009: latent capability defects, FIXED
 
 Found during the Phase 3 reconciliation of the adopted Codex/ChatGPT WIP; all three are

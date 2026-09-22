@@ -16,13 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_VERSION', '1.2.0' );
+define( 'HEDAYATI_VERSION', '1.7.0' );
 define( 'HEDAYATI_DIR', get_template_directory() );
 define( 'HEDAYATI_URI', get_template_directory_uri() );
 
 // ── Includes ─────────────────────────────────────────────────────────────────
 
 require_once HEDAYATI_DIR . '/inc/menu-fallbacks.php';
+require_once HEDAYATI_DIR . '/inc/app-shell.php';
 
 // ── Theme Setup ───────────────────────────────────────────────────────────────
 
@@ -134,6 +135,17 @@ function hedayati_enqueue_assets(): void {
 			&& Hedayati_Account_Security::must_change( get_current_user_id() )
 		);
 
+	// Phase F (D53) — the dedicated /login/ page.
+	$hd_login_id = class_exists( 'Hedayati_Login' ) ? Hedayati_Login::get_page_id() : 0;
+	if ( ( $hd_login_id > 0 && is_page( $hd_login_id ) ) || is_page( 'login' ) ) {
+		wp_enqueue_style(
+			'hedayati-auth',
+			HEDAYATI_URI . '/assets/css/auth.css',
+			[ 'hedayati-main' ],
+			HEDAYATI_VERSION
+		);
+	}
+
 	if ( $hd_needs_portal ) {
 		wp_enqueue_style(
 			'hedayati-account',
@@ -141,6 +153,16 @@ function hedayati_enqueue_assets(): void {
 			[ 'hedayati-main' ],
 			HEDAYATI_VERSION
 		);
+
+		// D58 — AI-Studio application shell (panel + account), layered on account.css.
+		if ( hedayati_is_app_shell() ) {
+			wp_enqueue_style(
+				'hedayati-app',
+				HEDAYATI_URI . '/assets/css/app.css',
+				[ 'hedayati-account' ],
+				HEDAYATI_VERSION
+			);
+		}
 
 		wp_enqueue_script(
 			'hedayati-account',
@@ -165,6 +187,10 @@ function hedayati_body_classes( array $classes ): array {
 
 	if ( is_post_type_archive( 'course' ) || is_tax( 'course-category' ) ) {
 		$classes[] = 'hd-course-archive';
+	}
+
+	if ( hedayati_is_app_shell() ) {
+		$classes[] = 'hd-app-page';
 	}
 
 	return $classes;

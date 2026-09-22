@@ -1027,7 +1027,7 @@ class Hedayati_Academic_Admin {
 
 	// ── Label maps (Persian) ────────────────────────────────────────────────
 
-	private static function run_status_choices(): array {
+	public static function run_status_choices(): array {
 		return [
 			'draft'       => __( 'پیش‌نویس', 'hedayati-core' ),
 			'scheduled'   => __( 'زمان‌بندی‌شده', 'hedayati-core' ),
@@ -1037,7 +1037,7 @@ class Hedayati_Academic_Admin {
 		];
 	}
 
-	private static function registration_status_choices(): array {
+	public static function registration_status_choices(): array {
 		return [
 			'closed' => __( 'بسته', 'hedayati-core' ),
 			'open'   => __( 'باز', 'hedayati-core' ),
@@ -1045,7 +1045,7 @@ class Hedayati_Academic_Admin {
 		];
 	}
 
-	private static function session_status_choices(): array {
+	public static function session_status_choices(): array {
 		return [
 			'scheduled' => __( 'زمان‌بندی‌شده', 'hedayati-core' ),
 			'held'      => __( 'برگزارشده', 'hedayati-core' ),
@@ -1053,7 +1053,7 @@ class Hedayati_Academic_Admin {
 		];
 	}
 
-	private static function enrollment_status_choices(): array {
+	public static function enrollment_status_choices(): array {
 		return [
 			'active'    => __( 'فعال', 'hedayati-core' ),
 			'withdrawn' => __( 'انصراف', 'hedayati-core' ),
@@ -1062,7 +1062,7 @@ class Hedayati_Academic_Admin {
 		];
 	}
 
-	private static function attendance_status_choices(): array {
+	public static function attendance_status_choices(): array {
 		return [
 			'present' => __( 'حاضر', 'hedayati-core' ),
 			'absent'  => __( 'غایب', 'hedayati-core' ),
@@ -1071,7 +1071,7 @@ class Hedayati_Academic_Admin {
 		];
 	}
 
-	private static function staff_role_label( string $role ): string {
+	public static function staff_role_label( string $role ): string {
 		return [
 			'primary_instructor'    => __( 'مدرس اصلی', 'hedayati-core' ),
 			'additional_instructor' => __( 'مدرس همکار', 'hedayati-core' ),
@@ -1079,19 +1079,19 @@ class Hedayati_Academic_Admin {
 		][ $role ] ?? $role;
 	}
 
-	private static function run_status_label( string $s ): string {
+	public static function run_status_label( string $s ): string {
 		return self::run_status_choices()[ $s ] ?? $s;
 	}
 
-	private static function registration_status_label( string $s ): string {
+	public static function registration_status_label( string $s ): string {
 		return self::registration_status_choices()[ $s ] ?? $s;
 	}
 
-	private static function session_status_label( string $s ): string {
+	public static function session_status_label( string $s ): string {
 		return self::session_status_choices()[ $s ] ?? $s;
 	}
 
-	private static function enrollment_status_label( string $s ): string {
+	public static function enrollment_status_label( string $s ): string {
 		return self::enrollment_status_choices()[ $s ] ?? $s;
 	}
 }

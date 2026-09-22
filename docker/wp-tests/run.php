@@ -37,6 +37,10 @@ require __DIR__ . '/test-phase-2c.php';
 require __DIR__ . '/test-phase-2d.php';
 require __DIR__ . '/test-launch.php';
 require __DIR__ . '/test-phase-3.php';
+require __DIR__ . '/test-ai-studio.php';
+require __DIR__ . '/test-manager-experience.php';
+require __DIR__ . '/test-d57.php';
+require __DIR__ . '/test-d58.php';
 
 global $wpdb;
 
@@ -73,6 +77,10 @@ try {
 		hdit_run_phase_2d();
 		hdit_run_launch();
 		hdit_run_phase_3();
+		hdit_run_ai_studio();
+		hdit_run_manager_experience();
+		hdit_run_d57();
+		hdit_run_d58();
 		$assertions_exit = HDIT::finish();
 		$suite_completed = true;
 	}

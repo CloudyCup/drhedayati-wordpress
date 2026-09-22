@@ -51,7 +51,17 @@ if ( class_exists( 'Hedayati_Query' ) ) {
 			</h1>
 
 			<p>
-				<?php esc_html_e( 'مجتمع آموزشی دکتر هدایتی با ارائه دوره‌های تخصصی، کارگاه‌های مجهز و اساتید با تجربه کاری، شما را در ساختن رزومه‌ای قوی و مهارتی واقعی همراهی می‌کند.', 'hedayati' ); ?>
+				<?php
+				// D55: an institute-editable supporting paragraph
+				// (/panel/?view=settings) — blank keeps the canonical copy, it
+				// does not hide the paragraph (unlike the homepage stats).
+				// The headline/eyebrow/CTAs stay canonical to preserve the
+				// approved Concept-C visual design (docs/DECISIONS.md D55).
+				$hd_hero_tagline = class_exists( 'Hedayati_Settings' ) ? Hedayati_Settings::get( 'hero_tagline' ) : '';
+				echo '' !== $hd_hero_tagline
+					? esc_html( $hd_hero_tagline )
+					: esc_html__( 'مجتمع آموزشی دکتر هدایتی با ارائه دوره‌های تخصصی، کارگاه‌های مجهز و اساتید با تجربه کاری، شما را در ساختن رزومه‌ای قوی و مهارتی واقعی همراهی می‌کند.', 'hedayati' );
+				?>
 			</p>
 
 			<div class="navigator-actions">
@@ -101,7 +111,7 @@ if ( class_exists( 'Hedayati_Query' ) ) {
 					<!-- Empty state: displayed when no course-category terms exist -->
 					<div class="console-empty-state">
 						<p><?php esc_html_e( 'دسته‌بندی‌های دوره هنوز تنظیم نشده‌اند.', 'hedayati' ); ?></p>
-						<?php if ( current_user_can( 'manage_categories' ) ) : ?>
+						<?php if ( current_user_can( 'manage_options' ) ) : ?>
 							<a href="<?php echo esc_url( admin_url( 'edit-tags.php?taxonomy=course-category&post_type=course' ) ); ?>">
 								<?php esc_html_e( 'افزودن دسته‌بندی در پنل مدیریت', 'hedayati' ); ?>
 							</a>

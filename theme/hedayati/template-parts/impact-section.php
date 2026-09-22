@@ -3,12 +3,31 @@
  * Impact Section — "چرا مجتمع دکتر هدایتی؟"
  *
  * Dark background section with editorial copy and institutional bullet points.
- * Stat numbers are intentionally omitted in Phase 1 — they must come from
- * a verified data source (future Customizer options or plugin settings),
- * not prototype mock values.
+ *
+ * D55: the stats panel is now wired to Hedayati_Settings (STAT_KEYS,
+ * editable at /panel/?view=settings) instead of being omitted outright. Each
+ * statistic renders ONLY when the institute has entered a real value — a
+ * blank setting hides that stat rather than publishing an invented number
+ * (docs/DECISIONS.md D55). If none are set, the layout falls back to the
+ * original single-column Phase 1 look.
  *
  * @package Hedayati
  */
+
+$hd_stats = [];
+if ( class_exists( 'Hedayati_Settings' ) ) {
+	$hd_stat_labels = [
+		'stat_years'     => __( 'سال سابقهٔ آموزشی', 'hedayati' ),
+		'stat_graduates' => __( 'دانش‌آموختهٔ مجتمع', 'hedayati' ),
+		'stat_courses'   => __( 'دورهٔ تخصصی', 'hedayati' ),
+	];
+	foreach ( $hd_stat_labels as $hd_key => $hd_label ) {
+		$hd_value = Hedayati_Settings::get( $hd_key );
+		if ( '' !== $hd_value ) {
+			$hd_stats[] = [ 'value' => $hd_value, 'label' => $hd_label ];
+		}
+	}
+}
 ?>
 
 <section class="impact-section redesigned-impact" aria-labelledby="impact-heading">
@@ -56,15 +75,16 @@
 			</a>
 		</div><!-- .impact-copy -->
 
-		<!--
-		 Stats panel intentionally omitted in Phase 1.
-		 Stats (years of operation, graduate count, etc.) must be entered by
-		 the institute team via Appearance → Customize before being displayed.
-		 This prevents publishing unverified prototype numbers.
-
-		 To re-enable: add theme_mod calls here and render .stats-grid once
-		 Customizer options are wired up.
-		-->
+		<?php if ( ! empty( $hd_stats ) ) : ?>
+			<div class="stats-grid" role="list">
+				<?php foreach ( $hd_stats as $hd_stat ) : ?>
+					<div class="stat-item" role="listitem">
+						<span class="stat-number" dir="ltr"><?php echo esc_html( Hedayati_Text::digits_to_persian( $hd_stat['value'] ) ); ?></span>
+						<span class="stat-label"><?php echo esc_html( $hd_stat['label'] ); ?></span>
+					</div>
+				<?php endforeach; ?>
+			</div>
+		<?php endif; ?>
 
 	</div><!-- .impact-grid -->
 </section>

@@ -7,12 +7,25 @@
 	<?php wp_head(); ?>
 </head>
 <body <?php body_class(); ?>>
-<?php wp_body_open(); ?>
+<?php
+wp_body_open();
+
+// The dedicated /login/ auth shell (Hedayati_Login) provides its own focused
+// branding (hd-auth-brandside / hd-auth-logo) — the full public site header
+// (primary nav, consult CTA, account link) would be distracting chrome on a
+// premium, single-task auth screen, so it is intentionally not rendered here.
+$hd_is_auth_shell = class_exists( 'Hedayati_Login' ) && Hedayati_Login::is_login_page();
+
+// D58: /panel/ and /account/ render their own application shell (rail + top
+// bar, theme/hedayati/inc/app-shell.php) — no public site header there either.
+$hd_is_app_shell = function_exists( 'hedayati_is_app_shell' ) && hedayati_is_app_shell();
+?>
 
 <a class="skip-link screen-reader-text" href="#site-main">
 	<?php esc_html_e( 'رفتن به محتوای اصلی', 'hedayati' ); ?>
 </a>
 
+<?php if ( ! $hd_is_auth_shell && ! $hd_is_app_shell ) : ?>
 <header class="site-header" id="site-header" role="banner">
 	<div class="container header-inner">
 
@@ -109,3 +122,4 @@
 
 	</div><!-- .header-inner -->
 </header><!-- .site-header -->
+<?php endif; ?>

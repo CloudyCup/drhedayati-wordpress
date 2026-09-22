@@ -217,6 +217,84 @@ function hdit_run_phase_3(): void {
 	HDIT::ok( 'manager can save institute settings without manage_options',
 		current_user_can( apply_filters( 'option_page_capability_hedayati_institute', 'manage_options' ) ) );
 	HDIT::ok( 'manager still lacks manage_options (no technical admin power)', ! current_user_can( 'manage_options' ) );
+	HDIT::ok( 'manager receives the unified manager workspace', Hedayati_Staff_Portal::is_manager_workspace() );
+
+	unset( $_GET['view'] );
+	ob_start();
+	Hedayati_Staff_Portal::render();
+	$manager_home = (string) ob_get_clean();
+	HDIT::ok( 'manager dashboard renders live KPI and operations sections',
+		str_contains( $manager_home, 'hd-manager-kpis' )
+		&& str_contains( $manager_home, 'مرکز عملیات' )
+		// D53 / Phase E: academic operations is now an in-panel view, not a wp-admin link.
+		&& str_contains( $manager_home, 'view=academic' ) );
+	HDIT::ok( 'manager dashboard shows the AI-Studio-parity module cards now that they are built (D46–D52)',
+		str_contains( $manager_home, 'گواهینامه' )
+		&& str_contains( $manager_home, 'تیکت' )
+		&& str_contains( $manager_home, 'مشاوره' ) );
+
+	// ── In-panel course management (AI Studio "مدیریت دوره‌ها" / "دوره‌های ویژه") ──
+	wp_set_current_user( $manager );
+	$_GET['view'] = 'courses';
+	ob_start();
+	Hedayati_Staff_Portal::render();
+	$courses_view = (string) ob_get_clean();
+	HDIT::ok( 'manager courses view lists the real course by title', str_contains( $courses_view, get_the_title( $course ) ) );
+	HDIT::ok( 'manager courses view offers nonce-protected feature + publish toggle forms',
+		str_contains( $courses_view, 'hedayati_staff_course_feature' )
+		&& str_contains( $courses_view, 'hedayati_staff_course_publish' )
+		&& str_contains( $courses_view, 'name="_wpnonce"' ) );
+	// D53 / Phase C: a non-admin manager no longer gets the classic-editor link —
+	// per-field course editing moves in-panel in Phase C; the interim note is shown.
+	HDIT::ok( 'manager (non-admin) courses view does NOT expose the wp-admin editor link (D53)', ! str_contains( $courses_view, 'ویرایش در ویرایشگر' ) );
+	// D53 / Phase C: the courses list now links to the in-panel editor.
+	HDIT::ok( 'manager courses view links to the in-panel course editor (?view=course-edit)', str_contains( $courses_view, 'view=course-edit' ) || str_contains( $courses_view, 'view%3Dcourse-edit' ) );
+	HDIT::ok( 'manager courses view "new course" button targets the in-panel editor (?view=course-new)', str_contains( $courses_view, 'view=course-new' ) || str_contains( $courses_view, 'view%3Dcourse-new' ) );
+
+	$_GET['view'] = 'featured';
+	ob_start();
+	Hedayati_Staff_Portal::render();
+	$featured_view = (string) ob_get_clean();
+	HDIT::ok( 'manager featured view renders the curation grid', str_contains( $featured_view, 'hd-manager-feature-grid' ) );
+	unset( $_GET['view'] );
+	wp_set_current_user( 0 );
+
+	// Reception (no hedayati_manage_courses) never sees the in-panel course table,
+	// and the toggle handler rejects them outright.
+	wp_set_current_user( $reception );
+	$nonce_rcpt_feat = wp_create_nonce( 'hedayati_staff_course_feature' );
+	$_GET['view'] = 'courses';
+	ob_start();
+	Hedayati_Staff_Portal::render();
+	$rcpt_view = (string) ob_get_clean();
+	HDIT::ok( 'reception does not get the in-panel course table', ! str_contains( $rcpt_view, 'hd-manager-table' ) );
+	unset( $_GET['view'] );
+	wp_set_current_user( 0 );
+	HDIT_AdminPost::run( $reception, [
+		'_wpnonce'  => $nonce_rcpt_feat,
+		'course_id' => (string) $course,
+	], static fn() => Hedayati_Staff_Portal::handle_course_feature() );
+	HDIT::eq( 'reception cannot toggle a course featured flag (403)', 403, HDIT_AdminPost::$result['status'] ?? 0 );
+	HDIT::ok( 'reception attempt left the course flag untouched', ! get_post_meta( $course, '_course_is_featured', true ) );
+
+	// Manager toggles the flag on, then off, through the real handler (PRG redirect on success).
+	wp_set_current_user( $manager );
+	$nonce_mgr_feat = wp_create_nonce( 'hedayati_staff_course_feature' );
+	wp_set_current_user( 0 );
+	HDIT_AdminPost::run( $manager, [
+		'_wpnonce'  => $nonce_mgr_feat,
+		'course_id' => (string) $course,
+	], static fn() => Hedayati_Staff_Portal::handle_course_feature() );
+	HDIT::ok( 'manager feature toggle sets _course_is_featured', (bool) get_post_meta( $course, '_course_is_featured', true ) );
+
+	wp_set_current_user( $manager );
+	$nonce_mgr_feat2 = wp_create_nonce( 'hedayati_staff_course_feature' );
+	wp_set_current_user( 0 );
+	HDIT_AdminPost::run( $manager, [
+		'_wpnonce'  => $nonce_mgr_feat2,
+		'course_id' => (string) $course,
+	], static fn() => Hedayati_Staff_Portal::handle_course_feature() );
+	HDIT::ok( 'manager feature toggle clears the flag on the second call', ! get_post_meta( $course, '_course_is_featured', true ) );
 
 	wp_set_current_user( $teacher );
 	HDIT::ok( 'a teacher cannot edit a course post', ! current_user_can( 'edit_post', $course ) );

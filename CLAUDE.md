@@ -6,9 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Claude Code workflow notes
 
-- **Environment:** Windows, PowerShell primary shell (Bash tool also available). WordPress and PHP
-  are **not installed locally** — you cannot boot the site or run `php` here. The Node check
-  (`node plugin/hedayati-core/tests/verify-phase2a.js`) does run; it is static/structural only.
+- **Environment:** Windows, PowerShell primary shell (Bash tool also available). `php` is not on
+  PATH, but the sibling disposable runtime `C:/Projects/hedayati-local-runtime/` (restored
+  2026-09-22) has PHP 8.3 (`php/php.exe`), MariaDB 11.4 (`db/my.ini`, port 13316), WordPress
+  6.6.2 and `wp-cli.phar`. Its `wp-content/{plugins/hedayati-core,themes/hedayati}` are plain
+  copies — re-copy from this repo before using it. Full runtime suite:
+  `php/php.exe wp-cli.phar --path=wordpress eval-file ../drhedayati-wordpress/docker/wp-tests/run.php`
+  (WP_ENVIRONMENT_TYPE=local; it wipes `hdit_*` synthetic data, re-seed with
+  `docker/wp-tests/seed-browser.php`). Node checks (`plugin/hedayati-core/tests/verify-*.js`) are
+  static/structural only.
 - **This is a theme + plugin, not a WordPress install.** Template hierarchy files resolve against a
   real WP runtime you don't have — reason about them from the code, don't try to execute them.
 - **Local integration environment:** `docker/` + `scripts/*.{sh,ps1}` provide a disposable Docker

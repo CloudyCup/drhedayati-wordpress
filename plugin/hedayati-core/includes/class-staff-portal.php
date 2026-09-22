@@ -34,14 +34,19 @@ class Hedayati_Staff_Portal {
 
 	/** Mutation actions => the capability each one requires. */
 	private const ACTIONS = [
-		'session'    => 'hedayati_manage_assigned_sessions',
-		'attendance' => 'hedayati_record_attendance',
-		'student'    => 'hedayati_create_students',
-		'enroll'     => 'hedayati_create_enrollments',
-		'identity'   => 'hedayati_upload_student_documents',
-		'verify'     => 'hedayati_initiate_verification',
-		'upload'     => 'hedayati_upload_student_documents',
+		'session'        => 'hedayati_manage_assigned_sessions',
+		'attendance'     => 'hedayati_record_attendance',
+		'student'        => 'hedayati_create_students',
+		'enroll'         => 'hedayati_create_enrollments',
+		'identity'       => 'hedayati_upload_student_documents',
+		'verify'         => 'hedayati_initiate_verification',
+		'upload'         => 'hedayati_upload_student_documents',
+		'course_feature' => 'hedayati_manage_courses',
+		'course_publish' => 'hedayati_manage_courses',
 	];
+
+	/** Homepage featured-course slots (mirrors Hedayati_Query::get_featured_courses()). */
+	private const FEATURED_LIMIT = 8;
 
 	private const ATTENDANCE_LABELS = [
 		''        => 'ثبت نشده',
@@ -111,20 +116,232 @@ class Hedayati_Staff_Portal {
 			|| current_user_can( 'hedayati_manage_course_runs' );
 	}
 
+	/** Managers and technical administrators receive the unified operations home. */
+	public static function is_manager_workspace(): bool {
+		return current_user_can( 'hedayati_manage_course_runs' )
+			&& current_user_can( 'hedayati_manage_courses' );
+	}
+
+	// ── Application-shell navigation (D58) ──────────────────────────────────
+
+	/**
+	 * Sidebar sections for the AI-Studio-style app shell. Presentation data only:
+	 * every item is filtered by the SAME capability that gates its view (core
+	 * views here, module views via their registered 'capability'), so the nav
+	 * can never offer a screen the guard would refuse. A module registered by
+	 * a future class but not listed in GROUPS still appears (under «سایر»).
+	 */
+	/**
+	 * AI Studio hierarchy: a short, flat primary list (the reference manager
+	 * rail, in its order and wording) followed by collapsible secondary groups
+	 * that hold every other module — nothing is dropped, only de-emphasised.
+	 */
+	private const NAV_PRIMARY = [ 'courses', 'featured', 'consultations', 'students', 'certificates', 'settings' ];
+
+	private const NAV_PRIMARY_LABELS = [
+		'courses'      => 'مدیریت دوره‌ها',
+		'featured'     => 'دوره‌های ویژهٔ صفحهٔ نخست',
+		'students'     => 'دانشجویان و ثبت‌نام‌ها',
+		'certificates' => 'صدور و استعلام مدرک',
+	];
+
+	private const NAV_GROUPS = [
+		'education' => [ 'آموزش و اجرای دوره‌ها', [ 'academic', 'teachers', 'materials' ] ],
+		'support'   => [ 'پشتیبانی و اعلان‌ها', [ 'support', 'notifications' ] ],
+		'website'   => [ 'وب‌سایت', [ 'content', 'navigation' ] ],
+		'system'    => [ 'سیستم و امنیت', [ 'audit', 'security' ] ],
+	];
+
+	private const NAV_ICONS = [
+		'courses'       => 'book',
+		'featured'      => 'sparkle',
+		'academic'      => 'calendar',
+		'teachers'      => 'teacher',
+		'materials'     => 'folder',
+		'certificates'  => 'shield',
+		'students'      => 'users',
+		'consultations' => 'phone',
+		'support'       => 'help',
+		'content'       => 'layout',
+		'navigation'    => 'link',
+		'settings'      => 'settings',
+		'notifications' => 'bell',
+		'audit'         => 'list',
+		'security'      => 'lock',
+	];
+
+	/**
+	 * @return array<int, array{key:string,label:string,collapsible:bool,open:bool,items:array<int, array{slug:string,label:string,url:string,icon:string,badge:int,active:bool}>}>
+	 */
+	public static function nav_groups(): array {
+		$active     = self::nav_active_slug();
+		$is_manager = self::is_manager_workspace();
+
+		// Core (non-module) views, gated exactly like render()/guard().
+		$core = [];
+		if ( $is_manager && current_user_can( 'hedayati_manage_courses' ) ) {
+			$core['courses']  = __( 'دوره‌ها و محتوای آموزشی', 'hedayati-core' );
+			$core['featured'] = __( 'دوره‌های ویژهٔ صفحه نخست', 'hedayati-core' );
+		}
+		if ( current_user_can( 'hedayati_lookup_students' ) ) {
+			$core['students'] = __( 'پذیرش و دانشجویان', 'hedayati-core' );
+		}
+
+		$available = $core;
+		foreach ( self::module_views() as $slug => $module ) {
+			if ( ! empty( $module['nav'] ) && current_user_can( (string) $module['capability'] ) ) {
+				$available[ (string) $slug ] = (string) $module['nav'];
+			}
+		}
+
+		$item = static function ( string $slug, string $label ) use ( $active ): array {
+			return [
+				'slug'   => $slug,
+				'label'  => $label,
+				'url'    => '' === $slug ? self::url() : self::url( [ 'view' => $slug ] ),
+				'icon'   => '' === $slug ? 'dashboard' : ( self::NAV_ICONS[ $slug ] ?? 'book' ),
+				'badge'  => '' === $slug ? 0 : self::nav_badge( $slug ),
+				'active' => $slug === $active,
+			];
+		};
+
+		$primary = [ $item( '', $is_manager ? __( 'داشبورد جامع', 'hedayati-core' ) : __( 'پنل آموزش و کلاس‌های من', 'hedayati-core' ) ) ];
+		foreach ( self::NAV_PRIMARY as $slug ) {
+			if ( isset( $available[ $slug ] ) ) {
+				$primary[] = $item( $slug, self::NAV_PRIMARY_LABELS[ $slug ] ?? $available[ $slug ] );
+				unset( $available[ $slug ] );
+			}
+		}
+
+		$groups = [ [ 'key' => 'primary', 'label' => '', 'collapsible' => false, 'open' => true, 'items' => $primary ] ];
+
+		$add_group = static function ( string $key, string $label, array $items ) use ( &$groups ): void {
+			if ( empty( $items ) ) {
+				return;
+			}
+			$open = false;
+			foreach ( $items as $i ) {
+				$open = $open || $i['active'];
+			}
+			$groups[] = [ 'key' => $key, 'label' => $label, 'collapsible' => true, 'open' => $open, 'items' => $items ];
+		};
+
+		foreach ( self::NAV_GROUPS as $key => [ $label, $slugs ] ) {
+			$items = [];
+			foreach ( $slugs as $slug ) {
+				if ( isset( $available[ $slug ] ) ) {
+					$items[] = $item( $slug, $available[ $slug ] );
+					unset( $available[ $slug ] );
+				}
+			}
+			$add_group( $key, $label, $items );
+		}
+
+		// A module registered later but not mapped above is never silently dropped.
+		$items = [];
+		foreach ( $available as $slug => $label ) {
+			$items[] = $item( $slug, $label );
+		}
+		$add_group( 'other', __( 'سایر', 'hedayati-core' ), $items );
+
+		return $groups;
+	}
+
+	/** The nav item a (sub)view belongs to — editors and run pages highlight their parent. */
+	public static function nav_active_slug(): string {
+		$view = self::get( 'view' );
+		if ( in_array( $view, [ 'course-new', 'course-edit' ], true ) ) {
+			return 'courses';
+		}
+		if ( 'run' === $view ) {
+			return self::is_manager_workspace() ? 'academic' : '';
+		}
+		return $view;
+	}
+
+	/** Small, non-sensitive work counters — each only for a viewer who may open that view. */
+	private static function nav_badge( string $slug ): int {
+		switch ( $slug ) {
+			case 'consultations':
+				return class_exists( 'Hedayati_Consultation_Service' ) && current_user_can( Hedayati_Consultation_Service::CAPABILITY )
+					? Hedayati_Consultation_Service::count_new() : 0;
+			case 'support':
+				return class_exists( 'Hedayati_Support_Service' ) && current_user_can( Hedayati_Support_Service::STAFF_CAP )
+					? Hedayati_Support_Service::count_waiting_staff() : 0;
+			case 'notifications':
+				return class_exists( 'Hedayati_Notification_Service' )
+					? Hedayati_Notification_Service::unread_count( get_current_user_id() ) : 0;
+			case 'featured':
+				return current_user_can( 'hedayati_manage_courses' ) ? self::featured_count() : 0;
+			case 'courses':
+				return current_user_can( 'hedayati_manage_courses' ) ? (int) ( wp_count_posts( 'course' )->publish ?? 0 ) : 0;
+		}
+		return 0;
+	}
+
+	/** One-word role for the top-bar avatar (AI Studio shows «مدیر» / «دانشجو»). */
+	public static function role_avatar( WP_User $user ): string {
+		if ( user_can( $user, 'manage_options' ) || in_array( 'hedayati_manager', (array) $user->roles, true ) ) {
+			return __( 'مدیر', 'hedayati-core' );
+		}
+		$short = [ 'reception' => __( 'پذیرش', 'hedayati-core' ), 'teacher' => __( 'مدرس', 'hedayati-core' ), 'teacher_assistant' => __( 'دستیار', 'hedayati-core' ) ];
+		foreach ( $short as $role => $label ) {
+			if ( in_array( $role, (array) $user->roles, true ) ) {
+				return $label;
+			}
+		}
+		return __( 'کارمند', 'hedayati-core' );
+	}
+
+	/** Human role identity for the app-shell top bar. */
+	public static function role_label( WP_User $user ): string {
+		if ( user_can( $user, 'manage_options' ) ) {
+			return __( 'مدیر سیستم', 'hedayati-core' );
+		}
+		$labels = [
+			'hedayati_manager'  => __( 'مدیر مجتمع', 'hedayati-core' ),
+			'reception'         => __( 'پذیرش و ثبت‌نام', 'hedayati-core' ),
+			'teacher'           => __( 'مدرس', 'hedayati-core' ),
+			'teacher_assistant' => __( 'دستیار آموزشی', 'hedayati-core' ),
+		];
+		foreach ( $labels as $role => $label ) {
+			if ( in_array( $role, (array) $user->roles, true ) ) {
+				return $label;
+			}
+		}
+		return __( 'کارکنان مجتمع', 'hedayati-core' );
+	}
+
 	/**
 	 * Send staff to the panel after login instead of wherever WordPress would.
-	 * Administrators (who hold `manage_options`) keep their normal destination.
+	 *
+	 * D57: the administrator's NORMAL login (no explicit redirect_to) also lands
+	 * on the panel, like every other staff role. A deliberate destination is
+	 * still honored — logging in from an auth_redirect() on /wp-admin/... carries
+	 * redirect_to=/wp-admin/..., so native WordPress admin keeps working exactly
+	 * as before. Nothing about wp-admin access itself changes here: this only
+	 * picks the landing page.
 	 */
 	public static function login_redirect( string $url, string $requested, $user ): string {
-		if (
-			$user instanceof WP_User
-			&& ! user_can( $user, 'manage_options' )
-			&& ( user_can( $user, 'hedayati_view_assigned_runs' ) || user_can( $user, 'hedayati_lookup_students' ) )
-		) {
+		if ( ! $user instanceof WP_User ) {
+			return $url;
+		}
+
+		if ( user_can( $user, 'manage_options' ) ) {
+			return '' === $requested && self::panel_page_exists() ? self::url() : $url;
+		}
+
+		if ( user_can( $user, 'hedayati_view_assigned_runs' ) || user_can( $user, 'hedayati_lookup_students' ) ) {
 			return self::url();
 		}
 
 		return $url;
+	}
+
+	/** An administrator is only sent to /panel/ if that page really exists (never a 404 landing). */
+	private static function panel_page_exists(): bool {
+		$page = get_page_by_path( self::PAGE_SLUG );
+		return $page instanceof WP_Post && 'publish' === $page->post_status;
 	}
 
 	/**
@@ -157,6 +374,15 @@ class Hedayati_Staff_Portal {
 			) {
 				self::deny();
 			}
+		}
+
+		if ( in_array( $view, [ 'courses', 'featured' ], true ) && ! current_user_can( 'hedayati_manage_courses' ) ) {
+			self::deny();
+		}
+
+		$modules = self::module_views();
+		if ( '' !== $view && isset( $modules[ $view ] ) && ! current_user_can( (string) $modules[ $view ]['capability'] ) ) {
+			self::deny();
 		}
 
 		if ( 'students' === $view ) {
@@ -329,6 +555,64 @@ class Hedayati_Staff_Portal {
 
 	// ── Rendering ───────────────────────────────────────────────────────────
 
+	/**
+	 * Panel view registry for the AI-Studio-parity modules (D46–D52).
+	 *
+	 * Each module (consultations, certificates, materials, support, notifications,
+	 * settings) registers one entry rather than bloating this class:
+	 *   'slug' => [ 'capability' => 'hedayati_…', 'render' => callable, 'nav' => 'Label'|null ]
+	 * `render` is invoked only after the capability is re-checked here AND in guard().
+	 *
+	 * @return array<string, array{capability:string, render:callable, nav?:?string}>
+	 */
+	public static function module_views(): array {
+		return (array) apply_filters( 'hedayati_panel_module_views', [] );
+	}
+
+	/**
+	 * Shared verify step for a module mutation handler: POST + capability + nonce.
+	 * Modules call this instead of re-implementing the check. Dies 403 on failure.
+	 */
+	public static function guard_action( string $nonce_action, string $capability ): void {
+		Hedayati_Student_Portal::send_no_cache_headers();
+
+		$nonce = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
+
+		if (
+			'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' )
+			|| ! current_user_can( $capability )
+			|| ! wp_verify_nonce( $nonce, $nonce_action )
+		) {
+			self::deny();
+		}
+	}
+
+	/**
+	 * PRG helper for module handlers: store a one-shot notice, redirect to a panel
+	 * view, exit. Mirrors self::finish() for the core actions.
+	 *
+	 * @param true|WP_Error $result
+	 */
+	public static function redirect_notice( $result, array $args = [] ): void {
+		set_transient(
+			self::notice_key(),
+			[
+				'error'  => is_wp_error( $result ),
+				'text'   => is_wp_error( $result ) ? $result->get_error_message() : __( 'اطلاعات ذخیره شد.', 'hedayati-core' ),
+				'secret' => '',
+			],
+			45
+		);
+		wp_safe_redirect( self::url( $args ) );
+		exit;
+	}
+
+	/** True if the current user may open $slug (a registered module view). */
+	public static function can_view_module( string $slug ): bool {
+		$views = self::module_views();
+		return isset( $views[ $slug ] ) && current_user_can( (string) $views[ $slug ]['capability'] );
+	}
+
 	/** Entry point, called by theme/hedayati/page-panel.php. */
 	public static function render(): void {
 		if ( ! self::allowed() ) {
@@ -344,8 +628,24 @@ class Hedayati_Staff_Portal {
 			return;
 		}
 
+		if ( 'courses' === $view && current_user_can( 'hedayati_manage_courses' ) ) {
+			self::render_courses();
+			return;
+		}
+
+		if ( 'featured' === $view && current_user_can( 'hedayati_manage_courses' ) ) {
+			self::render_featured();
+			return;
+		}
+
 		if ( 'run' === $view ) {
 			self::render_run( absint( self::get( 'run_id' ) ) );
+			return;
+		}
+
+		$modules = self::module_views();
+		if ( isset( $modules[ $view ] ) && current_user_can( (string) $modules[ $view ]['capability'] ) ) {
+			call_user_func( $modules[ $view ]['render'] );
 			return;
 		}
 
@@ -355,16 +655,20 @@ class Hedayati_Staff_Portal {
 	private static function render_home(): void {
 		$user = wp_get_current_user();
 
+		if ( self::is_manager_workspace() ) {
+			self::render_manager_home( $user );
+			return;
+		}
+
 		echo '<h1 class="hd-portal-title">' . esc_html__( 'پنل آموزش', 'hedayati-core' ) . '</h1>';
 		echo '<p class="hd-portal-note">' . esc_html( $user->display_name ) . '</p>';
 
 		$cards = [
 			'hedayati_lookup_students'    => [ self::url( [ 'view' => 'students' ] ), __( 'پذیرش و پروندهٔ دانشجو', 'hedayati-core' ) ],
-			'hedayati_manage_courses'     => [ admin_url( 'edit.php?post_type=course' ), __( 'مدیریت دوره‌ها', 'hedayati-core' ) ],
-			'hedayati_manage_course_runs' => [ admin_url( 'admin.php?page=hedayati-academic' ), __( 'عملیات آموزشی', 'hedayati-core' ) ],
-			'hedayati_manage_teachers'    => [ admin_url( 'edit.php?post_type=teacher' ), __( 'مدیریت اساتید', 'hedayati-core' ) ],
-			'hedayati_manage_settings'    => [ admin_url( 'options-general.php?page=hedayati-settings' ), __( 'اطلاعات تماس مجتمع', 'hedayati-core' ) ],
-			'hedayati_verify_students'    => [ admin_url( 'admin.php?page=hedayati-students' ), __( 'بررسی احراز هویت', 'hedayati-core' ) ],
+			'hedayati_manage_courses'     => [ self::url( [ 'view' => 'courses' ] ), __( 'مدیریت دوره‌ها', 'hedayati-core' ) ],
+			'hedayati_manage_course_runs' => [ self::url( [ 'view' => 'academic' ] ), __( 'عملیات آموزشی', 'hedayati-core' ) ],
+			'hedayati_manage_teachers'    => [ self::url( [ 'view' => 'teachers' ] ), __( 'مدیریت اساتید', 'hedayati-core' ) ],
+			'hedayati_manage_settings'    => [ self::url( [ 'view' => 'settings' ] ), __( 'تنظیمات مجتمع', 'hedayati-core' ) ],
 		];
 
 		echo '<div class="hd-portal-cards">';
@@ -384,13 +688,374 @@ class Hedayati_Staff_Portal {
 		}
 	}
 
+	/**
+	 * A task-focused manager landing page backed by real WordPress data.
+	 *
+	 * The linked operational screens remain the existing capability-gated
+	 * controllers. This page only summarizes non-sensitive counts and routes the
+	 * manager to them; it does not duplicate their mutation logic.
+	 */
+	private static function render_manager_home( WP_User $user ): void {
+		$metrics = self::manager_metrics();
+		$kpis    = array_slice( $metrics, 0, 4 );   // AI Studio: exactly four headline tiles
+		$queue   = array_slice( $metrics, 4 );      // the rest live in the status card
+
+		echo '<header class="hd-manager-heading">';
+		echo '<div><span class="hd-manager-eyebrow">' . esc_html__( 'گزارش عملکرد کلی', 'hedayati-core' ) . '</span>';
+		echo '<h1 class="hd-portal-title">' . esc_html__( 'داشبورد مدیریت', 'hedayati-core' ) . '</h1></div>';
+		if ( current_user_can( 'hedayati_manage_courses' ) ) {
+			printf(
+				'<a class="hd-manager-primary" href="%s">%s<span>%s</span></a>',
+				esc_url( self::url( [ 'view' => 'course-new' ] ) ),
+				Hedayati_Icons::svg( 'plus', 16 ), // phpcs:ignore -- static SVG
+				esc_html__( 'تعریف دورهٔ جدید', 'hedayati-core' )
+			);
+		}
+		echo '</header>';
+
+		echo '<section class="hd-manager-kpis" aria-label="' . esc_attr__( 'خلاصهٔ وضعیت مجتمع', 'hedayati-core' ) . '">';
+		foreach ( $kpis as $metric ) {
+			printf(
+				'<a class="hd-manager-kpi" href="%1$s"><span>%2$s</span><strong>%3$s</strong><small>%4$s</small></a>',
+				esc_url( $metric['url'] ),
+				esc_html( $metric['label'] ),
+				esc_html( Hedayati_Text::digits_to_persian( (string) $metric['value'] ) ),
+				esc_html( $metric['hint'] )
+			);
+		}
+		echo '</section>';
+
+		// Quick actions: the four AI Studio shortcuts, each only for a manager who
+		// may open it. Every other module is one click away in the rail.
+		$actions = [
+			[ 'hedayati_manage_courses', self::url( [ 'view' => 'courses' ] ), __( 'مدیریت و ویرایش دوره‌ها', 'hedayati-core' ), __( 'عنوان، سرفصل، مدرس و وضعیت انتشار', 'hedayati-core' ), 'book' ],
+			[ 'hedayati_manage_courses', self::url( [ 'view' => 'featured' ] ), __( 'انتخاب دوره‌های صفحهٔ اصلی', 'hedayati-core' ), __( 'تنظیم دو ردیف چهارتایی ویژه', 'hedayati-core' ), 'sparkle' ],
+			[ Hedayati_Consultation_Service::CAPABILITY, self::url( [ 'view' => 'consultations' ] ), __( 'پیگیری فرم‌های مشاوره', 'hedayati-core' ), __( 'ثبت وضعیت تماس با متقاضی', 'hedayati-core' ), 'phone' ],
+			[ Hedayati_Certificate_Service::MANAGE_CAP, self::url( [ 'view' => 'certificates' ] ), __( 'سامانهٔ گواهینامه‌ها', 'hedayati-core' ), __( 'صدور، ابطال و استعلام با کد', 'hedayati-core' ), 'shield' ],
+			[ 'hedayati_lookup_students', self::url( [ 'view' => 'students' ] ), __( 'پذیرش و پروندهٔ دانشجو', 'hedayati-core' ), __( 'جستجو، ثبت‌نام، احراز هویت و مدارک', 'hedayati-core' ), 'users' ],
+			[ 'hedayati_manage_course_runs', self::url( [ 'view' => 'academic' ] ), __( 'عملیات آموزشی', 'hedayati-core' ), __( 'دوره‌های اجرایی، جلسات، حضور و غیاب', 'hedayati-core' ), 'calendar' ],
+		];
+		$actions = array_slice( array_values( array_filter( $actions, static fn( $a ) => current_user_can( $a[0] ) ) ), 0, 4 );
+
+		echo '<div class="hd-manager-overview">';
+		echo '<section class="hd-manager-section">';
+		echo '<div class="hd-manager-section-title"><div><span class="hd-manager-eyebrow">' . esc_html__( 'مرکز عملیات', 'hedayati-core' ) . '</span>';
+		echo '<h2>' . esc_html__( 'عملیات سریع مدیریتی', 'hedayati-core' ) . '</h2></div></div>';
+		echo '<div class="hd-manager-actions">';
+		foreach ( $actions as [ , $url, $name, $desc, $icon ] ) {
+			printf(
+				'<a class="hd-manager-action" href="%1$s"><span class="hd-manager-action-icon" aria-hidden="true">%2$s</span><span><strong>%3$s</strong><small>%4$s</small></span></a>',
+				esc_url( $url ),
+				self::manager_icon( $icon ), // phpcs:ignore -- static SVG
+				esc_html( $name ),
+				esc_html( $desc )
+			);
+		}
+		echo '</div></section>';
+
+		echo '<aside class="hd-manager-status-card" aria-label="' . esc_attr__( 'وضعیت امروز', 'hedayati-core' ) . '">';
+		if ( current_user_can( 'hedayati_manage_courses' ) ) {
+			echo '<span>' . esc_html__( 'وضعیت صفحهٔ اصلی', 'hedayati-core' ) . '</span>';
+			printf(
+				'<h2>%s</h2>',
+				/* translators: 1: featured course count, 2: maximum */
+				esc_html( sprintf( __( '%1$s از %2$s دوره', 'hedayati-core' ), Hedayati_Text::digits_to_persian( (string) self::featured_count() ), Hedayati_Text::digits_to_persian( (string) self::FEATURED_LIMIT ) ) )
+			);
+			echo '<p>' . esc_html__( 'تعداد دوره‌های ویژهٔ تعیین‌شده برای نمایش در دو ردیف چهارتایی صفحهٔ نخست.', 'hedayati-core' ) . '</p>';
+		}
+		if ( ! empty( $queue ) ) {
+			echo '<ul class="hd-manager-status-list">';
+			foreach ( $queue as $metric ) {
+				printf(
+					'<li><a href="%1$s"><span>%2$s</span><b>%3$s</b></a></li>',
+					esc_url( $metric['url'] ),
+					esc_html( $metric['label'] ),
+					esc_html( Hedayati_Text::digits_to_persian( (string) $metric['value'] ) )
+				);
+			}
+			echo '</ul>';
+		}
+		if ( current_user_can( 'hedayati_manage_courses' ) ) {
+			echo '<a class="hd-manager-status-btn" href="' . esc_url( self::url( [ 'view' => 'featured' ] ) ) . '">' . esc_html__( 'ویرایش چینش ویژه', 'hedayati-core' ) . ' <span aria-hidden="true">‹</span></a>';
+		}
+		echo '</aside>';
+		echo '</div>';
+	}
+
+	/** @return array<int, array{label:string,value:int,hint:string,url:string}> */
+	private static function manager_metrics(): array {
+		$course_counts = wp_count_posts( 'course' );
+		$published     = isset( $course_counts->publish ) ? (int) $course_counts->publish : 0;
+
+		$featured_query = new WP_Query( [
+			'post_type'      => 'course',
+			'post_status'    => 'publish',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'meta_query'     => [
+				[
+					'key'     => '_course_is_featured',
+					'value'   => '1',
+					'compare' => '=',
+				],
+			],
+		] );
+
+		$active_runs     = Hedayati_Course_Run_Service::count_active();
+		$active_students = Hedayati_Enrollment_Service::count_active_students();
+
+		$metric = static fn( string $label, int $value, string $hint, string $view ): array => [
+			'label' => $label,
+			'value' => $value,
+			'hint'  => $hint,
+			'url'   => self::url( [ 'view' => $view ] ),
+		];
+
+		// Order = AI Studio headline tiles first (the home shows the first four).
+		$metrics   = [];
+		$metrics[] = $metric( __( 'دوره‌های منتشرشده', 'hedayati-core' ), $published, __( 'مدیریت دوره‌ها', 'hedayati-core' ), 'courses' );
+		$metrics[] = $metric(
+			__( 'دوره‌های ویژهٔ صفحهٔ نخست', 'hedayati-core' ),
+			(int) $featured_query->found_posts,
+			/* translators: %s: maximum featured courses */
+			sprintf( __( 'حداکثر %s مورد', 'hedayati-core' ), Hedayati_Text::digits_to_persian( (string) self::FEATURED_LIMIT ) ),
+			'featured'
+		);
+		if ( current_user_can( Hedayati_Consultation_Service::CAPABILITY ) ) {
+			$metrics[] = $metric( __( 'درخواست‌های مشاورهٔ جدید', 'hedayati-core' ), Hedayati_Consultation_Service::count_new(), __( 'نیاز به پیگیری', 'hedayati-core' ), 'consultations' );
+		}
+		$metrics[] = $metric( __( 'دانشجویان فعال', 'hedayati-core' ), $active_students, __( 'پرونده و ثبت‌نام', 'hedayati-core' ), 'students' );
+		$metrics[] = $metric( __( 'دوره‌های اجرایی فعال', 'hedayati-core' ), $active_runs, __( 'برنامه‌ریزی و اجرا', 'hedayati-core' ), 'academic' );
+		if ( current_user_can( Hedayati_Support_Service::STAFF_CAP ) ) {
+			$metrics[] = $metric( __( 'تیکت در انتظار پاسخ', 'hedayati-core' ), Hedayati_Support_Service::count_waiting_staff(), __( 'پشتیبانی دانشجو', 'hedayati-core' ), 'support' );
+		}
+
+		return $metrics;
+	}
+
+	/** Manager action-card icons — the shared app-shell icon language (D58). */
+	private static function manager_icon( string $name ): string {
+		return Hedayati_Icons::svg( $name, 22 );
+	}
+
+	// ── Courses (in-panel, adapted from the AI Studio "مدیریت دوره‌ها" tab) ──
+
+	/** Published + non-published `course` posts, newest first, optionally filtered. */
+	private static function course_query( string $search, bool $featured_only ): WP_Query {
+		$args = [
+			'post_type'      => 'course',
+			'post_status'    => [ 'publish', 'draft', 'pending', 'private', 'future' ],
+			'posts_per_page' => 100,
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+			's'              => $search,
+		];
+
+		if ( $featured_only ) {
+			$args['meta_query'] = [
+				[
+					'key'     => '_course_is_featured',
+					'value'   => '1',
+					'compare' => '=',
+				],
+			];
+		}
+
+		return new WP_Query( $args );
+	}
+
+	/** How many `course` posts currently carry the homepage-featured flag. */
+	private static function featured_count(): int {
+		$q = new WP_Query( [
+			'post_type'      => 'course',
+			'post_status'    => [ 'publish', 'draft', 'pending', 'private', 'future' ],
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'meta_query'     => [
+				[
+					'key'     => '_course_is_featured',
+					'value'   => '1',
+					'compare' => '=',
+				],
+			],
+		] );
+
+		return (int) $q->found_posts;
+	}
+
+	private static function is_featured( int $course_id ): bool {
+		return (bool) get_post_meta( $course_id, '_course_is_featured', true );
+	}
+
+	/** One nonce-protected toggle button (feature / publish) for a course row. */
+	private static function toggle_button( string $action, int $course_id, string $label, bool $on ): void {
+		self::form_open( $action, [ 'course_id' => $course_id ], false, 'hd-manager-toggle' );
+		printf(
+			'<button class="hd-manager-toggle-btn%s" type="submit">%s</button></form>',
+			$on ? ' is-on' : '',
+			esc_html( $label )
+		);
+	}
+
+	private static function render_courses(): void {
+		$search        = self::get( 'q' );
+		$featured_only = '1' === self::get( 'featured' );
+		$query         = self::course_query( $search, $featured_only );
+		$featured_now  = self::featured_count();
+
+		echo '<header class="hd-manager-heading"><div>';
+		echo '<span class="hd-manager-eyebrow">' . esc_html__( 'مدیریت محتوا', 'hedayati-core' ) . '</span>';
+		echo '<h1 class="hd-portal-title">' . esc_html__( 'فهرست دوره‌های آموزشی', 'hedayati-core' ) . '</h1>';
+		printf(
+			'<p class="hd-portal-note">%s</p>',
+			esc_html(
+				sprintf(
+					/* translators: 1: featured course count, 2: featured slot limit */
+					__( 'ایجاد و ویرایش کامل دوره‌ها در همین پنل انجام می‌شود. %1$s دوره از %2$s جایگاه ویژهٔ صفحهٔ نخست انتخاب شده است.', 'hedayati-core' ),
+					Hedayati_Text::digits_to_persian( (string) $featured_now ),
+					Hedayati_Text::digits_to_persian( (string) self::FEATURED_LIMIT )
+				)
+			)
+		);
+		echo '</div>';
+		// D53 / Phase C: in-panel course create/edit (Hedayati_Course_Panel).
+		printf(
+			'<a class="hd-manager-primary" href="%s">%s</a>',
+			esc_url( self::url( [ 'view' => 'course-new' ] ) ),
+			esc_html__( 'دورهٔ جدید', 'hedayati-core' )
+		);
+		echo '</header>';
+
+		echo '<form class="hd-manager-toolbar" method="get" action="' . esc_url( self::url() ) . '">';
+		echo '<input type="hidden" name="view" value="courses">';
+		printf(
+			'<label class="hd-portal-field"><span class="screen-reader-text">%s</span><input type="search" name="q" value="%s" placeholder="%s"></label>',
+			esc_html__( 'جستجوی دوره', 'hedayati-core' ),
+			esc_attr( $search ),
+			esc_attr__( 'جستجو در عنوان دوره…', 'hedayati-core' )
+		);
+		printf(
+			'<label class="hd-manager-check"><input type="checkbox" name="featured" value="1"%s onchange="this.form.submit()"> %s</label>',
+			checked( $featured_only, true, false ),
+			esc_html__( 'فقط دوره‌های ویژه', 'hedayati-core' )
+		);
+		printf( '<button class="hd-portal-btn" type="submit">%s</button>', esc_html__( 'اعمال', 'hedayati-core' ) );
+		echo '</form>';
+
+		if ( ! $query->have_posts() ) {
+			echo '<p class="hd-portal-note">' . esc_html__( 'دوره‌ای یافت نشد.', 'hedayati-core' ) . '</p>';
+			return;
+		}
+
+		echo '<div class="hd-manager-table" role="table">';
+		echo '<div class="hd-manager-tr hd-manager-th" role="row">';
+		$headings = [
+			__( 'عنوان دوره', 'hedayati-core' ),
+			__( 'دپارتمان', 'hedayati-core' ),
+			__( 'مدت', 'hedayati-core' ),
+			__( 'وضعیت انتشار', 'hedayati-core' ),
+			__( 'ویژهٔ صفحهٔ نخست', 'hedayati-core' ),
+			__( 'ویرایش', 'hedayati-core' ),
+		];
+		foreach ( $headings as $heading ) {
+			echo '<span role="columnheader">' . esc_html( $heading ) . '</span>';
+		}
+		echo '</div>';
+
+		foreach ( $query->posts as $course_post ) {
+			$course_id = (int) $course_post->ID;
+			$english   = (string) get_post_meta( $course_id, '_course_english_name', true );
+			$duration  = (string) get_post_meta( $course_id, '_course_duration', true );
+			$terms     = get_the_term_list( $course_id, 'course-category', '', '، ' );
+			$featured  = self::is_featured( $course_id );
+			$published = 'publish' === $course_post->post_status;
+
+			echo '<div class="hd-manager-tr" role="row">';
+			echo '<span role="cell" class="hd-manager-course-cell"><strong>' . esc_html( get_the_title( $course_post ) ?: __( '(بدون عنوان)', 'hedayati-core' ) ) . '</strong>';
+			if ( '' !== $english ) {
+				echo '<small dir="ltr">' . esc_html( $english ) . '</small>';
+			}
+			echo '</span>';
+			echo '<span role="cell">' . ( $terms && ! is_wp_error( $terms ) ? wp_kses_post( $terms ) : '<span class="hd-portal-note">—</span>' ) . '</span>';
+			echo '<span role="cell">' . ( '' !== $duration ? esc_html( $duration ) : '—' ) . '</span>';
+			echo '<span role="cell">';
+			self::toggle_button( 'course_publish', $course_id, $published ? __( 'منتشر شده', 'hedayati-core' ) : __( 'پیش‌نویس', 'hedayati-core' ), $published );
+			echo '</span>';
+			echo '<span role="cell">';
+			self::toggle_button( 'course_feature', $course_id, $featured ? __( 'ویژه', 'hedayati-core' ) : __( 'عادی', 'hedayati-core' ), $featured );
+			echo '</span>';
+			// D53 / Phase C: full in-panel course editor for everyone who can
+			// manage courses. The administrator additionally keeps the Gutenberg
+			// link as a maintenance shortcut.
+			echo '<span role="cell" class="hd-manager-row-actions">';
+			printf(
+				'<a class="hd-manager-row-edit" href="%s">%s</a>',
+				esc_url( self::url( [ 'view' => 'course-edit', 'course_id' => $course_id ] ) ),
+				esc_html__( 'ویرایش در پنل', 'hedayati-core' )
+			);
+			if ( current_user_can( 'manage_options' ) && ( $edit_link = get_edit_post_link( $course_id ) ) ) {
+				printf(
+					' <a class="hd-portal-note" href="%s">%s</a>',
+					esc_url( $edit_link ),
+					esc_html__( 'ویرایشگر وردپرس', 'hedayati-core' )
+				);
+			}
+			echo '</span>';
+			echo '</div>';
+		}
+		echo '</div>';
+	}
+
+	private static function render_featured(): void {
+		$featured_now = self::featured_count();
+		$query        = self::course_query( '', false );
+
+		echo '<header class="hd-manager-heading"><div>';
+		echo '<span class="hd-manager-eyebrow">' . esc_html__( 'مدیریت صفحهٔ نخست', 'hedayati-core' ) . '</span>';
+		printf(
+			'<h1 class="hd-portal-title">%s</h1>',
+			esc_html(
+				sprintf(
+					/* translators: 1: current featured count, 2: limit */
+					__( 'دوره‌های ویژهٔ صفحهٔ نخست (%1$s از %2$s)', 'hedayati-core' ),
+					Hedayati_Text::digits_to_persian( (string) $featured_now ),
+					Hedayati_Text::digits_to_persian( (string) self::FEATURED_LIMIT )
+				)
+			)
+		);
+		echo '<p class="hd-portal-note">' . esc_html__( 'حداکثر ۸ دوره در صفحهٔ نخست نمایش داده می‌شود. برای بهترین چیدمان دقیقاً ۸ دوره را انتخاب کنید.', 'hedayati-core' ) . '</p>';
+		echo '</div></header>';
+
+		if ( ! $query->have_posts() ) {
+			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز دوره‌ای تعریف نشده است.', 'hedayati-core' ) . '</p>';
+			return;
+		}
+
+		echo '<div class="hd-manager-feature-grid">';
+		foreach ( $query->posts as $course_post ) {
+			$course_id = (int) $course_post->ID;
+			$featured  = self::is_featured( $course_id );
+			$english   = (string) get_post_meta( $course_id, '_course_english_name', true );
+
+			self::form_open( 'course_feature', [ 'course_id' => $course_id ], false, 'hd-manager-feature-item' );
+			printf(
+				'<button class="hd-manager-feature-btn%s" type="submit"><span class="hd-manager-feature-star" aria-hidden="true">%s</span><span><strong>%s</strong><small dir="ltr">%s</small></span></button></form>',
+				$featured ? ' is-on' : '',
+				$featured ? '★' : '☆',
+				esc_html( get_the_title( $course_post ) ?: __( '(بدون عنوان)', 'hedayati-core' ) ),
+				esc_html( $english )
+			);
+		}
+		echo '</div>';
+	}
+
 	private static function render_my_runs(): void {
-		echo '<h2 class="hd-portal-subtitle">' . esc_html__( 'کلاس‌های من', 'hedayati-core' ) . '</h2>';
+		echo '<h2 class="hd-portal-subtitle">' . esc_html__( 'دوره‌های اجرایی من', 'hedayati-core' ) . '</h2>';
 
 		$run_ids = Hedayati_Run_Staff_Service::run_ids_for_user( get_current_user_id() );
 
 		if ( empty( $run_ids ) ) {
-			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز کلاسی به شما اختصاص داده نشده است.', 'hedayati-core' ) . '</p>';
+			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز دورهٔ اجرایی‌ای به شما اختصاص داده نشده است.', 'hedayati-core' ) . '</p>';
 			return;
 		}
 
@@ -434,7 +1099,7 @@ class Hedayati_Staff_Portal {
 		}
 
 		if ( empty( $roster ) ) {
-			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز دانشجویی در این کلاس ثبت‌نام نکرده است.', 'hedayati-core' ) . '</p>';
+			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز دانشجویی در این دورهٔ اجرایی ثبت‌نام نکرده است.', 'hedayati-core' ) . '</p>';
 		} else {
 			echo '<ul class="hd-portal-roster">';
 			foreach ( $roster as $name ) {
@@ -443,12 +1108,29 @@ class Hedayati_Staff_Portal {
 			echo '</ul>';
 		}
 
-		$can_sessions = current_user_can( 'hedayati_manage_assigned_sessions' ) || current_user_can( 'hedayati_manage_course_runs' );
-		if ( ! $can_sessions ) {
-			return;
+		// Run progress (objective, from sessions) — visible to any staff on the run.
+		$rp = Hedayati_Progress_Service::run_progress( $run_id );
+		if ( $rp['total'] > 0 ) {
+			printf(
+				'<p class="hd-portal-note">%s</p>',
+				esc_html( sprintf(
+					/* translators: 1: held, 2: total, 3: percent */
+					__( 'پیشرفت دوره: %1$s از %2$s جلسه (%3$s٪)', 'hedayati-core' ),
+					Hedayati_Text::digits_to_persian( (string) $rp['held'] ),
+					Hedayati_Text::digits_to_persian( (string) $rp['total'] ),
+					Hedayati_Text::digits_to_persian( (string) Hedayati_Progress_Service::percent( $rp['ratio'] ) )
+				) )
+			);
 		}
 
-		self::render_run_sessions( $run_id, $enrollments );
+		$can_sessions = current_user_can( 'hedayati_manage_assigned_sessions' ) || current_user_can( 'hedayati_manage_course_runs' );
+		if ( $can_sessions ) {
+			self::render_run_sessions( $run_id, $enrollments );
+		}
+
+		// Course/session materials — self-gates on hedayati_manage_session_materials
+		// + staff-on-run, so a TA (who lacks the cap) sees nothing here.
+		Hedayati_Material_Service::render_run_section( $run_id );
 	}
 
 	private static function render_run_sessions( int $run_id, array $enrollments ): void {
@@ -512,7 +1194,7 @@ class Hedayati_Staff_Portal {
 		}
 
 		if ( 0 === $rendered ) {
-			echo '<p class="hd-portal-note">' . esc_html__( 'دانشجوی فعالی برای ثبت حضور در این کلاس وجود ندارد.', 'hedayati-core' ) . '</p></form>';
+			echo '<p class="hd-portal-note">' . esc_html__( 'دانشجوی فعالی برای ثبت حضور در این دورهٔ اجرایی وجود ندارد.', 'hedayati-core' ) . '</p></form>';
 			return;
 		}
 
@@ -631,12 +1313,20 @@ class Hedayati_Staff_Portal {
 			self::form_open( 'verify', [ 'student_id' => $user_id ] );
 			self::submit( __( 'ارسال برای بررسی احراز هویت', 'hedayati-core' ) );
 		}
+
+		// D53 / Phase E: reviewer actions (approve/reject, national-ID reveal,
+		// private-document review) — self-gates on hedayati_verify_students /
+		// hedayati_view_private_documents. Reception (which holds neither) sees
+		// nothing new here.
+		if ( class_exists( 'Hedayati_Verification_Panel' ) ) {
+			Hedayati_Verification_Panel::render_reviewer_section( $user_id );
+		}
 	}
 
 	private static function render_enroll_form( int $user_id ): void {
 		self::form_open( 'enroll', [ 'student_id' => $user_id ] );
-		echo '<label class="hd-portal-field"><span>' . esc_html__( 'ثبت‌نام در کلاس', 'hedayati-core' ) . '</span>';
-		echo '<select name="run_id" required><option value="">' . esc_html__( 'انتخاب کلاس', 'hedayati-core' ) . '</option>';
+		echo '<label class="hd-portal-field"><span>' . esc_html__( 'ثبت‌نام در دورهٔ اجرایی', 'hedayati-core' ) . '</span>';
+		echo '<select name="run_id" required><option value="">' . esc_html__( 'انتخاب دورهٔ اجرایی', 'hedayati-core' ) . '</option>';
 
 		foreach ( Hedayati_Course_Run_Service::query( [ 'limit' => 500 ] ) as $run ) {
 			if ( ! in_array( $run['run_status'], [ 'scheduled', 'in_progress' ], true ) ) {
@@ -845,6 +1535,55 @@ class Hedayati_Staff_Portal {
 		self::finish(
 			Hedayati_Document_Service::upload( $user_id, $file, self::post( 'doc_type' ), get_current_user_id() ),
 			[ 'view' => 'students', 'student_id' => $user_id ]
+		);
+	}
+
+	/** Toggle a course's homepage-featured flag; enforce the 8-slot cap server-side. */
+	public static function handle_course_feature(): void {
+		self::verify( 'course_feature' );
+
+		$course_id = absint( self::post( 'course_id' ) );
+		$post      = get_post( $course_id );
+
+		if ( ! $post || 'course' !== $post->post_type || ! current_user_can( 'edit_post', $course_id ) ) {
+			self::deny();
+		}
+
+		$currently = self::is_featured( $course_id );
+
+		if ( ! $currently && self::featured_count() >= self::FEATURED_LIMIT ) {
+			self::finish(
+				new WP_Error( 'featured_full', __( 'حداکثر ۸ دوره می‌تواند در صفحهٔ نخست ویژه باشد. ابتدا یک دوره را از حالت ویژه خارج کنید.', 'hedayati-core' ) ),
+				[ 'view' => 'featured' ]
+			);
+		}
+
+		// Store a real boolean, mirroring Hedayati_Meta_Box::save() exactly
+		// (WordPress serialises true → '1', false → '' — what the featured query matches).
+		update_post_meta( $course_id, '_course_is_featured', ! $currently );
+
+		self::finish( true, [ 'view' => 'featured' ] );
+	}
+
+	/** Toggle a course between published and draft. */
+	public static function handle_course_publish(): void {
+		self::verify( 'course_publish' );
+
+		$course_id = absint( self::post( 'course_id' ) );
+		$post      = get_post( $course_id );
+
+		if ( ! $post || 'course' !== $post->post_type || ! current_user_can( 'edit_post', $course_id ) ) {
+			self::deny();
+		}
+
+		// verify() already confirmed hedayati_manage_courses, which the course CPT
+		// maps to publish_posts / edit_published_posts; edit_post is re-checked above.
+		$next   = 'publish' === $post->post_status ? 'draft' : 'publish';
+		$result = wp_update_post( [ 'ID' => $course_id, 'post_status' => $next ], true );
+
+		self::finish(
+			is_wp_error( $result ) ? $result : true,
+			[ 'view' => 'courses' ]
 		);
 	}
 }

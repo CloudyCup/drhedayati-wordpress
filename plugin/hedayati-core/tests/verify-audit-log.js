@@ -165,7 +165,12 @@ assert("safe enum values survive in note", sanitizeNote('active -> withdrawn') =
 console.log('\n6. Plugin bootstrap:');
 const boot = read('hedayati-core.php');
 assert("requires class-audit-log.php before the services", boot.indexOf('class-audit-log.php') < boot.indexOf('class-course-run-service.php'));
-assert("plugin version >= 1.4.0", /HEDAYATI_CORE_VERSION', '1\.[4-9]\.\d+'/.test(boot));
+assert("plugin version >= 1.4.0", (() => {
+	const m = boot.match(/HEDAYATI_CORE_VERSION', '(\d+)\.(\d+)\.(\d+)'/);
+	if (!m) return false;
+	const [maj, min] = [Number(m[1]), Number(m[2])];
+	return maj > 1 || (maj === 1 && min >= 4);
+})());
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 7. Behavioural port — audit emission semantics

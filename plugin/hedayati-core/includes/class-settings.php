@@ -26,17 +26,69 @@ class Hedayati_Settings {
 	private const OPTION_GROUP = 'hedayati_institute';
 	private const OPTION_NAME  = 'hedayati_institute_settings';
 	private const PAGE_SLUG    = 'hedayati-settings';
-	private const CAPABILITY   = 'hedayati_manage_settings';
+	public const CAPABILITY    = 'hedayati_manage_settings';
 
 	/**
 	 * Default values for every field.
 	 */
 	private const DEFAULTS = [
-		'phone_consult'  => '',
-		'phone_tabriz'   => '',
-		'phone_tehran'   => '',
-		'address_tabriz' => '',
+		'institute_name'  => '',
+		'phone_consult'   => '',
+		'phone_tabriz'    => '',
+		'phone_tehran'    => '',
+		'address_tabriz'  => '',
+		'address_tehran'  => '',
+		// D55 — homepage impact statistics. Blank on purpose: an empty value
+		// keeps that statistic hidden rather than publishing an invented
+		// number (see docs/DECISIONS.md D55 and template-parts/impact-section.php).
+		'stat_years'      => '',
+		'stat_graduates'  => '',
+		'stat_courses'    => '',
+		// D55 — the hero's supporting paragraph only (Concept-C's headline,
+		// eyebrow and CTAs stay canonical theme copy — see class docblock).
+		// Blank here means "keep the canonical copy", NOT "hide the paragraph".
+		'hero_tagline'    => '',
 	];
+
+	/** Fields shown on the homepage — kept separate so the theme's blank/omit
+	 *  rule for statistics never has to duplicate this key list. */
+	public const STAT_KEYS = [ 'stat_years', 'stat_graduates', 'stat_courses' ];
+
+	/** Canonical field list + labels — the single source of truth for both the
+	 *  wp-admin Settings API screen and the in-panel form (Hedayati_Panel_Settings). */
+	public static function field_labels(): array {
+		return [
+			'institute_name' => __( 'نام رسمی مجتمع', 'hedayati-core' ),
+			'phone_consult'  => __( 'تلفن مشاوره و ثبت‌نام', 'hedayati-core' ),
+			'phone_tabriz'   => __( 'تلفن تبریز', 'hedayati-core' ),
+			'phone_tehran'   => __( 'تلفن تهران', 'hedayati-core' ),
+			'address_tabriz' => __( 'آدرس تبریز', 'hedayati-core' ),
+			'address_tehran' => __( 'آدرس تهران', 'hedayati-core' ),
+			'stat_years'     => __( 'آمار صفحه نخست: سال‌های فعالیت (خالی = مخفی)', 'hedayati-core' ),
+			'stat_graduates' => __( 'آمار صفحه نخست: تعداد دانش‌آموختگان (خالی = مخفی)', 'hedayati-core' ),
+			'stat_courses'   => __( 'آمار صفحه نخست: تعداد دوره‌های تخصصی (خالی = مخفی)', 'hedayati-core' ),
+			'hero_tagline'   => __( 'متن معرفی صفحه نخست (خالی = متن پیش‌فرض)', 'hedayati-core' ),
+		];
+	}
+
+	public static function is_textarea( string $key ): bool {
+		return in_array( $key, [ 'address_tabriz', 'address_tehran', 'hero_tagline' ], true );
+	}
+
+	/** All current values (defaults merged). */
+	public static function all(): array {
+		$stored = get_option( self::OPTION_NAME, [] );
+		return array_merge( self::DEFAULTS, is_array( $stored ) ? $stored : [] );
+	}
+
+	/**
+	 * Persist settings through the SAME canonical sanitizer + option name the
+	 * Settings API screen uses. Used by the in-panel form (D52). Caller enforces
+	 * capability + nonce.
+	 */
+	public static function update( array $input ): void {
+		update_option( self::OPTION_NAME, self::sanitize_all( $input ) );
+	}
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
@@ -79,14 +131,7 @@ class Hedayati_Settings {
 			self::PAGE_SLUG
 		);
 
-		$fields = [
-			'phone_consult'  => 'تلفن مشاوره و ثبت‌نام',
-			'phone_tabriz'   => 'تلفن تبریز',
-			'phone_tehran'   => 'تلفن تهران',
-			'address_tabriz' => 'آدرس تبریز',
-		];
-
-		foreach ( $fields as $key => $label ) {
+		foreach ( self::field_labels() as $key => $label ) {
 			add_settings_field(
 				'hedayati_' . $key,
 				$label,
@@ -110,7 +155,7 @@ class Hedayati_Settings {
 		$name    = self::OPTION_NAME . '[' . esc_attr( $key ) . ']';
 		$id      = 'hedayati_field_' . esc_attr( $key );
 
-		if ( 'address_tabriz' === $key ) {
+		if ( self::is_textarea( $key ) ) {
 			printf(
 				'<textarea id="%s" name="%s" rows="3" class="large-text">%s</textarea>',
 				esc_attr( $id ),
@@ -168,11 +213,38 @@ class Hedayati_Settings {
 			}
 		}
 
-		if ( isset( $input['address_tabriz'] ) ) {
-			$out['address_tabriz'] = sanitize_textarea_field( wp_unslash( (string) $input['address_tabriz'] ) );
+		foreach ( [ 'address_tabriz', 'address_tehran' ] as $key ) {
+			if ( isset( $input[ $key ] ) ) {
+				$out[ $key ] = sanitize_textarea_field( wp_unslash( (string) $input[ $key ] ) );
+			}
+		}
+
+		if ( isset( $input['institute_name'] ) ) {
+			$out['institute_name'] = mb_substr( sanitize_text_field( wp_unslash( (string) $input['institute_name'] ) ), 0, 190 );
+		}
+
+		foreach ( self::STAT_KEYS as $key ) {
+			if ( isset( $input[ $key ] ) ) {
+				$out[ $key ] = self::sanitize_stat( (string) $input[ $key ] );
+			}
+		}
+
+		if ( isset( $input['hero_tagline'] ) ) {
+			$out['hero_tagline'] = mb_substr( sanitize_textarea_field( wp_unslash( (string) $input['hero_tagline'] ) ), 0, 400 );
 		}
 
 		return $out;
+	}
+
+	/**
+	 * A homepage stat is short display text (a number, optionally with a
+	 * trailing "+" or "٪"), never free prose — Persian digits are normalized
+	 * to ASCII (canonical storage rule) and only digits/+/% survive.
+	 */
+	public static function sanitize_stat( string $value ): string {
+		$value = Hedayati_Text::digits_to_ascii( sanitize_text_field( wp_unslash( $value ) ) );
+		$value = preg_replace( '/[^\d+%]/', '', $value );
+		return mb_substr( (string) $value, 0, 12 );
 	}
 
 	/**
