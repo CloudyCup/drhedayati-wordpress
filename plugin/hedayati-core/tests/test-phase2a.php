@@ -218,8 +218,10 @@ assert_test( "Manager has 'hedayati_verify_students'", ! empty( $manager_caps['h
 assert_test( "Manager does NOT have 'manage_options'", empty( $manager_caps['manage_options'] ) );
 
 $all_caps = Hedayati_Roles::get_all_hedayati_capabilities();
-// Phase 2B (roles schema 2.1.0) added `hedayati_manage_teachers` → 22 managed capabilities.
-assert_test( "Hedayati capabilities list contains 22 granular items", count( $all_caps ) === 22 );
+// 22 at roles 2.1.0 (Phase 2B); 30 at roles 2.4.0 (Phase 2C/2D + AI Studio modules).
+assert_test( "Hedayati capabilities list contains exactly 30 granular items (roles 2.4.0)", count( $all_caps ) === 30 );
+assert_test( "Hedayati capabilities list has no duplicates", count( array_unique( $all_caps ) ) === count( $all_caps ) );
+assert_test( "every managed capability is hedayati_-namespaced (never a core cap like manage_options)", count( array_filter( $all_caps, static fn( $c ) => ! str_starts_with( $c, 'hedayati_' ) ) ) === 0 );
 assert_test( "Role manager tracks managed capabilities option name", Hedayati_Roles::OPTION_MANAGED_CAPS === 'hedayati_core_managed_capabilities' );
 
 // ─────────────────────────────────────────────────────────────────────────────

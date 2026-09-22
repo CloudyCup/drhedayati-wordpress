@@ -150,11 +150,12 @@ check( "migrate_2_1_0() method still defined", str_contains( $db_src, 'function 
 check( "Phase 2A migration 2.0.0 still present (2.1.0 did not replace it)", str_contains( $db_src, 'migrate_2_0_0' ) && (bool) preg_match( "/'2\\.0\\.0'\\s*=>\\s*'migrate_2_0_0'/", $db_src ) );
 check( "phone table untouched by 2.1.0 (no ALTER on hedayati_user_phones)", ! preg_match( '/ALTER TABLE[^;]*hedayati_user_phones/i', $db_src ) );
 check( "no MySQL ENUM in schema", ! preg_match( '/\bENUM\s*\(/i', $db_src ) );
-check( "roles version 2.1.0", str_contains( $roles_src, "ROLES_VERSION = '2.1.0'" ) );
+check( "roles version is exactly 2.4.0 (2.1.0 introduced hedayati_manage_teachers)", str_contains( $roles_src, "ROLES_VERSION = '2.4.0'" ) );
 check( "hedayati_manage_teachers in capability list", substr_count( $roles_src, "'hedayati_manage_teachers'" ) >= 2 );
 
 require_once __DIR__ . '/../includes/class-roles.php';
-check( "get_all_hedayati_capabilities() returns 22", count( Hedayati_Roles::get_all_hedayati_capabilities() ) === 22 );
+check( "get_all_hedayati_capabilities() returns exactly 30 unique capabilities (roles 2.4.0)", count( Hedayati_Roles::get_all_hedayati_capabilities() ) === 30 && count( array_unique( Hedayati_Roles::get_all_hedayati_capabilities() ) ) === 30 );
+check( "hedayati_manage_teachers (added in 2.1.0) is still a managed capability", in_array( 'hedayati_manage_teachers', Hedayati_Roles::get_all_hedayati_capabilities(), true ) );
 $mgr = Hedayati_Roles::get_roles_definition()['hedayati_manager']['capabilities'];
 check( "manager has hedayati_manage_teachers", ! empty( $mgr['hedayati_manage_teachers'] ) );
 check( "manager still lacks manage_options", empty( $mgr['manage_options'] ) );
