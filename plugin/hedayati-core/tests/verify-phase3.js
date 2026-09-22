@@ -174,8 +174,8 @@ assert('page.php keeps .entry-content so existing block styling still applies', 
 assert('page.php has the shared skip-link target + role=main', page.includes('id="site-main"') && page.includes('role="main"'));
 assert('page.php only reveals teachers via Hedayati_Public_Content::teachers()', page.includes('Hedayati_Public_Content::teachers()'));
 const panelPage = readTheme('page-panel.php');
-assert('manager panel shell exposes the real operational navigation', panelPage.includes('is_manager_workspace()') && panelPage.includes('دوره‌ها و محتوای آموزشی') && panelPage.includes('عملیات آموزشی'));
-assert('manager sidebar links courses/featured to the in-panel views, not wp-admin', panelPage.includes("Hedayati_Staff_Portal::url( [ 'view' => 'courses' ] )") && panelPage.includes("Hedayati_Staff_Portal::url( [ 'view' => 'featured' ] )") && panelPage.includes("'courses' === $hd_view ? ' is-active'"));
+assert('manager panel shell exposes the real operational navigation (D58: via Hedayati_Staff_Portal::nav_groups())', panelPage.includes('is_manager_workspace()') && panelPage.includes('Hedayati_Staff_Portal::nav_groups()') && readPlugin('includes/class-staff-portal.php').includes('دوره‌ها و محتوای آموزشی') && readPlugin('includes/class-academic-panel.php').includes("'nav'        => __( 'عملیات آموزشی'"));
+assert('manager sidebar links courses/featured to the in-panel views, not wp-admin (D58: nav_groups() builds every item URL with self::url())', (() => { const sp = readPlugin('includes/class-staff-portal.php'); const fn = (sp.match(/function nav_groups\(\)[\s\S]*?\n\t\}/) || [''])[0]; return /\$core\['courses'\]/.test(fn) && /\$core\['featured'\]/.test(fn) && fn.includes("self::url( [ 'view' => $slug ] )") && !/admin_url\(/.test(fn) && /'active' => \$slug === \$active/.test(fn); })());
 const single = readTheme('single-course.php');
 assert('single-course gates teacher/fee/date behind the publication opt-in', single.includes("_hedayati_public_catalog_details"));
 assert('single-course renders the public-runs part', single.includes("get_template_part( 'template-parts/public-runs'"));

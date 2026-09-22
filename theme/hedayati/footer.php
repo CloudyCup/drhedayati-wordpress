@@ -2,8 +2,12 @@
 // Mirrors header.php: the focused /login/ auth shell gets a minimal
 // copyright-only footer instead of the full link-heavy public footer.
 $hd_is_auth_shell = class_exists( 'Hedayati_Login' ) && Hedayati_Login::is_login_page();
+// D58: the /panel/ + /account/ application shell has no public site footer.
+$hd_is_app_shell = function_exists( 'hedayati_is_app_shell' ) && hedayati_is_app_shell();
 ?>
-<?php if ( $hd_is_auth_shell ) : ?>
+<?php if ( $hd_is_app_shell ) : ?>
+
+<?php elseif ( $hd_is_auth_shell ) : ?>
 
 	<footer class="site-footer hd-auth-footer" id="site-footer" role="contentinfo">
 		<div class="footer-bottom container">

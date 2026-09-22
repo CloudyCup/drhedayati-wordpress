@@ -86,6 +86,13 @@
   --hd-scrollbar-thumb:       rgba(26, 27, 31, 0.22);
   --hd-scrollbar-thumb-hover: var(--hd-red);
 
+  /* App shell (panel / account) — AI Studio dark rail, in both schemes (D58) */
+  --hd-app-rail:        #17181b;
+  --hd-app-rail-hover:  #232529;
+  --hd-app-rail-line:   #282a30;
+  --hd-app-rail-text:   #a3acba;
+  --hd-app-rail-muted:  #878e9b;
+
   color-scheme: light;
 }
 
@@ -109,6 +116,10 @@
   --hd-scrollbar-track:       transparent;
   --hd-scrollbar-thumb:       rgba(244, 241, 236, 0.25);
   --hd-scrollbar-thumb-hover: var(--hd-red);
+
+  --hd-app-rail:        #0b0c0e;
+  --hd-app-rail-hover:  #1b1c20;
+  --hd-app-rail-line:   #202226;
 
   color-scheme: dark;
 }

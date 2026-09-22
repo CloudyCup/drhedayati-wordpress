@@ -163,7 +163,7 @@ const sp = P('includes/class-student-portal.php');
 assert('student portal routes certificates/support/notifications views', sp.includes("case 'certificates':") && sp.includes("case 'support':") && sp.includes("case 'notifications':"));
 assert('student enrollments view shows real progress + attendance, materials', sp.includes('Hedayati_Progress_Service::for_enrollment') && sp.includes('Hedayati_Material_Service::render_student_run'));
 const pageAccount = T('page-account.php');
-assert('account nav includes the new views + unread badge', pageAccount.includes("'certificates'") && pageAccount.includes("'support'") && pageAccount.includes("'notifications'") && pageAccount.includes('hd-nav-badge'));
+assert('account nav includes the new views + unread badge (D58: badge rendered by the shared app shell)', pageAccount.includes("'certificates'") && pageAccount.includes("'support'") && pageAccount.includes("'notifications' => [ __( 'اعلان‌ها', 'hedayati' ), 'bell', $hd_unread ]") && T('inc/app-shell.php').includes('hd-nav-badge'));
 const page = T('page.php');
 assert('page.php renders the public consult form + certificate verification', page.includes('Hedayati_Consultation_Service::render_public_form()') && page.includes('Hedayati_Certificate_Service::render_public_verification()'));
 const publicContent = P('includes/class-public-content.php');

@@ -1,0 +1,1154 @@
+/*
+ * D58 — Application shell for /panel/ and /account/ (AI Studio reference:
+ * reference-react/src/components/Panels.jsx + styles.css "Panels").
+ *
+ * Loaded only when hedayati_is_app_shell() is true, after account.css, whose
+ * component classes it re-proportions to AI Studio density. Same --hd-* tokens;
+ * dark mode stays centralized in main.css (the rail colours are tokens there).
+ * RTL-native: logical properties throughout, the rail sits on inline-start.
+ */
+
+/* ── Frame ──────────────────────────────────────────────────────────────── */
+
+.hd-app-page {
+	background: var(--hd-bg);
+}
+
+.hd-app {
+	display: grid;
+	grid-template-columns: 260px minmax(0, 1fr);
+	min-height: 100vh;
+	background: var(--hd-bg);
+	color: var(--hd-ink);
+}
+
+/* ── Rail (fixed dark sidebar) ──────────────────────────────────────────── */
+
+.hd-app-rail {
+	position: sticky;
+	top: 0;
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	padding: 18px 14px 14px;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	background: var(--hd-app-rail);
+	color: #fff;
+	scrollbar-width: thin;
+	scrollbar-color: var(--hd-app-rail-line) transparent;
+}
+
+.hd-app-brand {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding-inline: 4px;
+}
+
+.hd-app-brand-link {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+	color: #fff;
+	text-decoration: none;
+}
+
+.hd-app-brand-mark {
+	display: grid;
+	place-items: center;
+	flex: 0 0 36px;
+	width: 36px;
+	height: 36px;
+	border-radius: 10px;
+	background: var(--hd-red);
+	color: #fff;
+	font-size: 15px;
+	font-weight: 900;
+}
+
+.hd-app-brand-copy {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	line-height: 1.45;
+}
+
+.hd-app-brand-copy b {
+	font-size: 14px;
+	font-weight: 800;
+	color: #fff;
+}
+
+.hd-app-brand-copy small {
+	font-size: 10.5px;
+	color: var(--hd-app-rail-text);
+}
+
+.hd-app-rail-close {
+	display: none;
+	place-items: center;
+	width: 34px;
+	height: 34px;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: #fff;
+	cursor: pointer;
+}
+
+.hd-app-role {
+	width: max-content;
+	max-width: 100%;
+	margin: 18px 4px 6px;
+	padding: 4px 12px;
+	border: 1px solid #35373d;
+	border-radius: 20px;
+	background: var(--hd-app-rail-hover);
+	color: #d5dbe4;
+	font-size: 10.5px;
+	font-weight: 700;
+}
+
+.hd-app-nav-label {
+	margin: 16px 12px 6px;
+	color: var(--hd-app-rail-muted);
+	font-size: 10.5px;
+	font-weight: 700;
+	letter-spacing: .01em;
+}
+
+.hd-app-nav-list {
+	display: grid;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.hd-app-nav > .hd-app-nav-list:first-child {
+	margin-top: 10px;
+}
+
+.hd-app-nav-link {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 38px;
+	padding: 8px 12px;
+	border-radius: 8px;
+	color: var(--hd-app-rail-text);
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.5;
+	text-decoration: none;
+	transition: background var(--hd-transition), color var(--hd-transition);
+}
+
+.hd-app-nav-link .hd-icon {
+	flex: 0 0 18px;
+}
+
+.hd-app-nav-link > span {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.hd-app-nav-link:hover,
+.hd-app-nav-link:focus-visible,
+.hd-app-nav-link.is-active {
+	background: var(--hd-app-rail-hover);
+	color: #fff;
+}
+
+.hd-app-nav-link.is-active {
+	box-shadow: inset -3px 0 var(--hd-red);
+}
+
+.hd-app-nav-link:focus-visible,
+.hd-app-icon-btn:focus-visible,
+.hd-app-rail-close:focus-visible {
+	outline: 2px solid var(--hd-red);
+	outline-offset: 2px;
+}
+
+.hd-app-badge {
+	margin-inline-start: auto;
+	min-width: 20px;
+	padding: 0 7px;
+	border-radius: 12px;
+	background: var(--hd-red);
+	color: #fff;
+	font-size: 10.5px;
+	font-weight: 700;
+	line-height: 19px;
+	text-align: center;
+}
+
+.hd-app-nav-bottom {
+	margin-top: auto;
+	padding-top: 10px;
+	border-top: 1px solid var(--hd-app-rail-line);
+}
+
+.hd-app-nav {
+	margin-bottom: 14px;
+}
+
+/* ── Main column + top bar ──────────────────────────────────────────────── */
+
+.hd-app-main {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.hd-app-topbar {
+	position: sticky;
+	top: 0;
+	z-index: 50;
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	min-height: 64px;
+	padding: 0 28px;
+	border-bottom: 1px solid var(--hd-line);
+	background: var(--hd-surface);
+}
+
+.hd-app-topbar-title {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	line-height: 1.5;
+}
+
+.hd-app-topbar-title small {
+	color: var(--hd-muted);
+	font-size: 11px;
+}
+
+.hd-app-topbar-title b {
+	overflow: hidden;
+	font-size: 13.5px;
+	font-weight: 800;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.hd-app-topbar-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-inline-start: auto;
+}
+
+.hd-app-icon-btn,
+.hd-app-topbar .theme-toggle-btn {
+	position: relative;
+	display: grid;
+	place-items: center;
+	flex: 0 0 36px;
+	width: 36px;
+	height: 36px;
+	border: 1px solid var(--hd-line);
+	border-radius: 8px;
+	background: var(--hd-surface);
+	color: var(--hd-ink);
+	text-decoration: none;
+	cursor: pointer;
+	transition: border-color var(--hd-transition), color var(--hd-transition);
+}
+
+.hd-app-icon-btn:hover {
+	border-color: var(--hd-red-border);
+	color: var(--hd-red);
+}
+
+.hd-app-count {
+	position: absolute;
+	top: -6px;
+	inset-inline-end: -6px;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 4px;
+	border: 2px solid var(--hd-surface);
+	border-radius: 10px;
+	background: var(--hd-red);
+	color: #fff;
+	font-size: 10px;
+	font-weight: 800;
+	line-height: 14px;
+	text-align: center;
+}
+
+.hd-app-menu-btn {
+	display: none;
+}
+
+.hd-app-user {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	margin-inline-start: 4px;
+}
+
+.hd-app-avatar {
+	display: grid;
+	place-items: center;
+	flex: 0 0 36px;
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	background: var(--hd-red);
+	color: #fff;
+	font-size: 13px;
+	font-weight: 800;
+}
+
+.hd-app-user-copy {
+	display: flex;
+	flex-direction: column;
+	max-width: 170px;
+	line-height: 1.45;
+}
+
+.hd-app-user-copy b {
+	overflow: hidden;
+	font-size: 12px;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.hd-app-user-copy small {
+	color: var(--hd-muted);
+	font-size: 10.5px;
+}
+
+/* ── Content column ─────────────────────────────────────────────────────── */
+
+.hd-app-content.hd-portal-main,
+.hd-app .hd-manager-main,
+.hd-app .hd-student-main {
+	flex: 1 0 auto;
+	padding: 26px 28px 44px;
+	background: var(--hd-bg);
+}
+
+.hd-app-container.container {
+	width: 100%;
+	max-width: 1400px;
+	margin-inline: auto;
+}
+
+.hd-app .hd-portal-content {
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+/* Page heading (AI Studio .panel-heading) */
+.hd-app .hd-manager-heading,
+.hd-app .hd-student-heading,
+.hd-app .hd-student-view-heading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 12px 20px;
+	margin-bottom: 22px;
+}
+
+.hd-app .hd-manager-eyebrow,
+.hd-app .hd-student-section-heading span {
+	color: var(--hd-muted);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0;
+}
+
+.hd-app .hd-portal-title {
+	margin: 2px 0;
+	font-size: 26px;
+	font-weight: 800;
+	line-height: 1.4;
+}
+
+.hd-app .hd-manager-heading .hd-portal-title,
+.hd-app .hd-student-heading .hd-portal-title {
+	font-size: 26px;
+}
+
+.hd-app .hd-portal-note {
+	margin: 0 0 10px;
+	font-size: 13px;
+}
+
+.hd-app .hd-manager-heading .hd-portal-note,
+.hd-app .hd-student-heading .hd-portal-note {
+	margin: 0;
+}
+
+.hd-app .hd-portal-subtitle {
+	margin: 0 0 12px;
+	font-size: 16px;
+	font-weight: 800;
+}
+
+.hd-app .hd-manager-primary {
+	min-height: 40px;
+	padding: 8px 16px;
+	font-size: 13px;
+	box-shadow: none;
+}
+
+/* ── Cards / sections (AI Studio .dashboard-card) ───────────────────────── */
+
+.hd-app .hd-staff-section,
+.hd-app .hd-manager-section,
+.hd-app .hd-student-learning,
+.hd-app .hd-portal-run-card {
+	margin-bottom: 16px;
+	padding: 20px 22px;
+	border: 1px solid var(--hd-line);
+	border-radius: var(--hd-radius);
+	background: var(--hd-surface);
+}
+
+.hd-app .hd-staff-section > :last-child,
+.hd-app .hd-manager-section > :last-child {
+	margin-bottom: 0;
+}
+
+.hd-app .hd-manager-section-title {
+	margin-bottom: 14px;
+}
+
+.hd-app .hd-manager-section-title h2,
+.hd-app .hd-student-section-heading h2 {
+	margin: 2px 0 0;
+	font-size: 18px;
+	font-weight: 800;
+}
+
+.hd-app .hd-manager-section-title > a,
+.hd-app .hd-student-section-heading a {
+	color: var(--hd-muted);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+/* ── KPI tiles (AI Studio .panel-kpis) ──────────────────────────────────── */
+
+.hd-app .hd-manager-kpis {
+	grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
+	gap: 14px;
+	margin-bottom: 20px;
+}
+
+.hd-app .hd-manager-kpi {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 4px 12px;
+	padding: 18px 20px;
+	border-radius: var(--hd-radius);
+	transition: border-color var(--hd-transition), transform var(--hd-transition);
+}
+
+.hd-app .hd-manager-kpi:hover,
+.hd-app .hd-manager-kpi:focus-visible {
+	transform: translateY(-1px);
+	box-shadow: none;
+}
+
+.hd-app .hd-manager-kpi span {
+	grid-column: 1;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.hd-app .hd-manager-kpi strong {
+	grid-column: 2;
+	grid-row: 1 / 3;
+	margin: 0;
+	color: var(--hd-red);
+	font-size: 26px;
+	font-weight: 800;
+	line-height: 1;
+}
+
+.hd-app .hd-manager-kpi small {
+	grid-column: 1;
+	color: var(--hd-muted);
+	font-size: 10.5px;
+	font-weight: 600;
+}
+
+.hd-app .hd-manager-kpi small::after {
+	content: " ‹";
+}
+
+/* Student status tiles */
+.hd-app .hd-student-kpis {
+	grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+	gap: 14px;
+	margin-bottom: 20px;
+}
+
+.hd-app .hd-student-kpis .hd-portal-card,
+.hd-app .hd-portal-cards > .hd-portal-card {
+	gap: 4px;
+	padding: 16px 20px;
+	border-radius: var(--hd-radius);
+	background: var(--hd-surface);
+}
+
+.hd-app .hd-portal-card-label {
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.hd-app .hd-portal-card-value {
+	font-size: 20px;
+	font-weight: 800;
+}
+
+/* ── Manager dashboard: operations grid + homepage status ───────────────── */
+
+.hd-app .hd-manager-actions {
+	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+	gap: 10px;
+}
+
+.hd-app .hd-manager-action {
+	grid-template-columns: 34px minmax(0, 1fr) auto;
+	gap: 2px 10px;
+	min-height: 0;
+	padding: 12px 14px;
+	border-radius: 10px;
+	background: var(--hd-surface2);
+}
+
+.hd-app .hd-manager-action:hover,
+.hd-app .hd-manager-action:focus-visible {
+	background: var(--hd-surface);
+	transform: none;
+}
+
+.hd-app .hd-manager-action-icon {
+	width: 34px;
+	height: 34px;
+	border-radius: 9px;
+}
+
+.hd-app .hd-manager-action-icon svg {
+	width: 18px;
+	height: 18px;
+}
+
+.hd-app .hd-manager-action strong {
+	font-size: 12.5px;
+	font-weight: 800;
+}
+
+.hd-app .hd-manager-action small {
+	margin-top: 1px;
+	font-size: 10.5px;
+	line-height: 1.65;
+}
+
+.hd-app .hd-manager-action > b {
+	color: var(--hd-muted);
+	font-size: 1.1rem;
+}
+
+.hd-manager-overview {
+	display: grid;
+	grid-template-columns: minmax(0, 1.35fr) minmax(260px, .65fr);
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.hd-manager-overview > .hd-manager-section {
+	margin-bottom: 0;
+}
+
+.hd-manager-status-card {
+	align-self: start;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 22px;
+	border-radius: var(--hd-radius);
+	background: var(--hd-deep);
+	color: #fff;
+}
+
+.hd-manager-status-card > span {
+	color: #a3a6ad;
+	font-size: 11px;
+}
+
+.hd-manager-status-card h2 {
+	margin: 6px 0 2px;
+	color: #fff;
+	font-size: 30px;
+	font-weight: 800;
+	line-height: 1.3;
+}
+
+.hd-manager-status-card p {
+	margin: 0;
+	color: #c2c4c9;
+	font-size: 12px;
+	line-height: 1.85;
+}
+
+.hd-manager-status-card a {
+	align-self: flex-start;
+	margin-top: auto;
+	padding: 8px 14px;
+	border: 1px solid #373940;
+	border-radius: 8px;
+	background: #222428;
+	color: #fff;
+	font-size: 12px;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.hd-manager-status-card a:hover,
+.hd-manager-status-card a:focus-visible {
+	border-color: var(--hd-red);
+}
+
+.hd-manager-status-list {
+	display: grid;
+	gap: 0;
+	margin: 6px 0 14px;
+	padding: 0;
+	list-style: none;
+}
+
+.hd-manager-status-list li {
+	display: flex;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 8px 0;
+	border-bottom: 1px solid #2a2c31;
+	color: #c2c4c9;
+	font-size: 12px;
+}
+
+.hd-manager-status-list b {
+	color: #fff;
+	font-weight: 800;
+}
+
+/* ── Tables, toolbars, lists (AI Studio .admin-table-card / .simple-list) ─ */
+
+.hd-app .hd-manager-toolbar {
+	margin: 0 0 14px;
+	padding: 12px 16px;
+	background: var(--hd-surface2);
+}
+
+.hd-app .hd-manager-table {
+	margin-bottom: 16px;
+	font-size: 12.5px;
+}
+
+.hd-app .hd-manager-tr {
+	min-height: 54px;
+	padding: 9px 18px;
+	font-size: 12.5px;
+}
+
+.hd-app .hd-manager-th {
+	min-height: 38px;
+	font-size: 11px;
+	font-weight: 700;
+}
+
+.hd-app .hd-portal-run-list,
+.hd-app .hd-portal-roster,
+.hd-app .hd-portal-result-list {
+	border-radius: 12px;
+	background: var(--hd-surface);
+}
+
+.hd-app .hd-portal-run-list li,
+.hd-app .hd-portal-roster li,
+.hd-app .hd-portal-result-list li,
+.hd-app .hd-portal-result-list p {
+	padding: 11px 16px;
+	font-size: 13px;
+}
+
+.hd-app .hd-portal-table {
+	font-size: 12.5px;
+}
+
+.hd-app .hd-portal-table th {
+	background: var(--hd-surface2);
+	color: var(--hd-muted);
+	font-size: 11px;
+	font-weight: 700;
+}
+
+.hd-app .hd-portal-table th,
+.hd-app .hd-portal-table td {
+	padding: 10px 12px;
+}
+
+.hd-app .hd-notif-list li,
+.hd-app .hd-material-list li,
+.hd-app .hd-material-list article {
+	padding: 12px 14px;
+	border-radius: 10px;
+}
+
+.hd-notif-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-shrink: 0;
+}
+
+.hd-app .hd-consult-card,
+.hd-app .hd-cert-card,
+.hd-app .hd-support-thread {
+	padding: 16px 18px;
+}
+
+/* ── Flat views (students, runs, verification…) get card structure ──────
+   Standalone forms become compact cards with fields laid out side by side;
+   forms with their own internal layout (attendance rows, fieldset editors)
+   keep it. Purely presentational: no field, name or action changes. */
+
+.hd-app .hd-portal-content > .hd-portal-form:not(.hd-portal-attendance):not(.hd-course-form):not(:has(fieldset)),
+.hd-app .hd-staff-section > .hd-portal-form:not(.hd-portal-attendance):not(.hd-course-form):not(:has(fieldset)) {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	align-items: end;
+	gap: 12px 14px;
+	max-width: none;
+}
+
+.hd-app .hd-portal-content > .hd-portal-form:not(.hd-portal-attendance):not(.hd-course-form):not(:has(fieldset)) {
+	margin-bottom: 14px;
+	padding: 16px 18px;
+	border: 1px solid var(--hd-line);
+	border-radius: 12px;
+	background: var(--hd-surface);
+}
+
+.hd-app .hd-portal-form > :is(h2, h3, h4, p, ul, table, .hd-portal-note, .hd-manager-check) {
+	grid-column: 1 / -1;
+	margin: 0;
+}
+
+.hd-app .hd-portal-form > .hd-portal-field:has(textarea) {
+	grid-column: 1 / -1;
+}
+
+.hd-app .hd-portal-form > .hd-portal-btn,
+.hd-app .hd-portal-form > button {
+	justify-self: start;
+}
+
+.hd-app .hd-portal-content > .hd-portal-form.hd-portal-attendance,
+.hd-app .hd-portal-content > .hd-course-form {
+	max-width: none;
+}
+
+.hd-app .hd-portal-content > h2.hd-portal-subtitle,
+.hd-app .hd-portal-content > h2 {
+	margin: 26px 0 12px;
+	font-size: 16px;
+	font-weight: 800;
+}
+
+.hd-app .hd-portal-content > h3,
+.hd-app .hd-staff-section h3,
+.hd-app .hd-portal-form > h3 {
+	margin: 18px 0 8px;
+	font-size: 14px;
+	font-weight: 800;
+}
+
+.hd-app .hd-portal-form > h3 {
+	margin: 0;
+}
+
+.hd-app .hd-portal-content > p:not([class]) {
+	margin: 0 0 6px;
+	font-size: 13px;
+}
+
+/* ── Forms + buttons (AI Studio .panel-input / .solid-btn) ─────────────── */
+
+.hd-app .hd-portal-form {
+	gap: 12px;
+}
+
+.hd-app .hd-portal-field {
+	gap: 5px;
+	color: var(--hd-muted);
+	font-size: 11.5px;
+	font-weight: 600;
+}
+
+.hd-app .hd-portal-field input,
+.hd-app .hd-portal-field textarea,
+.hd-app .hd-portal-field select,
+.hd-app .hd-portal-form select,
+.hd-app .hd-manager-toolbar select,
+.hd-app .hd-manager-inline-form input[type="text"] {
+	padding: 9px 11px;
+	border: 1px solid var(--hd-line);
+	border-radius: 8px;
+	background: var(--hd-surface2);
+	color: var(--hd-ink);
+	font: inherit;
+	font-size: 13px;
+}
+
+.hd-app .hd-portal-field input:focus,
+.hd-app .hd-portal-field textarea:focus,
+.hd-app .hd-portal-field select:focus,
+.hd-app .hd-portal-form select:focus {
+	border-color: var(--hd-red-border);
+	outline: 2px solid var(--hd-red-light);
+	outline-offset: 0;
+}
+
+.hd-app .hd-portal-btn {
+	padding: 9px 16px;
+	border-radius: 8px;
+	font-size: 12.5px;
+}
+
+.hd-app .hd-portal-btn-small {
+	padding: 6px 12px;
+	font-size: 11.5px;
+}
+
+.hd-app .hd-portal-notice {
+	padding: 11px 14px;
+	border-radius: 10px;
+	font-size: 12.5px;
+}
+
+.hd-app .hd-portal-notice-warning {
+	border: 1px solid color-mix(in srgb, #d69b12 45%, var(--hd-line));
+	background: color-mix(in srgb, #d69b12 12%, var(--hd-surface));
+	color: var(--hd-ink);
+	font-weight: 600;
+}
+
+.hd-app .hd-portal-notice-warning form {
+	margin-top: 8px;
+}
+
+.hd-nav-child {
+	background: color-mix(in srgb, var(--hd-surface2) 45%, transparent);
+}
+
+.hd-nav-child-mark {
+	margin-inline-end: 6px;
+	color: var(--hd-muted);
+}
+
+/* ── Student dashboard (AI Studio StudentPanel) ─────────────────────────── */
+
+.hd-app .hd-student-dashboard-grid {
+	grid-template-columns: minmax(0, 1fr) 300px;
+	gap: 16px;
+}
+
+.hd-app .hd-student-learning {
+	margin-bottom: 0;
+	padding: 22px 24px;
+}
+
+.hd-app .hd-student-section-heading {
+	margin-bottom: 16px;
+}
+
+.hd-app .hd-student-course-list {
+	gap: 0;
+}
+
+.hd-app .hd-student-course-list > a {
+	grid-template-columns: 44px minmax(0, 1fr) auto;
+	gap: 14px;
+	padding: 14px 2px;
+	border: 0;
+	border-top: 1px solid var(--hd-line);
+	border-radius: 0;
+}
+
+.hd-app .hd-student-course-list > a:hover,
+.hd-app .hd-student-course-list > a:focus-visible {
+	background: transparent;
+	color: var(--hd-red-dark);
+}
+
+.hd-app .hd-student-course-mark {
+	width: 44px;
+	height: 44px;
+	border-radius: 10px;
+	background: var(--hd-black);
+	color: #fff;
+	font-size: 12px;
+}
+
+.hd-app .hd-student-course-list b {
+	display: grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	border: 1px solid var(--hd-line);
+	border-radius: 50%;
+	color: var(--hd-ink);
+	font-size: 1rem;
+}
+
+.hd-app .hd-student-next-class {
+	padding: 24px;
+	border: 0;
+	background: var(--hd-black);
+	color: #fff;
+}
+
+.hd-app .hd-student-next-class > span {
+	color: #a3acba;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.hd-app .hd-student-next-class h2 {
+	margin: 14px 0 4px;
+	color: #fff;
+	font-size: 22px;
+	font-weight: 800;
+}
+
+.hd-app .hd-student-next-class p {
+	color: #cbd2dc;
+	font-size: 12px;
+}
+
+.hd-app .hd-student-next-class > strong {
+	color: var(--hd-red);
+	font-size: 44px;
+	line-height: 1.1;
+	letter-spacing: .02em;
+}
+
+.hd-app .hd-student-next-class > a {
+	align-self: stretch;
+	margin-top: auto;
+	padding: 9px 14px;
+	border-radius: 8px;
+	background: var(--hd-red);
+	color: #fff;
+	font-size: 12.5px;
+	font-weight: 700;
+	text-align: center;
+}
+
+.hd-app .hd-student-next-class > a:hover,
+.hd-app .hd-student-next-class > a:focus-visible {
+	background: var(--hd-red-dark);
+}
+
+.hd-app .hd-student-schedule {
+	gap: 10px;
+}
+
+.hd-app .hd-student-schedule article {
+	padding: 14px 18px;
+	border-radius: 12px;
+	gap: 16px;
+}
+
+.hd-app .hd-student-empty {
+	padding: 34px 20px;
+	border-radius: var(--hd-radius);
+	background: var(--hd-surface);
+}
+
+.hd-app .hd-student-catalog {
+	padding: 8px 14px;
+	border-color: var(--hd-line);
+	background: var(--hd-surface);
+	color: var(--hd-ink);
+	font-size: 12.5px;
+	font-weight: 700;
+}
+
+/* Quick-link row under the student dashboard (AI Studio bottom cards) */
+.hd-app .hd-portal-cards {
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 14px;
+}
+
+.hd-app a.hd-portal-card {
+	padding: 16px 18px;
+	border-radius: var(--hd-radius);
+	font-size: 13px;
+}
+
+/* ── Admin bar (an administrator may open /account/) ────────────────────── */
+
+.admin-bar .hd-app-rail,
+.admin-bar .hd-app-topbar {
+	top: 32px;
+}
+
+.admin-bar .hd-app-rail {
+	height: calc(100vh - 32px);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1180px) {
+	.hd-app-user-copy {
+		display: none;
+	}
+
+	.hd-manager-overview,
+	.hd-app .hd-student-dashboard-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 1023px) {
+	.hd-app {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.hd-app-rail {
+		position: fixed;
+		inset-block: 0;
+		inset-inline-start: 0;
+		z-index: 200;
+		width: min(290px, 86vw);
+		height: 100%;
+		visibility: hidden;
+		transform: translateX(100%);
+		transition: transform .22s ease, visibility .22s;
+	}
+
+	/* Opening: visible at once (focusable immediately); closing keeps the
+	   base rule's visibility transition so it hides only after sliding out. */
+	.hd-app.is-rail-open .hd-app-rail {
+		visibility: visible;
+		transform: none;
+		transition: transform .22s ease;
+	}
+
+	.hd-app-backdrop:not([hidden]) {
+		position: fixed;
+		inset: 0;
+		z-index: 150;
+		background: rgba(12, 13, 15, .55);
+	}
+
+	.hd-app-rail-close,
+	.hd-app-menu-btn {
+		display: grid;
+	}
+
+	.hd-app-topbar {
+		padding: 0 16px;
+	}
+
+	.hd-app-content.hd-portal-main,
+	.hd-app .hd-manager-main,
+	.hd-app .hd-student-main {
+		padding: 18px 16px 32px;
+	}
+
+	.admin-bar .hd-app-rail {
+		top: 0;
+		height: 100%;
+	}
+}
+
+@media (max-width: 782px) {
+	.admin-bar .hd-app-topbar {
+		top: 46px;
+	}
+}
+
+@media (max-width: 620px) {
+	.hd-app-site-link {
+		display: none;
+	}
+
+	.hd-app .hd-portal-title,
+	.hd-app .hd-manager-heading .hd-portal-title,
+	.hd-app .hd-student-heading .hd-portal-title {
+		font-size: 21px;
+	}
+
+	.hd-app .hd-manager-heading,
+	.hd-app .hd-student-heading {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.hd-app .hd-manager-kpis,
+	.hd-app .hd-student-kpis {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 10px;
+	}
+
+	.hd-app .hd-manager-kpi {
+		padding: 14px;
+	}
+
+	.hd-app .hd-manager-kpi strong {
+		font-size: 22px;
+	}
+
+	.hd-app .hd-manager-actions {
+		grid-template-columns: 1fr;
+	}
+
+	.hd-app .hd-staff-section,
+	.hd-app .hd-manager-section,
+	.hd-app .hd-student-learning {
+		padding: 16px;
+	}
+
+	.hd-app .hd-student-next-class > strong {
+		font-size: 36px;
+	}
+}
+
+@media (max-width: 340px) {
+	.hd-app .hd-manager-kpis,
+	.hd-app .hd-student-kpis {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.hd-app-rail,
+	.hd-app-nav-link,
+	.hd-app .hd-manager-kpi {
+		transition: none;
+	}
+}

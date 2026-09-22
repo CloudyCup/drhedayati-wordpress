@@ -1,5 +1,22 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
+## D58 — AI Studio panel/account redesign (2026-09-22) — FEATURE BRANCH `feature/panel-redesign`
+
+`/panel/` and `/account/` now use a dedicated application shell modelled on the attached AI Studio
+design: a dark grouped rail with icons and badges, a compact top bar, and dense cards, KPIs and
+tables. All modules are preserved and all rendering stays in the existing plugin renderers. New:
+a staff notification inbox and a manager homepage-status card. Plugin 1.18.0, theme 1.6.0.
+
+Verification on this laptop: static Node suites green (including `verify-d58.js`). The full
+runtime acceptance suite (`docker/wp-tests/run.php`) ran **824/0** against the local WordPress
+runtime (`C:/Projects/hedayati-local-runtime`, PHP 8.3 + MariaDB 11.4, WP 6.6.2). GitHub Actions
+`Acceptance (Docker WordPress)` has **not** been run for this branch yet: it triggers only on
+push/PR to `main` or a manual dispatch. `scripts/test-browser.cjs` was not run because Playwright
+is not installed here. Not browser-reviewed by the owner, not merged, not deployed.
+**Pending:** the owner's separate tweak-list upload.
+
+---
+
 ## D57 — admin lands on /panel/ + menu persistence (2026-09-22) — FEATURE BRANCH `feature/panel-redesign`
 
 Restored onto a new laptop after the desktop SSD failure. The repo on this laptop was clean and

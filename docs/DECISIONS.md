@@ -939,3 +939,44 @@ pages that are missing. Two things combined:
 **Coverage:** `docker/wp-tests/test-d57.php` (runtime, wired into `run.php`) and
 `plugin/hedayati-core/tests/verify-d57.js` (static). The D55 static assertions that encoded the
 old forced `type=custom` behaviour were updated to the new invariants.
+
+## D58 — Panel/account visual redesign to the AI Studio application shell (2026-09-22)
+
+**Owner request.** The WordPress panels worked, but they were visually much looser than the
+original AI Studio design. The owner wants the AI Studio visuals and UX combined with all current
+WordPress functionality, with the WordPress backend, services and security remaining authoritative.
+
+**Audit.** The attached ZIP (`دکتر-هدایتی-—-کانسپت_های-بازطراحی.zip`) is byte-identical to
+`reference-react/src`, and the colour tokens already matched it. The gap was structural:
+- the public site header and footer wrapped the panels;
+- the sidebar was a floating card of about 21 ungrouped text links with no icons;
+- all content sat inside one oversized bordered card;
+- KPI and action tiles were large;
+- flat views (students, runs) were loose stacks of forms.
+
+**Decision.** `/panel/` and `/account/` get a dedicated application shell and no longer use the
+public header or footer. It has a fixed dark rail with grouped navigation, icons and badges; a
+compact top bar; and a dense content column (see DESIGN_SYSTEM.md, "Application shell"). Every
+view is still rendered by the existing plugin renderers. The redesign is presentation-only, apart
+from three plugin additions:
+- `Hedayati_Staff_Portal::nav_groups()`: capability-filtered grouped navigation. It maps every
+  registered module, and unmapped future modules fall into «سایر». It also provides
+  `nav_active_slug()` and `role_label()`.
+- `Hedayati_Icons`: a shared icon set. `manager_icon()` now delegates to it.
+- A staff notification inbox, `/panel/?view=notifications`, which is owner-scoped (the current
+  user's rows only) and nonce-protected. It closes a real gap: staff already *received*
+  notifications (new consultation, support tickets) but had nowhere to read them.
+
+The manager home keeps its KPIs and «مرکز عملیات» operations grid, and adds the AI Studio
+homepage-status card: the real featured count against the server-side `FEATURED_LIMIT`, plus live
+queue counts. No fake percentages, courses or counters were copied from the prototype.
+
+**Kept:** every module, capability, nonce, IDOR check, the wp-admin restriction for non-admins,
+Persian RTL (logical properties only), Vazirmatn, light/dark via the central tokens, and no
+horizontal overflow. It was verified at 1440px and 375px.
+
+**Coverage:** `docker/wp-tests/test-d58.php` checks, for each real role, that every nav item is
+openable and every openable view is reachable and renders; that the inbox is owner-scoped; and
+that every student view renders. `plugin/hedayati-core/tests/verify-d58.js` covers the static
+checks. Five older static assertions that pinned the pre-D58 template markup were rebased onto
+the equivalent new invariants. Plugin 1.17.0 → 1.18.0, theme 1.5.1 → 1.6.0, DB/roles unchanged.

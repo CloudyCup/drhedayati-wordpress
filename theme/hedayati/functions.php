@@ -16,13 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_VERSION', '1.5.1' );
+define( 'HEDAYATI_VERSION', '1.6.0' );
 define( 'HEDAYATI_DIR', get_template_directory() );
 define( 'HEDAYATI_URI', get_template_directory_uri() );
 
 // ── Includes ─────────────────────────────────────────────────────────────────
 
 require_once HEDAYATI_DIR . '/inc/menu-fallbacks.php';
+require_once HEDAYATI_DIR . '/inc/app-shell.php';
 
 // ── Theme Setup ───────────────────────────────────────────────────────────────
 
@@ -153,6 +154,16 @@ function hedayati_enqueue_assets(): void {
 			HEDAYATI_VERSION
 		);
 
+		// D58 — AI-Studio application shell (panel + account), layered on account.css.
+		if ( hedayati_is_app_shell() ) {
+			wp_enqueue_style(
+				'hedayati-app',
+				HEDAYATI_URI . '/assets/css/app.css',
+				[ 'hedayati-account' ],
+				HEDAYATI_VERSION
+			);
+		}
+
 		wp_enqueue_script(
 			'hedayati-account',
 			HEDAYATI_URI . '/assets/js/account.js',
@@ -176,6 +187,10 @@ function hedayati_body_classes( array $classes ): array {
 
 	if ( is_post_type_archive( 'course' ) || is_tax( 'course-category' ) ) {
 		$classes[] = 'hd-course-archive';
+	}
+
+	if ( hedayati_is_app_shell() ) {
+		$classes[] = 'hd-app-page';
 	}
 
 	return $classes;

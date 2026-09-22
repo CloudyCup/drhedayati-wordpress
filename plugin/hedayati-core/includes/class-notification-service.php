@@ -26,8 +26,70 @@ class Hedayati_Notification_Service {
 		add_action( 'admin_post_hedayati_notif_read_all', [ self::class, 'handle_read_all' ] );
 		add_action( 'deleted_user', [ self::class, 'on_user_deleted' ] );
 
+		// D58: the staff inbox this class always promised ("staff see role-relevant
+		// ones in /panel/") — owner-scoped, so the 'read' gate is sufficient; the
+		// /panel/ guard still requires a staff capability to reach it at all.
+		add_filter( 'hedayati_panel_module_views', [ self::class, 'register_panel_view' ] );
+
 		// Wire the deliberate event set.
 		add_action( 'hedayati_consultation_created', [ self::class, 'on_consultation_created' ] );
+	}
+
+	public static function register_panel_view( array $views ): array {
+		$views['notifications'] = [
+			'capability' => 'read',
+			'render'     => [ self::class, 'render_panel' ],
+			'nav'        => __( 'اعلان‌ها', 'hedayati-core' ),
+			'title'      => __( 'اعلان‌های من', 'hedayati-core' ),
+			'desc'       => __( 'رویدادهای کاری مربوط به نقش شما: مشاورهٔ جدید، تیکت و …', 'hedayati-core' ),
+			'icon'       => 'bell',
+		];
+		return $views;
+	}
+
+	/** /panel/?view=notifications — ONLY the current user's own rows. */
+	public static function render_panel(): void {
+		$user_id = get_current_user_id();
+		$items   = self::list_for_user( $user_id, 40 );
+
+		echo '<header class="hd-manager-heading"><div><span class="hd-manager-eyebrow">' . esc_html__( 'اعلان‌ها', 'hedayati-core' ) . '</span>';
+		echo '<h1 class="hd-portal-title">' . esc_html__( 'اعلان‌های من', 'hedayati-core' ) . '</h1></div>';
+		if ( self::unread_count( $user_id ) > 0 ) {
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="hd-notif-readall">';
+			wp_nonce_field( 'hedayati_notif_read_all' );
+			echo '<input type="hidden" name="action" value="hedayati_notif_read_all">';
+			echo '<button class="hd-portal-btn hd-portal-btn-small" type="submit">' . esc_html__( 'خواندن همه', 'hedayati-core' ) . '</button>';
+			echo '</form>';
+		}
+		echo '</header>';
+
+		if ( empty( $items ) ) {
+			echo '<div class="hd-student-empty"><strong>' . esc_html__( 'اعلانی ندارید', 'hedayati-core' ) . '</strong><p>' . esc_html__( 'رویدادهای کاری مربوط به نقش شما در این بخش نمایش داده می‌شود.', 'hedayati-core' ) . '</p></div>';
+			return;
+		}
+
+		echo '<ul class="hd-notif-list">';
+		foreach ( $items as $n ) {
+			$unread = null === $n['read_at'];
+			echo '<li class="' . ( $unread ? 'is-unread' : '' ) . '">';
+			echo '<div><strong>' . esc_html( $n['subject'] ) . '</strong>';
+			if ( '' !== $n['body'] ) {
+				echo '<p>' . esc_html( $n['body'] ) . '</p>';
+			}
+			echo '<time>' . esc_html( Hedayati_Jalali::format( substr( $n['created_at'], 0, 10 ) ) ) . '</time></div>';
+			echo '<div class="hd-notif-actions">';
+			if ( '' !== $n['url'] ) {
+				echo '<a href="' . esc_url( $n['url'] ) . '">' . esc_html__( 'مشاهده', 'hedayati-core' ) . '</a>';
+			}
+			if ( $unread ) {
+				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="hd-manager-inline-form">';
+				wp_nonce_field( 'hedayati_notif_read' );
+				echo '<input type="hidden" name="action" value="hedayati_notif_read"><input type="hidden" name="id" value="' . esc_attr( (string) (int) $n['id'] ) . '">';
+				echo '<button class="hd-manager-row-delete" type="submit">' . esc_html__( 'خوانده شد', 'hedayati-core' ) . '</button></form>';
+			}
+			echo '</div></li>';
+		}
+		echo '</ul>';
 	}
 
 	// ── Write ───────────────────────────────────────────────────────────────

@@ -1,5 +1,15 @@
 # CURRENT_STATE.md
 
+**2026-09-22 — D58: AI-Studio application shell for /panel/ and /account/ (plugin 1.18.0, theme
+1.6.0).** The public site header and footer are no longer used on those pages. They now have a
+fixed dark rail with grouped, icon-led, capability-filtered navigation and badges, a compact top
+bar (section, notifications, theme toggle, site link, avatar), and dense AI Studio proportions for
+KPIs, cards, tables and forms. Every module and every security rule is unchanged. New: a staff
+notification inbox at `/panel/?view=notifications`, and a homepage-status card on the manager home.
+See `docs/DECISIONS.md` D58.
+
+---
+
 **2026-09-22 — D57: administrator lands on /panel/; menu persistence (plugin 1.17.0, theme
 1.5.1).** Administrator's normal login now lands on `/panel/`. A deliberate `/wp-admin/`
 `redirect_to` is honored and wp-admin access is unchanged; the panel sidebar gains an admin-only

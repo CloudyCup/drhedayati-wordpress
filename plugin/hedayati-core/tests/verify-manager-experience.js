@@ -171,7 +171,7 @@ assert('the only wp-admin course link left is the manage_options-gated Gutenberg
 
 const pagePanel = readTheme('page-panel.php');
 assert('page-panel.php has no wp-admin nav item for non-administrators (D53) — D57: the only admin_url() link sits inside a manage_options guard', (pagePanel.match(/admin_url\(/g) || []).length === 1 && /current_user_can\( 'manage_options' \)[\s\S]{0,200}admin_url\(\)/.test(pagePanel) && !pagePanel.includes('hd-portal-nav-legacy') && !pagePanel.includes('hd-portal-nav-tag'));
-assert('page-panel.php still renders module-view nav (teachers / audit / academic come through here)', pagePanel.includes('Hedayati_Staff_Portal::module_views()'));
+assert('page-panel.php renders the sidebar from nav_groups(), which folds in every registered module view (teachers / audit / academic come through here)', pagePanel.includes('Hedayati_Staff_Portal::nav_groups()') && /function nav_groups\(\)[\s\S]*?foreach \( self::module_views\(\) as \$slug => \$module \)[\s\S]*?current_user_can\( \(string\) \$module\['capability'\] \)/.test(readPlugin('includes/class-staff-portal.php')));
 
 const featured = readTheme('template-parts/featured-courses.php');
 assert('featured-courses empty-state hint points at /panel/?view=featured, not wp-admin', featured.includes("home_url( '/panel/?view=featured' )") && !featured.includes("admin_url( 'edit.php?post_type=course' )"));
@@ -321,9 +321,9 @@ assert('functions.php enqueues auth.css on the login page only', readTheme('func
 // D54 follow-up: dedicated focused auth shell instead of the full public nav.
 assert('is_login_page() is public so header.php/footer.php can detect the auth shell', readPlugin('includes/class-login.php').includes('public static function is_login_page()'));
 const headerTpl = readTheme('header.php');
-assert('header.php skips the public site-header (primary nav / consult CTA / account link) on the /login/ page', /Hedayati_Login::is_login_page\(\)[\s\S]{0,200}<\?php if \( ! \$hd_is_auth_shell \) :[\s\S]{0,120}<header class="site-header"/.test(headerTpl));
+assert('header.php skips the public site-header (primary nav / consult CTA / account link) on the /login/ page (D58: and on the /panel/ + /account/ app shell)', /Hedayati_Login::is_login_page\(\)[\s\S]{0,400}<\?php if \( ! \$hd_is_auth_shell && ! \$hd_is_app_shell \) :[\s\S]{0,120}<header class="site-header"/.test(headerTpl));
 const footerTpl = readTheme('footer.php');
-assert('footer.php swaps the full link-heavy footer for a minimal copyright-only one on the /login/ page', /Hedayati_Login::is_login_page\(\)[\s\S]{0,200}<\?php if \( \$hd_is_auth_shell \) :[\s\S]{0,300}hd-auth-footer/.test(footerTpl));
+assert('footer.php swaps the full link-heavy footer for a minimal copyright-only one on the /login/ page (D58: none at all in the app shell)', /Hedayati_Login::is_login_page\(\)[\s\S]{0,400}<\?php if \( \$hd_is_app_shell \) :[\s\S]{0,40}<\?php elseif \( \$hd_is_auth_shell \) :[\s\S]{0,300}hd-auth-footer/.test(footerTpl));
 assert('the auth shell keeps its own dark-mode toggle (#theme-toggle) since the public header providing it is gone', pageLogin.includes('id="theme-toggle"') && pageLogin.includes('hd-auth-theme-toggle'));
 
 // ── 11. class-panel-security.php + student password self-service (D54) ────

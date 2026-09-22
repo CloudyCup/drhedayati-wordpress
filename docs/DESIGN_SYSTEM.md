@@ -229,6 +229,33 @@ column, footer to 2 columns), **900px** (course grid → 2 col, console → 1 co
 
 ---
 
+## Application shell — /panel/ and /account/ (D58)
+
+The staff panel and the student account share one application shell modelled on the AI Studio
+reference (`reference-react/src/components/Panels.jsx`, "Panels" section of `styles.css`).
+Files: `theme/hedayati/inc/app-shell.php` (markup), `assets/css/app.css` (loaded only on those
+pages, after `account.css`) and `assets/js/account.js` (drawer).
+
+- **Rail:** a fixed dark rail, 260px wide, on the inline-start (right) edge. Tokens
+  `--hd-app-rail*` live in `main.css` for both schemes. It holds the brand, a role chip and
+  grouped, icon-led links with red work-count badges; the active item gets a 3px red inline-start
+  bar. Links to the site, logout, and (administrator only) wp-admin sit at the bottom. Below
+  1024px the rail becomes an off-canvas drawer with a backdrop; Escape and the close button
+  dismiss it, and focus moves into it and back.
+- **Top bar:** 64px and sticky. Current section (11px eyebrow, 13.5px bold title),
+  notifications bell with unread count, the shared `#theme-toggle`, a site link, and avatar +
+  name + role.
+- **Content:** up to 1400px wide, padded 26/28px, with no outer card. Headings are 26px/800
+  with an 11px muted eyebrow. Sections are 15px-radius surface cards padded 20/22px. KPI tiles
+  place the label on the start side and a 26px red figure on the end side. Tables use
+  54px rows with 11px header cells. Standalone forms become compact cards with fields laid out
+  side by side.
+- **Icons:** `Hedayati_Icons` (plugin) is a single 24×24 / 1.8-stroke / currentColor line set.
+  It needs no icon library.
+- **Navigation data** comes from the plugin: `Hedayati_Staff_Portal::nav_groups()` for staff,
+  filtered by the same capability that gates each view. For students it is the
+  `Hedayati_Student_Portal::VIEWS` whitelist in `page-account.php`. The shell only renders it.
+
 ## Planned design work (not yet implemented)
 
 - Ship and load self-hosted Vazirmatn WOFF2 (token already points at it).
