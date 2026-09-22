@@ -35,6 +35,9 @@ get_header();
         ?>
         <li><a class="hd-portal-nav-link<?php echo $hd_slug === $hd_view ? ' is-active' : ''; ?>" href="<?php echo esc_url( Hedayati_Staff_Portal::url( [ 'view' => $hd_slug ] ) ); ?>"><?php echo esc_html( (string) $hd_module['nav'] ); ?></a></li>
     <?php endforeach; ?>
+    <?php if ( current_user_can( 'manage_options' ) ) : // D57: administrator-only, deliberate route into native wp-admin. ?>
+     <li><a class="hd-portal-nav-link hd-portal-nav-wpadmin" href="<?php echo esc_url( admin_url() ); ?>">پیشخوان وردپرس</a></li>
+    <?php endif; ?>
     <li class="hd-portal-nav-site"><a class="hd-portal-nav-link" href="<?php echo esc_url( home_url( '/' ) ); ?>">مشاهدهٔ وب‌سایت</a></li>
     <li><a class="hd-portal-nav-link hd-portal-nav-logout" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>">خروج از پنل</a></li>
    </ul>

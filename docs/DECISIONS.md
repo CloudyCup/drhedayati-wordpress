@@ -886,3 +886,56 @@ correctly. `plugin/hedayati-core/tests/verify-manager-experience.js` §14 assert
 fix exists in source. No authentication/security semantics weakened: rate limiting, privacy-safe
 errors, reset-token security, the forced-password-change flow, and open-redirect protection
 (`wp_validate_redirect()`) are all unchanged. No roles/capability/DB schema change.
+
+## D57 — Administrator lands on /panel/; user-created menus survive theme/plugin replacement (2026-09-22)
+
+**Owner requests.** (1) The administrator's normal login should land on `/panel/` like every other
+staff role, while wp-admin stays fully available when visited deliberately. (2) A top navigation
+menu the owner built on staging lost all its items and would have had to be rebuilt; that must not
+be possible again.
+
+**1 — Admin landing.** `Hedayati_Staff_Portal::login_redirect()` now routes a `manage_options` user
+to `/panel/` **only when no `redirect_to` was requested** (and the `/panel/` page really exists).
+Any requested safe destination is still honored, so an `auth_redirect()` from `/wp-admin/...`
+(which carries `redirect_to=/wp-admin/...`) lands exactly where the administrator was going. This
+changes only the landing page: `Hedayati_Admin_Access` still never restricts `manage_options`,
+`wp_validate_redirect()` and the D56 loop guards are unchanged, and nothing changed for other roles.
+The panel sidebar has an administrator-only «پیشخوان وردپرس» link. Note: a POST to the *native*
+`wp-login.php` form (only reachable deliberately, since GET is bounced to `/login/`) still sends
+core's default `redirect_to=admin_url()`, which counts as requested and goes to wp-admin.
+
+**2 — Menu root cause.** The repository contains **no code that deletes a menu or resets
+`nav_menu_locations`**. Theme fallbacks only produce output, and page provisioning only inserts
+pages that are missing. Two things combined:
+- **Assignment loss outside the code.** WordPress keeps location→menu assignments in the *active
+  theme's* `theme_mods_{stylesheet}` row, while the menu and its items live in `nav_menu` /
+  `nav_menu_item`. Some deploy paths make WordPress read an empty or different row: a theme folder
+  deleted and re-extracted under another name, a broken or nested extract (this host has
+  mis-extracted archives before, see D23) that makes core fall back to a default theme, a theme-switch
+  round trip, or a reset theme_mods row. In each case the menu stays in the DB but becomes
+  **unassigned**. The header then silently shows the hardcoded fallback links, so every custom
+  item looks "gone". The exact trigger on mystik.ir can only be confirmed with a read-only check
+  (`wp menu list`, `wp menu location list`, `wp option list --search='theme_mods_*'`).
+- **The panel editor made it worse (confirmed code defect).** `Hedayati_Navigation_Panel` save and
+  move rewrote every item as `menu-item-type=custom` and dropped its parent, object link, classes,
+  target, xfn and description. That flattened submenus and cut the links between items and their
+  pages or categories. With the location unassigned, "add link" also created a new empty menu
+  that hid the original (or failed on a name clash) instead of re-attaching it.
+
+**Fix (plugin 1.16.1 → 1.17.0, theme 1.5.0 → 1.5.1, no DB/roles/capability change):**
+- New `Hedayati_Menu_Guardian`: a theme-independent memory of the last *deliberate* assignment
+  (option `hedayati_nav_menu_assignments`, location → menu term ID only; not a menu store). It
+  records assignments through `pre_set_theme_mod_nav_menu_locations`, which Appearance → Menus,
+  the Customizer and WP-CLI all use. It re-applies a remembered menu on `after_switch_theme`
+  (priority 20, after core's own mapping), on `admin_init`, and on plugin activation, **but only
+  when a location has no usable menu**. It never overwrites a real assignment and never undoes a
+  deliberate "none". It forgets deleted menus and never creates, edits or deletes menus or items.
+- The panel editor now preserves an item's full field set (`item_args()`), changes only what was
+  edited (a URL only for custom links), and moves items only among siblings. It re-attaches the
+  remembered or same-named menu before it would ever create one. When a location is empty but
+  menus exist, it shows an explicit, audited «اتصال منو» recovery action that never replaces a live
+  assignment.
+
+**Coverage:** `docker/wp-tests/test-d57.php` (runtime, wired into `run.php`) and
+`plugin/hedayati-core/tests/verify-d57.js` (static). The D55 static assertions that encoded the
+old forced `type=custom` behaviour were updated to the new invariants.

@@ -35,6 +35,15 @@ Two independent artifacts. Each ZIP's **top-level folder** must directly contain
 
 No nested wrappers (`hedayati-core-1/hedayati-core/hedayati-core.php` is wrong).
 
+**Theme replacement and menus (D57).** Replace the theme *in place*: use Appearance → Themes →
+Add New → Upload and choose "Replace current with uploaded", or extract so the folder stays exactly
+`wp-content/themes/hedayati/`. Menu-location assignments live in `theme_mods_hedayati`. A different
+folder name, a nested or broken extract, or a fallback to a default theme can leave the header menu
+unassigned. Since plugin 1.17.0, `Hedayati_Menu_Guardian` re-attaches the remembered menu
+automatically on the next wp-admin load. If a location is still empty, `/panel/?view=navigation`
+offers «اتصال منو» to re-attach an existing menu. Never recreate the links by hand before checking
+that screen.
+
 ---
 
 ## Building the packages

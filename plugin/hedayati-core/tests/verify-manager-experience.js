@@ -170,7 +170,7 @@ assert('ZERO wp-admin operational links remain in the staff portal for non-admin
 assert('the only wp-admin course link left is the manage_options-gated Gutenberg shortcut', /current_user_can\( 'manage_options' \)[\s\S]{0,80}get_edit_post_link/.test(staffPortalCode));
 
 const pagePanel = readTheme('page-panel.php');
-assert('page-panel.php has NO wp-admin nav item at all (D53 fully enforced)', !/admin_url\(/.test(pagePanel) && !pagePanel.includes('hd-portal-nav-legacy') && !pagePanel.includes('hd-portal-nav-tag'));
+assert('page-panel.php has no wp-admin nav item for non-administrators (D53) — D57: the only admin_url() link sits inside a manage_options guard', (pagePanel.match(/admin_url\(/g) || []).length === 1 && /current_user_can\( 'manage_options' \)[\s\S]{0,200}admin_url\(\)/.test(pagePanel) && !pagePanel.includes('hd-portal-nav-legacy') && !pagePanel.includes('hd-portal-nav-tag'));
 assert('page-panel.php still renders module-view nav (teachers / audit / academic come through here)', pagePanel.includes('Hedayati_Staff_Portal::module_views()'));
 
 const featured = readTheme('template-parts/featured-courses.php');
@@ -418,12 +418,12 @@ const navPanelCode = codeOnly(navPanel);
 	const b = braces(navPanel);
 	assert(`navigation-panel braces balanced (${b.ob}/${b.cb})`, b.balanced);
 }
-assert('only the two registered locations (primary, footer) are ever addressable — no "pick any menu" control', /LOCATIONS = \[\s*'primary' => /.test(navPanel) && !/wp_get_nav_menus\(\)/.test(navPanelCode));
+assert('only the two registered locations (primary, footer) are ever addressable — D57: existing menus are listed ONLY to re-attach one to an EMPTY managed location', /LOCATIONS = \[\s*'primary' => /.test(navPanel) && (navPanelCode.match(/wp_get_nav_menus\(\)/g) || []).length === 1 && /function render_assign_form[\s\S]*?wp_get_nav_menus\(\)/.test(navPanelCode));
 assert('reuses canonical WP menu storage (wp_update_nav_menu_item / wp_delete_post / wp_create_nav_menu) — no duplicated link list/table', navPanel.includes('wp_update_nav_menu_item(') && navPanel.includes('wp_create_nav_menu(') && !/CREATE TABLE|dbDelta/.test(navPanelCode));
 assert('every mutation re-verifies the target item actually belongs to one of the two managed menus before touching it', navPanel.includes('item_is_managed(') && (navPanelCode.match(/self::item_is_managed\( \$item_id \)/g) || []).length >= 3);
 assert('URL sanitizer rejects javascript:/data: and anything that is not a site-relative path or http(s) — explicit protocol allow-list', /function sanitize_url[\s\S]{0,600}preg_match\( '#\^https\?:\/\/#i', \$raw \)[\s\S]{0,200}esc_url_raw\( \$raw, \[ 'http', 'https' \] \)/.test(navPanelCode));
-assert('every managed item is forced to menu-item-type=custom (no reproduction of the full WP menu-item object-type system)', (navPanelCode.match(/'menu-item-type'\s*(?:=>|:)\s*'custom'/g) || []).length >= 3);
-assert('moving an item resupplies title/url/type/status on BOTH sides of the swap (wp_update_nav_menu_item is a full replace, not a patch — a position-only call would blank the title/url)', /handle_move_item[\s\S]*?'menu-item-title'\s*=>\s*\$a->title[\s\S]*?'menu-item-title'\s*=>\s*\$b->title/.test(navPanelCode));
+assert('D57: NEW links are created as custom links, EXISTING items keep their own type (the old forced type=custom rewrite flattened submenus and broke page links)', /'menu-item-type'\s*=>\s*'custom',[\s\S]{0,120}'menu-item-position'\s*=>\s*count\(/.test(navPanelCode) && /\$args = self::item_args\( \$existing \);/.test(navPanelCode));
+assert('moving an item resupplies the FULL field set on BOTH sides of the swap (wp_update_nav_menu_item is a full replace, not a patch) — D57: via item_args(), not a hand-picked subset', /handle_move_item[\s\S]*?self::item_args\( \$a \)[\s\S]*?self::item_args\( \$b \)/.test(navPanelCode));
 assert('gated on hedayati_manage_settings (no new capability)', navPanel.includes("public const CAPABILITY = 'hedayati_manage_settings';"));
 
 // footer.php now uses a real, canonical wp_nav_menu('footer') location instead

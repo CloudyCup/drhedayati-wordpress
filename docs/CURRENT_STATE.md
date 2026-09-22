@@ -1,5 +1,16 @@
 # CURRENT_STATE.md
 
+**2026-09-22 — D57: administrator lands on /panel/; menu persistence (plugin 1.17.0, theme
+1.5.1).** Administrator's normal login now lands on `/panel/`. A deliberate `/wp-admin/`
+`redirect_to` is honored and wp-admin access is unchanged; the panel sidebar gains an admin-only
+«پیشخوان وردپرس» link. New `Hedayati_Menu_Guardian` re-attaches a user's remembered menu to a
+location left empty by theme replacement or switching, and never overwrites a real assignment.
+The `/panel/?view=navigation` editor no longer converts items to custom links or flattens
+submenus, and offers an explicit «اتصال منو» recovery for an orphaned menu. See
+`docs/DECISIONS.md` D57.
+
+---
+
 **2026-09-17 — D56: `/login/` redirect-loop fix from the mystik.ir staging candidate (plugin
 1.16.1).** The first real deploy of plugin 1.16.0 hit `ERR_TOO_MANY_REDIRECTS` on
 `https://mystik.ir/login/`. `Hedayati_Login::is_login_page()` is now OR-based (cached page ID OR

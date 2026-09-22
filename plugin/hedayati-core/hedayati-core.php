@@ -3,7 +3,7 @@
  * Plugin Name:       Hedayati Core
  * Plugin URI:        https://mystik.ir
  * Description:       هسته عملکردی مجتمع آموزشی دکتر هدایتی — دوره‌ها، طبقه‌بندی‌ها، احراز هویت، متادیتا و توابع کمکی.
- * Version:           1.16.1
+ * Version:           1.17.0
  * Author:            مجتمع آموزشی دکتر هدایتی
  * Author URI:        https://mystik.ir
  * Text Domain:       hedayati-core
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-define( 'HEDAYATI_CORE_VERSION', '1.16.1' );
+define( 'HEDAYATI_CORE_VERSION', '1.17.0' );
 define( 'HEDAYATI_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HEDAYATI_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -102,6 +102,9 @@ require_once HEDAYATI_CORE_DIR . 'includes/class-panel-security.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-content-panel.php';
 require_once HEDAYATI_CORE_DIR . 'includes/class-navigation-panel.php';
 
+// D57 — user-created menu location assignments survive theme/plugin replacement.
+require_once HEDAYATI_CORE_DIR . 'includes/class-menu-guardian.php';
+
 // ── Hook Registration ─────────────────────────────────────────────────────────
 
 add_action( 'init', [ Hedayati_Post_Types::class, 'register' ] );
@@ -164,6 +167,7 @@ Hedayati_Login::init();
 Hedayati_Panel_Security::init();
 Hedayati_Content_Panel::init();
 Hedayati_Navigation_Panel::init();
+Hedayati_Menu_Guardian::init();
 
 // ── Shared helpers (callable from theme without knowing internals) ─────────────
 
@@ -234,6 +238,7 @@ register_activation_hook( __FILE__, function (): void {
 	Hedayati_Staff_Portal::ensure_page();
 	Hedayati_Public_Content::ensure_pages();
 	Hedayati_Login::maybe_create_page();
+	Hedayati_Menu_Guardian::restore(); // D57: idempotent; never overwrites an assigned menu
 	flush_rewrite_rules();
 } );
 

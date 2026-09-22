@@ -116,6 +116,13 @@ four whitelisted Pages (`about`/`contact`/`consult`/`teachers`); `Hedayati_Navig
 (`/panel/?view=navigation`) edits `nav_menu_item` posts belonging only to the `primary`/`footer`
 nav menu locations. Neither introduces a table, option, or duplicate content store.
 
+D57 adds one small autoloaded option, `hedayati_nav_menu_assignments` (`array<location, menu term
+ID>`), owned by `Hedayati_Menu_Guardian`. It is a theme-independent copy of the last *deliberate*
+`nav_menu_locations` assignment. It is used only to re-attach a still-existing menu to a location
+that has no usable menu (for example after a theme replacement). It holds no items and is not a
+second menu store; the canonical storage stays core `nav_menu` / `nav_menu_item` +
+`theme_mods_{stylesheet}['nav_menu_locations']`.
+
 ---
 
 ## Custom table — `{prefix}hedayati_user_phones` ✅

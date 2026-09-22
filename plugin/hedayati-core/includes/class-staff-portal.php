@@ -124,18 +124,34 @@ class Hedayati_Staff_Portal {
 
 	/**
 	 * Send staff to the panel after login instead of wherever WordPress would.
-	 * Administrators (who hold `manage_options`) keep their normal destination.
+	 *
+	 * D57: the administrator's NORMAL login (no explicit redirect_to) also lands
+	 * on the panel, like every other staff role. A deliberate destination is
+	 * still honored — logging in from an auth_redirect() on /wp-admin/... carries
+	 * redirect_to=/wp-admin/..., so native WordPress admin keeps working exactly
+	 * as before. Nothing about wp-admin access itself changes here: this only
+	 * picks the landing page.
 	 */
 	public static function login_redirect( string $url, string $requested, $user ): string {
-		if (
-			$user instanceof WP_User
-			&& ! user_can( $user, 'manage_options' )
-			&& ( user_can( $user, 'hedayati_view_assigned_runs' ) || user_can( $user, 'hedayati_lookup_students' ) )
-		) {
+		if ( ! $user instanceof WP_User ) {
+			return $url;
+		}
+
+		if ( user_can( $user, 'manage_options' ) ) {
+			return '' === $requested && self::panel_page_exists() ? self::url() : $url;
+		}
+
+		if ( user_can( $user, 'hedayati_view_assigned_runs' ) || user_can( $user, 'hedayati_lookup_students' ) ) {
 			return self::url();
 		}
 
 		return $url;
+	}
+
+	/** An administrator is only sent to /panel/ if that page really exists (never a 404 landing). */
+	private static function panel_page_exists(): bool {
+		$page = get_page_by_path( self::PAGE_SLUG );
+		return $page instanceof WP_Post && 'publish' === $page->post_status;
 	}
 
 	/**

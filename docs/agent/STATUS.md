@@ -1,5 +1,27 @@
 # Primary project memory — Dr. Hedayati Computer Institute
 
+## D57 — admin lands on /panel/ + menu persistence (2026-09-22) — FEATURE BRANCH `feature/panel-redesign`
+
+Restored onto a new laptop after the desktop SSD failure. The repo on this laptop was clean and
+matched `origin/feature/manager-experience` @ `cc3a8e3`, so no recovery snapshot was needed.
+`feature/panel-redesign` was branched from there.
+
+1. **Administrator normal login → `/panel/`.** A deliberate `redirect_to` (e.g. `/wp-admin/…` from
+   `auth_redirect()`) is still honored, and wp-admin access is unchanged.
+2. **Menus.** No repo code deletes menus or resets locations. The staging loss was the location
+   assignment going stale in `theme_mods_{stylesheet}`, and the D55 panel editor then rewrote items
+   destructively. Fixed with `Hedayati_Menu_Guardian` plus a non-destructive editor and the
+   «اتصال منو» recovery action. **Owner action on mystik.ir after deploying 1.17.0:** open
+   `/panel/?view=navigation`. If «منوی اصلی» shows the recovery box, attach the old menu instead of
+   rebuilding it.
+
+Plugin 1.17.0, theme 1.5.1, DB/roles unchanged at 2.4.0. Static Node suites are green, including
+the new `verify-d57.js`. Runtime `docker/wp-tests/test-d57.php` must pass in `Acceptance (Docker
+WordPress)` before this counts as verified. Next on this branch: the AI Studio panel/account
+redesign, then the owner's tweak list once uploaded. See `docs/DECISIONS.md` D57.
+
+---
+
 ## D56 — mystik.ir staging bug: `/login/` redirect loop, FIXED (2026-09-17) — FEATURE BRANCH
 
 The first real deploy of plugin 1.16.0 to `mystik.ir` hit `ERR_TOO_MANY_REDIRECTS` on

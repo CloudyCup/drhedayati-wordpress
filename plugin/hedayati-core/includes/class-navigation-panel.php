@@ -52,6 +52,7 @@ class Hedayati_Navigation_Panel {
 	private const NONCE_SAVE_ITEM   = 'hedayati_nav_panel_save_item';
 	private const NONCE_DELETE_ITEM = 'hedayati_nav_panel_delete_item';
 	private const NONCE_MOVE_ITEM   = 'hedayati_nav_panel_move_item';
+	private const NONCE_ASSIGN_MENU = 'hedayati_nav_panel_assign_menu';
 
 	/** The only two nav menu locations this screen may ever touch. */
 	private const LOCATIONS = [
@@ -64,8 +65,9 @@ class Hedayati_Navigation_Panel {
 		add_action( 'admin_post_' . self::NONCE_SAVE_ITEM, [ self::class, 'handle_save_item' ] );
 		add_action( 'admin_post_' . self::NONCE_DELETE_ITEM, [ self::class, 'handle_delete_item' ] );
 		add_action( 'admin_post_' . self::NONCE_MOVE_ITEM, [ self::class, 'handle_move_item' ] );
+		add_action( 'admin_post_' . self::NONCE_ASSIGN_MENU, [ self::class, 'handle_assign_menu' ] );
 		add_filter( 'hedayati_audit_object_types', static fn( array $t ): array => array_merge( $t, [ 'nav_menu_item' ] ) );
-		add_filter( 'hedayati_audit_actions', static fn( array $a ): array => array_merge( $a, [ 'nav_link.saved', 'nav_link.deleted', 'nav_link.moved' ] ) );
+		add_filter( 'hedayati_audit_actions', static fn( array $a ): array => array_merge( $a, [ 'nav_link.saved', 'nav_link.deleted', 'nav_link.moved', 'nav_menu.assigned' ] ) );
 	}
 
 	public static function register_panel_view( array $views ): array {
@@ -114,16 +116,81 @@ class Hedayati_Navigation_Panel {
 			return null;
 		}
 
+		// D57: an unassigned location is far more often a lost assignment than a
+		// missing menu. Re-attach the remembered menu, or an existing menu with
+		// this screen's default name, instead of shadowing it with a new empty one.
+		if ( class_exists( 'Hedayati_Menu_Guardian' ) && in_array( $location, Hedayati_Menu_Guardian::restore(), true ) ) {
+			return self::menu_for_location( $location );
+		}
+		$named = wp_get_nav_menu_object( self::LOCATIONS[ $location ] );
+		if ( $named instanceof WP_Term ) {
+			self::assign( $location, (int) $named->term_id );
+			return self::menu_for_location( $location );
+		}
+
 		$menu_id = wp_create_nav_menu( self::LOCATIONS[ $location ] );
 		if ( is_wp_error( $menu_id ) ) {
 			return null;
 		}
 
-		$locations             = get_theme_mod( 'nav_menu_locations', [] );
-		$locations[ $location ] = (int) $menu_id;
-		set_theme_mod( 'nav_menu_locations', $locations );
+		self::assign( $location, (int) $menu_id );
 
 		return wp_get_nav_menu_object( (int) $menu_id );
+	}
+
+	/** Points $location at $menu_id via core theme_mod storage; other locations untouched. */
+	private static function assign( string $location, int $menu_id ): void {
+		$locations              = get_theme_mod( 'nav_menu_locations', [] );
+		$locations              = is_array( $locations ) ? $locations : [];
+		$locations[ $location ] = $menu_id;
+		set_theme_mod( 'nav_menu_locations', $locations );
+	}
+
+	/**
+	 * D57: the full current field set of an existing item, in
+	 * wp_update_nav_menu_item() argument form. That function is a full "set
+	 * these fields" call — anything omitted resets (type → custom, parent → 0,
+	 * object link, classes, target…) — so every update from this screen starts
+	 * from this and changes only what the user actually edited.
+	 */
+	private static function item_args( WP_Post $item ): array {
+		return [
+			'menu-item-db-id'       => (int) $item->ID,
+			'menu-item-object-id'   => (int) $item->object_id,
+			'menu-item-object'      => (string) $item->object,
+			'menu-item-parent-id'   => (int) $item->menu_item_parent,
+			'menu-item-position'    => (int) $item->menu_order,
+			'menu-item-type'        => (string) $item->type,
+			'menu-item-title'       => (string) $item->post_title,
+			'menu-item-url'         => 'custom' === $item->type ? (string) $item->url : '',
+			'menu-item-description' => (string) $item->description,
+			'menu-item-attr-title'  => (string) $item->attr_title,
+			'menu-item-target'      => (string) $item->target,
+			'menu-item-classes'     => implode( ' ', array_filter( (array) $item->classes ) ),
+			'menu-item-xfn'         => (string) $item->xfn,
+			'menu-item-status'      => (string) $item->post_status,
+		];
+	}
+
+	/** The set-up nav_menu_item object for $item_id within $menu, or null. */
+	private static function find_item( WP_Term $menu, int $item_id ): ?WP_Post {
+		foreach ( (array) wp_get_nav_menu_items( $menu->term_id, [ 'post_status' => 'any' ] ) as $item ) {
+			if ( (int) $item->ID === $item_id ) {
+				return $item;
+			}
+		}
+		return null;
+	}
+
+	/** The managed menu that actually contains $item_id (it may be either location's). */
+	private static function menu_containing( int $item_id ): ?WP_Term {
+		foreach ( array_keys( self::LOCATIONS ) as $location ) {
+			$menu = self::menu_for_location( $location );
+			if ( null !== $menu && null !== self::find_item( $menu, $item_id ) ) {
+				return $menu;
+			}
+		}
+		return null;
 	}
 
 	/** @return int[] every nav_menu_item ID belonging to EITHER managed location's menu. */
@@ -195,6 +262,10 @@ class Hedayati_Navigation_Panel {
 		echo '<section class="hd-staff-section">';
 		echo '<h2 class="hd-portal-subtitle">' . esc_html( $label ) . '</h2>';
 
+		if ( null === $menu ) {
+			self::render_assign_form( $location );
+		}
+
 		if ( empty( $items ) ) {
 			echo '<p class="hd-portal-note">' . esc_html__( 'هنوز لینکی افزوده نشده است (پیش‌فرض سایت نمایش داده می‌شود).', 'hedayati-core' ) . '</p>';
 		} else {
@@ -205,30 +276,40 @@ class Hedayati_Navigation_Panel {
 			}
 			echo '</div>';
 
-			$count = count( $items );
-			foreach ( $items as $i => $item ) {
-				$item_id = (int) $item->ID;
-				echo '<div class="hd-manager-tr" role="row">';
+			foreach ( $items as $item ) {
+				$item_id  = (int) $item->ID;
+				$parent   = (int) $item->menu_item_parent;
+				$siblings = array_values( array_filter( $items, static fn( $o ) => (int) $o->menu_item_parent === $parent ) );
+				$pos      = array_search( $item_id, array_map( static fn( $o ) => (int) $o->ID, $siblings ), true );
+				echo '<div class="hd-manager-tr' . ( $parent > 0 ? ' hd-nav-child' : '' ) . '" role="row">';
 
 				$form_id = 'hd-nav-item-' . $item_id;
 
 				echo '<span role="cell">';
 				self::form_open( self::NONCE_SAVE_ITEM, [ 'location' => $location, 'item_id' => $item_id ], 'hd-manager-inline-form', $form_id );
+				if ( $parent > 0 ) {
+					echo '<span class="hd-nav-child-mark" aria-label="' . esc_attr__( 'زیرمنو', 'hedayati-core' ) . '">↳</span>';
+				}
 				printf( '<input type="text" name="title" value="%s" required>', esc_attr( $item->title ) );
 				echo '</span>';
 
 				echo '<span role="cell">';
-				printf( '<input type="text" name="url" value="%s" dir="ltr" required form="hd-nav-item-%d">', esc_attr( $item->url ), esc_attr( $item_id ) );
+				if ( 'custom' === $item->type ) {
+					printf( '<input type="text" name="url" value="%s" dir="ltr" required form="hd-nav-item-%d">', esc_attr( $item->url ), esc_attr( (string) $item_id ) );
+				} else {
+					// Page/category/archive links follow their object; only the title is editable here.
+					printf( '<input type="text" value="%s" dir="ltr" readonly aria-readonly="true" title="%s">', esc_attr( $item->url ), esc_attr__( 'پیوند به محتوای سایت — نشانی خودکار است', 'hedayati-core' ) );
+				}
 				echo '</span>';
 
 				echo '<span role="cell" class="hd-manager-row-actions">';
 				echo '<button class="hd-portal-btn hd-portal-btn-small" type="submit">' . esc_html__( 'ذخیره', 'hedayati-core' ) . '</button>';
 				echo '</form>';
 
-				if ( $i > 0 ) {
+				if ( false !== $pos && $pos > 0 ) {
 					self::move_button( $location, $item_id, 'up', '↑' );
 				}
-				if ( $i < $count - 1 ) {
+				if ( false !== $pos && $pos < count( $siblings ) - 1 ) {
 					self::move_button( $location, $item_id, 'down', '↓' );
 				}
 				self::delete_button( $location, $item_id );
@@ -275,6 +356,33 @@ class Hedayati_Navigation_Panel {
 		echo '<button type="submit" class="hd-manager-row-delete">' . esc_html__( 'حذف', 'hedayati-core' ) . '</button></form>';
 	}
 
+	/**
+	 * D57 recovery: when a location has no menu but menus exist in the
+	 * database (the typical "all my links disappeared" state after a theme
+	 * replacement), offer to re-attach one explicitly instead of starting over.
+	 */
+	private static function render_assign_form( string $location ): void {
+		$menus = wp_get_nav_menus();
+		if ( empty( $menus ) ) {
+			return;
+		}
+		echo '<div class="hd-portal-notice hd-portal-notice-warning">';
+		echo '<p>' . esc_html__( 'هیچ منویی به این جایگاه متصل نیست، اما منوهای ذخیره‌شده‌ای در سایت وجود دارد. برای بازگرداندن لینک‌های قبلی، یکی را متصل کنید:', 'hedayati-core' ) . '</p>';
+		self::form_open( self::NONCE_ASSIGN_MENU, [ 'location' => $location ], 'hd-manager-inline-form' );
+		echo '<select name="menu_id">';
+		foreach ( $menus as $m ) {
+			printf(
+				'<option value="%d">%s (%s)</option>',
+				(int) $m->term_id,
+				esc_html( $m->name ),
+				/* translators: %d: number of links in the menu */
+				esc_html( sprintf( __( '%d لینک', 'hedayati-core' ), (int) $m->count ) )
+			);
+		}
+		echo '</select> <button class="hd-portal-btn hd-portal-btn-small" type="submit">' . esc_html__( 'اتصال منو', 'hedayati-core' ) . '</button></form>';
+		echo '</div>';
+	}
+
 	private static function render_add_form( string $location ): void {
 		self::form_open( self::NONCE_SAVE_ITEM, [ 'location' => $location, 'item_id' => 0 ] );
 		echo '<h3>' . esc_html__( 'افزودن لینک', 'hedayati-core' ) . '</h3>';
@@ -312,7 +420,9 @@ class Hedayati_Navigation_Panel {
 
 		$url = self::sanitize_url( $raw_url );
 
-		if ( '' === $title || '' === $url ) {
+		// A page/category link has no editable URL (its form omits the field),
+		// so an existing item's URL requirement is decided once its type is known.
+		if ( '' === $title || ( 0 === $item_id && '' === $url ) ) {
 			Hedayati_Staff_Portal::redirect_notice(
 				new WP_Error( 'nav_link', __( 'عنوان و نشانی معتبر لازم است (فقط مسیر داخلی یا آدرس http/https).', 'hedayati-core' ) ),
 				[ 'view' => self::VIEW ]
@@ -327,17 +437,37 @@ class Hedayati_Navigation_Panel {
 			);
 		}
 
-		$args = [
-			'menu-item-title'  => $title,
-			'menu-item-url'    => $url,
-			'menu-item-type'   => 'custom',
-			'menu-item-status' => 'publish',
-		];
-
-		// Only set an explicit position for a brand-new item (append to the
-		// end); editing an existing item must never disturb its current order.
-		if ( 0 === $item_id ) {
-			$args['menu-item-position'] = count( (array) wp_get_nav_menu_items( $menu->term_id ) ) + 1;
+		if ( $item_id > 0 ) {
+			// D57: edit in place inside the menu that really holds the item,
+			// preserving its type/object/parent/order/classes/target — only the
+			// title (and, for a plain custom link, its URL) changes.
+			$menu     = self::menu_containing( $item_id ) ?? $menu;
+			$existing = self::find_item( $menu, $item_id );
+			if ( null === $existing ) {
+				self::deny();
+			}
+			if ( 'custom' === $existing->type && '' === $url ) {
+				Hedayati_Staff_Portal::redirect_notice(
+					new WP_Error( 'nav_link', __( 'عنوان و نشانی معتبر لازم است (فقط مسیر داخلی یا آدرس http/https).', 'hedayati-core' ) ),
+					[ 'view' => self::VIEW ]
+				);
+			}
+			$args = self::item_args( $existing );
+			// Unchanged display title of a page/category link stays "follow the object's title".
+			if ( ! ( '' === (string) $existing->post_title && $title === (string) $existing->title ) ) {
+				$args['menu-item-title'] = $title;
+			}
+			if ( 'custom' === $existing->type ) {
+				$args['menu-item-url'] = $url;
+			}
+		} else {
+			$args = [
+				'menu-item-title'    => $title,
+				'menu-item-url'      => $url,
+				'menu-item-type'     => 'custom',
+				'menu-item-status'   => 'publish',
+				'menu-item-position' => count( (array) wp_get_nav_menu_items( $menu->term_id ) ) + 1,
+			];
 		}
 
 		$result = wp_update_nav_menu_item( $menu->term_id, $item_id, $args );
@@ -391,39 +521,64 @@ class Hedayati_Navigation_Panel {
 		$items = null !== $menu ? (array) wp_get_nav_menu_items( $menu->term_id ) : [];
 		usort( $items, static fn( $a, $b ) => (int) $a->menu_order <=> (int) $b->menu_order );
 
-		$index = null;
-		foreach ( $items as $i => $item ) {
+		// D57: swap only with a sibling (same parent) so a submenu never gets
+		// reordered out from under its parent.
+		$target = null;
+		foreach ( $items as $item ) {
+			if ( (int) $item->ID === $item_id ) {
+				$target = $item;
+				break;
+			}
+		}
+		$siblings = null === $target ? [] : array_values( array_filter( $items, static fn( $o ) => (int) $o->menu_item_parent === (int) $target->menu_item_parent ) );
+		$index    = null;
+		foreach ( $siblings as $i => $item ) {
 			if ( (int) $item->ID === $item_id ) {
 				$index = $i;
 				break;
 			}
 		}
 
-		$swap_with = 'up' === $direction ? $index - 1 : $index + 1;
+		$swap_with = null === $index ? -1 : ( 'up' === $direction ? $index - 1 : $index + 1 );
 
-		if ( null !== $index && isset( $items[ $swap_with ] ) ) {
-			$a = $items[ $index ];
-			$b = $items[ $swap_with ];
-			// wp_update_nav_menu_item() is a full "set these fields" call, not a
-			// partial patch — any field left out (title/url/type/status) resets
-			// to empty, so every field this screen manages must be resupplied
-			// from the item being moved, not just the new position.
-			wp_update_nav_menu_item( $menu->term_id, (int) $a->ID, [
-				'menu-item-title'    => $a->title,
-				'menu-item-url'      => $a->url,
-				'menu-item-type'     => 'custom',
-				'menu-item-status'   => 'publish',
-				'menu-item-position' => (int) $b->menu_order,
-			] );
-			wp_update_nav_menu_item( $menu->term_id, (int) $b->ID, [
-				'menu-item-title'    => $b->title,
-				'menu-item-url'      => $b->url,
-				'menu-item-type'     => 'custom',
-				'menu-item-status'   => 'publish',
-				'menu-item-position' => (int) $a->menu_order,
-			] );
+		if ( null !== $index && isset( $siblings[ $swap_with ] ) ) {
+			$a = $siblings[ $index ];
+			$b = $siblings[ $swap_with ];
+			// wp_update_nav_menu_item() is a full "set these fields" call — start
+			// from each item's complete current field set and change only its order.
+			$a_args                       = self::item_args( $a );
+			$b_args                       = self::item_args( $b );
+			$a_args['menu-item-position'] = (int) $b->menu_order;
+			$b_args['menu-item-position'] = (int) $a->menu_order;
+			wp_update_nav_menu_item( $menu->term_id, (int) $a->ID, $a_args );
+			wp_update_nav_menu_item( $menu->term_id, (int) $b->ID, $b_args );
 			Hedayati_Audit_Log::record( 'nav_link.moved', 'nav_menu_item', $item_id, 'via panel: ' . $location . ' ' . $direction, get_current_user_id() );
 		}
+
+		Hedayati_Staff_Portal::redirect_notice( true, [ 'view' => self::VIEW ] );
+	}
+
+	/** D57: explicitly attach an EXISTING menu to one of the two managed locations. */
+	public static function handle_assign_menu(): void {
+		Hedayati_Staff_Portal::guard_action( self::NONCE_ASSIGN_MENU, self::CAPABILITY );
+
+		$location = isset( $_POST['location'] ) ? sanitize_key( wp_unslash( $_POST['location'] ) ) : '';
+		$menu_id  = isset( $_POST['menu_id'] ) ? absint( $_POST['menu_id'] ) : 0;
+		$menu     = $menu_id > 0 ? wp_get_nav_menu_object( $menu_id ) : false;
+
+		if ( ! isset( self::LOCATIONS[ $location ] ) || ! $menu instanceof WP_Term ) {
+			self::deny();
+		}
+		// Never replaces a live assignment — this is a recovery action for an empty location only.
+		if ( null !== self::menu_for_location( $location ) ) {
+			Hedayati_Staff_Portal::redirect_notice(
+				new WP_Error( 'nav_menu', __( 'این جایگاه از قبل منو دارد و تغییر داده نشد.', 'hedayati-core' ) ),
+				[ 'view' => self::VIEW ]
+			);
+		}
+
+		self::assign( $location, (int) $menu->term_id );
+		Hedayati_Audit_Log::record( 'nav_menu.assigned', 'nav_menu_item', (int) $menu->term_id, 'via panel: ' . $location, get_current_user_id() );
 
 		Hedayati_Staff_Portal::redirect_notice( true, [ 'view' => self::VIEW ] );
 	}
